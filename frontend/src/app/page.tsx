@@ -40,7 +40,7 @@ export default function HomePage() {
 
         <div className="relative max-w-6xl mx-auto px-4 pt-20 pb-16 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-8 badge-violet">
-            <Cpu size={12} /> 100% local AI • No cloud APIs • Your data stays on your server
+            <Cpu size={12} /> Developed with the latest AI tech
           </div>
 
           <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight tracking-tight"
@@ -64,7 +64,7 @@ export default function HomePage() {
             </Link>
           </div>
           <p className="mt-4 text-xs" style={{color:"var(--text-tertiary)"}}>
-            Local Models • Documents never leave your server
+            AI Claim Analysis Tool for Research Assistance
           </p>
         </div>
       </section>
@@ -93,7 +93,7 @@ export default function HomePage() {
             What RedoClaim does
           </h2>
           <p className="text-sm mb-2" style={{color:"var(--text-secondary)"}}>
-            Six AI-assisted research tools — all running locally on your machine
+            Six AI-assisted research tools
           </p>
         </div>
 
@@ -151,38 +151,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Why local AI */}
-      <section className="border-y py-16" style={{borderColor:"var(--surface-4)",background:"var(--surface-1)"}}>
-        <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-10" style={{color:"var(--text-primary)"}}>
-            Why local AI?
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon: Lock, color: "#4ADE80", title: "Complete privacy", desc: "Your policy documents and medical data never leave your server. No third-party cloud AI sees your data." },
-              { icon: Cpu, color: "#22D3EE", title: "Local models", desc: "100% local models." },
-              { icon: Zap, color: "#A78BFA", title: "IRDAI knowledge built-in", desc: "RAG pipeline with IRDAI Master Circular 2024, Health Regs 2024, Ombudsman Rules 2017 loaded locally." },
-            ].map(({ icon: Icon, color, title, desc }) => (
-              <div key={title} className="card p-6 text-center">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                  style={{background:`rgba(${color === "#4ADE80" ? "74,222,128" : color === "#22D3EE" ? "34,211,238" : "167,139,250"},0.1)`,border:`1px solid rgba(${color === "#4ADE80" ? "74,222,128" : color === "#22D3EE" ? "34,211,238" : "167,139,250"},0.2)`}}>
-                  <Icon size={20} style={{color}} />
-                </div>
-                <h3 className="font-semibold mb-2" style={{color:"var(--text-primary)"}}>{title}</h3>
-                <p className="text-sm leading-relaxed" style={{color:"var(--text-secondary)"}}>{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* CTA */}
       <section className="max-w-6xl mx-auto px-4 py-20 text-center">
         <h2 className="text-3xl font-bold mb-4" style={{color:"var(--text-primary)"}}>
           Start your research today
         </h2>
         <p className="mb-8 max-w-lg mx-auto text-sm" style={{color:"var(--text-secondary)"}}>
-          Free, private, and runs entirely on your own machine.
           For legal action, always consult a licensed insurance advocate.
         </p>
         <Link href="/auth/register" className="btn-primary text-base px-8 py-3">
