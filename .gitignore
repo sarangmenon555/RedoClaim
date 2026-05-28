@@ -4,6 +4,9 @@
 .env.production
 *.env
 
+# Vercel
+vercel.json
+
 # ─── Python ───────────────────────────────────────────────
 __pycache__/
 *.py[cod]
