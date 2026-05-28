@@ -1,4 +1,6 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
   "experimentalServices": {
     "frontend": {
       "root": "frontend",
@@ -12,5 +14,8 @@
       "entrypoint": "main.py"
     }
   },
-  "regions": ["bom1"]
+  "regions": [
+    "bom1"
+  ],
+  "cleanUrls": true
 }
