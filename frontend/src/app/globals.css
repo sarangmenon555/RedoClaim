@@ -1,0 +1,235 @@
+/* ── Google Fonts ─────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --radius: 0.75rem;
+  --surface:   #0A0A0F;
+  --surface-1: #111118;
+  --surface-2: #16161F;
+  --surface-3: #1C1C28;
+  --surface-4: #232333;
+  --surface-5: #2E2E42;
+  --text-primary:   #F1F0FF;
+  --text-secondary: #A09CC0;
+  --text-tertiary:  #6B6880;
+  --violet:  #8B5CF6;
+  --cyan:    #22D3EE;
+  --neon:    #4ADE80;
+  --amber:   #FBBF24;
+  --red:     #F87171;
+}
+
+@layer base {
+  * { @apply border-surface-4; }
+
+  html { @apply scroll-smooth; }
+
+  body {
+    background-color: var(--surface);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface-1); }
+  ::-webkit-scrollbar-thumb { background: var(--surface-5); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--violet); }
+
+  ::selection { background: rgba(139,92,246,0.35); color: #fff; }
+}
+
+@layer components {
+  /* ── Cards ─────────────────────────────────────── */
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--surface-4);
+    border-radius: var(--radius);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03);
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .card:hover { border-color: var(--surface-5); }
+  .card-glow {
+    @apply card;
+    box-shadow: 0 0 0 1px rgba(139,92,246,0.2), 0 4px 24px rgba(139,92,246,0.1);
+  }
+
+  /* ── Buttons ────────────────────────────────────── */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200;
+    background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
+    color: #fff;
+    box-shadow: 0 0 0 1px rgba(139,92,246,0.3), 0 2px 8px rgba(139,92,246,0.25);
+  }
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    box-shadow: 0 0 16px rgba(139,92,246,0.45), 0 0 0 1px rgba(139,92,246,0.4);
+    transform: translateY(-1px);
+  }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    border: 1px solid var(--surface-5);
+  }
+  .btn-secondary:hover {
+    background: var(--surface-3);
+    color: var(--text-primary);
+    border-color: rgba(139,92,246,0.4);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover {
+    background: var(--surface-2);
+    color: var(--text-primary);
+  }
+
+  /* ── Inputs ─────────────────────────────────────── */
+  .input {
+    @apply w-full px-3 py-2.5 text-sm rounded-lg transition-all duration-200;
+    background: var(--surface-2);
+    border: 1px solid var(--surface-5);
+    color: var(--text-primary);
+  }
+  .input::placeholder { color: var(--text-tertiary); }
+  .input:focus {
+    outline: none;
+    border-color: var(--violet);
+    box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+    background: var(--surface-3);
+  }
+  select.input { cursor: pointer; }
+
+  .label {
+    @apply block text-xs font-semibold mb-1.5 tracking-wide;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Badges ─────────────────────────────────────── */
+  .badge-high {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    background: rgba(239,68,68,0.15);
+    color: #FCA5A5;
+    border: 1px solid rgba(239,68,68,0.25);
+  }
+  .badge-medium {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    background: rgba(251,191,36,0.12);
+    color: #FCD34D;
+    border: 1px solid rgba(251,191,36,0.2);
+  }
+  .badge-low {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    background: rgba(74,222,128,0.12);
+    color: #86EFAC;
+    border: 1px solid rgba(74,222,128,0.2);
+  }
+  .badge-info {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    background: rgba(34,211,238,0.1);
+    color: #67E8F9;
+    border: 1px solid rgba(34,211,238,0.2);
+  }
+  .badge-violet {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    background: rgba(139,92,246,0.15);
+    color: #C4B5FD;
+    border: 1px solid rgba(139,92,246,0.25);
+  }
+
+  /* ── Section headers ────────────────────────────── */
+  .section-header {
+    @apply text-xl font-bold;
+    color: var(--text-primary);
+  }
+
+  /* ── Gradient text ──────────────────────────────── */
+  .gradient-text {
+    background: linear-gradient(135deg, #A78BFA 0%, #22D3EE 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .gradient-text-violet {
+    background: linear-gradient(135deg, #C4B5FD 0%, #8B5CF6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Alert/info boxes ───────────────────────────── */
+  .alert-warning {
+    background: rgba(251,191,36,0.08);
+    border: 1px solid rgba(251,191,36,0.2);
+    border-radius: var(--radius);
+    color: #FCD34D;
+  }
+  .alert-danger {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: var(--radius);
+    color: #FCA5A5;
+  }
+  .alert-success {
+    background: rgba(74,222,128,0.08);
+    border: 1px solid rgba(74,222,128,0.2);
+    border-radius: var(--radius);
+    color: #86EFAC;
+  }
+  .alert-info {
+    background: rgba(139,92,246,0.08);
+    border: 1px solid rgba(139,92,246,0.2);
+    border-radius: var(--radius);
+    color: #C4B5FD;
+  }
+
+  /* ── Shimmer skeleton ───────────────────────────── */
+  .shimmer {
+    background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+    border-radius: var(--radius);
+  }
+
+  /* ── Divider ────────────────────────────────────── */
+  .divider {
+    height: 1px;
+    background: var(--surface-4);
+    margin: 1rem 0;
+  }
+
+  /* ── Grid dot pattern (hero bg) ─────────────────── */
+  .grid-bg {
+    background-image: radial-gradient(circle, #2E2E42 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+}
+
+/* ── Glow effects ───────────────────────────────────── */
+.glow-violet { box-shadow: 0 0 24px rgba(139,92,246,0.5); }
+.glow-cyan   { box-shadow: 0 0 24px rgba(34,211,238,0.4); }
+.glow-neon   { box-shadow: 0 0 24px rgba(74,222,128,0.4); }
+
+/* ── Focus ring ─────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid rgba(139,92,246,0.6);
+  outline-offset: 2px;
+}

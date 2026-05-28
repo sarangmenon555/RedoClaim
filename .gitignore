@@ -1,0 +1,59 @@
+# ─── Environment ──────────────────────────────────────────
+.env
+.env.local
+.env.production
+*.env
+
+# ─── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ─── Node / Next.js ───────────────────────────────────────
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Docker volumes (local dev data) ─────────────────────
+# Don't commit docker persistent data
+docker/postgres/data/
+
+# ─── Uploads (user data - never commit) ──────────────────
+backend/uploads/
+*.pdf
+*.jpg
+*.jpeg
+*.png
+*.tiff
+
+# ─── IDE ──────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ─── Logs ─────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── SSL certs (add your real ones securely) ─────────────
+docker/nginx/certs/
+*.pem
+*.key
+*.crt

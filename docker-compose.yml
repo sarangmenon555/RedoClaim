@@ -1,0 +1,195 @@
+services:
+  # ─── FASTAPI BACKEND ───────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: redoclaim-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://redoclaim:redoclaim_secret@postgres:5432/redoclaim_db
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://ollama:11434
+      QDRANT_URL: http://qdrant:6333
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+      JWT_SECRET: change_this_in_production_use_openssl_rand_hex_32
+      JWT_ALGORITHM: HS256
+      ALLOWED_ORIGINS: '["https://your-app.vercel.app", "http://localhost:3000"]'
+      ENVIRONMENT: production
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+      qdrant:
+        condition: service_started
+      minio:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - uploads_vol:/app/uploads
+    networks:
+      - redoclaim-net
+
+  # ─── CELERY WORKER ─────────────────────────────────────────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: redoclaim-worker
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2 -Q documents,analysis,appeals
+    environment:
+      DATABASE_URL: postgresql+asyncpg://redoclaim:redoclaim_secret@postgres:5432/redoclaim_db
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://ollama:11434
+      QDRANT_URL: http://qdrant:6333
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin123
+    depends_on:
+      - backend
+      - redis
+    volumes:
+      - ./backend:/app
+      - uploads_vol:/app/uploads
+    networks:
+      - redoclaim-net
+
+  # ─── CELERY BEAT (scheduler) ───────────────────────────────────
+  beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: redoclaim-beat
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://redoclaim:redoclaim_secret@postgres:5432/redoclaim_db
+    depends_on:
+      - redis
+    networks:
+      - redoclaim-net
+
+  # ─── OLLAMA (local LLM server) ─────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: redoclaim-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_vol:/root/.ollama
+    networks:
+      - redoclaim-net
+    # Uncomment for GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ─── QDRANT (vector DB) ────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: redoclaim-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_vol:/qdrant/storage
+    networks:
+      - redoclaim-net
+
+  # ─── POSTGRESQL ────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: redoclaim-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: redoclaim
+      POSTGRES_PASSWORD: redoclaim_secret
+      POSTGRES_DB: redoclaim_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_vol:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U redoclaim -d redoclaim_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - redoclaim-net
+
+  # ─── REDIS ─────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redoclaim-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_vol:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - redoclaim-net
+
+  # ─── MINIO (S3-compatible file storage) ───────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: redoclaim-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_vol:/data
+    networks:
+      - redoclaim-net
+
+  # ─── NGINX (reverse proxy / TLS termination) ──────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: redoclaim-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/certs:/etc/nginx/certs
+    depends_on:
+      - backend
+    networks:
+      - redoclaim-net
+
+volumes:
+  postgres_vol:
+  redis_vol:
+  qdrant_vol:
+  ollama_vol:
+  minio_vol:
+  uploads_vol:
+
+networks:
+  redoclaim-net:
+    driver: bridge
