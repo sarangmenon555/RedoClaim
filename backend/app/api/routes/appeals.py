@@ -8,7 +8,7 @@ import time
 
 from app.core.database import get_db
 from app.models.models import Claim, Appeal, AppealType
-from app.services.llm.ollama_service import generate_appeal_letter
+from app.services.llm.gemini_service import generate_appeal_letter
 from app.api.deps.auth import get_current_user
 
 
@@ -78,7 +78,7 @@ async def generate_appeal(
         appeal_type=req.appeal_type,
         letter_content=letter,
         legal_references=claim.audit_report.get("audit", {}).get("irdai_violations", []),
-        model_used="mistral:7b",
+        model_used="gemini-2.0-flash",
         generation_time_ms=elapsed,
     )
     db.add(appeal)

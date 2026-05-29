@@ -12,18 +12,17 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://redoclaim:redoclaim_secret@localhost:5432/redoclaim_db"
 
-    # Redis
+    # Redis (optional — used for rate limiting; falls back gracefully if absent)
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # Ollama
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    # ── Gemini API ────────────────────────────────────────────────
+    GEMINI_API_KEY: str = ""
 
-    # Models
-    MODEL_EXTRACTION: str = "qwen2.5:7b"
-    MODEL_LEGAL: str = "qwen2.5:7b"
-    MODEL_DRAFTING: str = "mistral:7b"
-    MODEL_SUMMARIZE: str = "qwen2.5:7b"
-    MODEL_EMBEDDING: str = "nomic-embed-text"
+    # Model assignments (all free-tier Gemini models)
+    MODEL_EXTRACTION: str = "gemini-2.0-flash-lite"   # fast + cheap for extraction
+    MODEL_LEGAL: str = "gemini-2.0-flash"              # stronger reasoning for audit
+    MODEL_DRAFTING: str = "gemini-2.0-flash"           # letter drafting
+    MODEL_SUMMARIZE: str = "gemini-2.0-flash-lite"     # summaries
 
     # Qdrant
     QDRANT_URL: str = "http://localhost:6333"
@@ -31,7 +30,7 @@ class Settings(BaseSettings):
     QDRANT_IRDAI_COLLECTION: str = "irdai_regulations"
     QDRANT_REJECTION_COLLECTION: str = "rejection_patterns"
 
-    # MinIO
+    # MinIO (file storage — swap for S3/Cloudflare R2 on Render/Vercel)
     MINIO_ENDPOINT: str = "localhost:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin123"
@@ -55,13 +54,12 @@ class Settings(BaseSettings):
     @classmethod
     def parse_allowed_origins(cls, v):
         if isinstance(v, str):
-            v = v.strip().strip("'\"")   # strip wrapping quotes shells may add
+            v = v.strip().strip("'\"")
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
                     return parsed
             except json.JSONDecodeError:
-                # Fallback: treat as comma-separated  e.g. "http://a.com,http://b.com"
                 return [o.strip() for o in v.split(",") if o.strip()]
         return v
 
@@ -83,8 +81,8 @@ class Settings(BaseSettings):
         env_file = ".env"
         case_sensitive = True
 
+
 settings = Settings()
 
-# Fail-fast: confirm what's actually loaded at startup
 import logging
 logging.getLogger(__name__).info(f"CORS allowed origins: {settings.ALLOWED_ORIGINS}")

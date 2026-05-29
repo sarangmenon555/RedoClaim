@@ -16,7 +16,7 @@ import logging
 
 from app.core.database import get_db
 from app.models.models import Document, Claim, InsuranceType, ClaimStatus, DocumentType
-from app.services.llm.ollama_service import (
+from app.services.llm.gemini_service import (
     audit_rejection, analyze_cis, generate_portability_guide
 )
 from app.services.rag.rag_pipeline import (

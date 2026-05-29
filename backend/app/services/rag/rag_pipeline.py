@@ -18,7 +18,7 @@ from qdrant_client.http.models import (
     Filter, FieldCondition, MatchValue, FilterSelector
 )
 from app.core.config import settings
-from app.services.llm.ollama_service import generate_embeddings
+from app.services.llm.gemini_service import generate_embeddings
 
 logger = logging.getLogger(__name__)
 EMBEDDING_DIM = 768  # nomic-embed-text

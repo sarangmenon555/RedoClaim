@@ -3,6 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # System deps for PaddleOCR + PDF processing
+# NOTE: torch/sentence-transformers removed — embeddings now via Gemini API
 RUN apt-get update && apt-get install -y \
     libgl1 \
     libglib2.0-0 \
@@ -19,11 +20,11 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt .
 
-# Updated to look into PyTorch's official repository for CPU builds
-RUN pip install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+# No --extra-index-url needed anymore (torch removed)
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

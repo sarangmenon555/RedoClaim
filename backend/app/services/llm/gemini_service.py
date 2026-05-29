@@ -1,26 +1,28 @@
 """
-Local LLM Service — RedoClaim
-All inference via Ollama (local). Zero cloud API calls.
+LLM Service — RedoClaim (Gemini API)
+All inference via Google Gemini 2.0 Flash (free tier).
 
 Model routing:
-  qwen2.5:7b       → policy clause extraction, CIS analysis, classification
-  deepseek-r1:8b   → legal reasoning, IRDAI audit (Hierarchy of Evidence)
-  mistral:7b       → appeal letter drafting (GRO, Ombudsman, Consumer Court)
-  nomic-embed-text → RAG embeddings (local, no API)
+  gemini-2.0-flash-lite  → policy clause extraction, CIS analysis, classification (fast + cheap)
+  gemini-2.0-flash       → legal reasoning, IRDAI audit (Hierarchy of Evidence)
+  gemini-2.0-flash       → appeal letter drafting (GRO, Ombudsman, Consumer Court)
+  text-embedding-004     → RAG embeddings (free, 768-dim)
 """
-import httpx
 import json
 import time
 import logging
+import httpx
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 
-class OllamaClient:
+
+class GeminiClient:
     def __init__(self):
-        self.base_url = settings.OLLAMA_BASE_URL
-        self.timeout  = 360  # 6 min — CPU inference on large docs
+        self.api_key = settings.GEMINI_API_KEY
+        self.timeout = 120  # Gemini is fast; 2 min is plenty
 
     async def generate(
         self,
@@ -30,55 +32,66 @@ class OllamaClient:
         temperature: float = 0.05,
         max_tokens: int = 4096,
     ) -> str:
+        contents = []
+        if system:
+            # Gemini uses "system_instruction" at the top level
+            pass  # handled below via system_instruction field
+
+        contents.append({"role": "user", "parts": [{"text": prompt}]})
+
         payload = {
-            "model": model,
-            "prompt": prompt,
-            "system": system,
-            "options": {
+            "contents": contents,
+            "generationConfig": {
                 "temperature": temperature,
-                "num_predict": max_tokens,
-                "num_ctx": 8192,
-                "repeat_penalty": 1.1,
+                "maxOutputTokens": max_tokens,
             },
-            "stream": False,
         }
+        if system:
+            payload["system_instruction"] = {"parts": [{"text": system}]}
+
+        url = f"{GEMINI_API_BASE}/models/{model}:generateContent?key={self.api_key}"
+
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
-                resp = await client.post(f"{self.base_url}/api/generate", json=payload)
+                resp = await client.post(url, json=payload)
                 resp.raise_for_status()
-                return resp.json()["response"]
+                data = resp.json()
+                return data["candidates"][0]["content"]["parts"][0]["text"]
+            except httpx.HTTPStatusError as e:
+                body = e.response.text
+                logger.error(f"Gemini API error {e.response.status_code}: {body}")
+                raise RuntimeError(f"Gemini API error: {e.response.status_code} — {body}")
             except httpx.ConnectError:
                 raise RuntimeError(
-                    "Cannot connect to Ollama. Ensure Docker is running: "
-                    "docker compose up -d ollama"
+                    "Cannot connect to Gemini API. Check your internet connection "
+                    "and that GEMINI_API_KEY is set correctly."
                 )
 
-    async def embed(self, model: str, text: str) -> list[float]:
-        payload = {"model": model, "prompt": text}
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(f"{self.base_url}/api/embeddings", json=payload)
+    async def embed(self, text: str) -> list[float]:
+        """Generate embeddings using text-embedding-004 (768-dim, free tier)."""
+        url = (
+            f"{GEMINI_API_BASE}/models/text-embedding-004:embedContent"
+            f"?key={self.api_key}"
+        )
+        payload = {
+            "model": "models/text-embedding-004",
+            "content": {"parts": [{"text": text}]},
+        }
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(url, json=payload)
             resp.raise_for_status()
-            return resp.json()["embedding"]
-
-    async def is_model_available(self, model: str) -> bool:
-        async with httpx.AsyncClient(timeout=10) as client:
-            try:
-                resp = await client.get(f"{self.base_url}/api/tags")
-                models = [m["name"] for m in resp.json().get("models", [])]
-                return any(model.split(":")[0] in m for m in models)
-            except Exception:
-                return False
+            return resp.json()["embedding"]["values"]
 
 
-ollama = OllamaClient()
+gemini = GeminiClient()
 
 
-# ── 1. Policy Clause Extractor (qwen2.5:7b) ──────────────────────
+# ── 1. Policy Clause Extractor ────────────────────────────────────
 async def extract_policy_clauses(policy_text: str) -> dict:
     """
     Extract ALL important clauses from a policy document.
     Also detects if the document is a CIS (Customer Information Sheet).
-    Model: qwen2.5:7b — strong at long-document structured extraction.
+    Model: gemini-2.0-flash-lite — fast structured extraction.
     """
     system = """You are an AI research assistant that helps extract insurance policy clauses
 from documents. You are NOT a legal expert. Your extractions may be incomplete or
@@ -132,7 +145,7 @@ Return ONLY this JSON structure (no markdown, no explanation):
 }}"""
 
     start = time.time()
-    raw = await ollama.generate(
+    raw = await gemini.generate(
         model=settings.MODEL_EXTRACTION,
         prompt=prompt,
         system=system,
@@ -145,12 +158,12 @@ Return ONLY this JSON structure (no markdown, no explanation):
     return _parse_json(raw, "policy_extraction")
 
 
-# ── 2. CIS Analyzer (qwen2.5:7b) ─────────────────────────────────
+# ── 2. CIS Analyzer ───────────────────────────────────────────────
 async def analyze_cis(cis_text: str) -> dict:
     """
     Dedicated Customer Information Sheet (CIS) analyzer.
     IRDAI Master Circular 2024, Para 4.2: Insurer must provide CIS with
-    clear inclusions and exclusions. This extracts them for the user.
+    clear inclusions and exclusions.
     """
     system = """You are an AI assistant that extracts information from insurance Customer
 Information Sheets (CIS). Your output is AI-generated and may contain errors.
@@ -194,7 +207,7 @@ Return ONLY this JSON:
   ]
 }}"""
 
-    raw = await ollama.generate(
+    raw = await gemini.generate(
         model=settings.MODEL_EXTRACTION,
         prompt=prompt,
         system=system,
@@ -204,7 +217,7 @@ Return ONLY this JSON:
     return _parse_json(raw, "cis_analysis")
 
 
-# ── 3. Rejection Auditor — Hierarchy of Evidence (deepseek-r1:8b) ──
+# ── 3. Rejection Auditor — Hierarchy of Evidence ─────────────────
 async def audit_rejection(
     rejection_text: str,
     policy_clauses: dict,
@@ -217,7 +230,7 @@ async def audit_rejection(
       Step 1: SLA violations
       Step 2: IRDAI Master Circular violations
       Step 3: Redressal route
-    Model: deepseek-r1:8b — strong legal reasoning with chain-of-thought.
+    Model: gemini-2.0-flash — strong legal reasoning.
     """
     system = """You are an AI legal research assistant helping Indian insurance policyholders
 understand their rights under IRDAI regulations. You are NOT a lawyer and your output
@@ -307,7 +320,7 @@ Perform a complete audit. Return ONLY valid JSON:
 }}"""
 
     start = time.time()
-    raw = await ollama.generate(
+    raw = await gemini.generate(
         model=settings.MODEL_LEGAL,
         prompt=prompt,
         system=system,
@@ -320,7 +333,7 @@ Perform a complete audit. Return ONLY valid JSON:
     return _parse_json(raw, "rejection_audit")
 
 
-# ── 4. Appeal Letter Generator (mistral:7b) ───────────────────────
+# ── 4. Appeal Letter Generator ────────────────────────────────────
 async def generate_appeal_letter(
     appeal_type: str,
     claim_data: dict,
@@ -337,7 +350,7 @@ async def generate_appeal_letter(
     - Exact IRDAI regulation citations with paragraph numbers
     - E-Daakhil reference where appropriate
     - Interest demand where TAT is violated
-    Model: mistral:7b — excellent formal legal drafting.
+    Model: gemini-2.0-flash — excellent formal legal drafting.
     """
     system = """You are an AI writing assistant that helps draft insurance appeal letters
 based on IRDAI regulations. You are NOT a lawyer. These are AI-generated DRAFTS that
@@ -453,7 +466,7 @@ Write the complete letter. Include:
 Use formal legal English. Be assertive but professional."""
 
     start = time.time()
-    letter = await ollama.generate(
+    letter = await gemini.generate(
         model=settings.MODEL_DRAFTING,
         prompt=prompt,
         system=system,
@@ -465,7 +478,7 @@ Use formal legal English. Be assertive but professional."""
     return letter
 
 
-# ── 5. Portability Advisor (qwen2.5:7b) ──────────────────────────
+# ── 5. Portability Advisor ────────────────────────────────────────
 async def generate_portability_guide(
     current_policy: dict,
     years_covered: float,
@@ -500,7 +513,7 @@ Provide:
 
 Be specific, practical, and reference IRDAI (Health Insurance) Regulations 2024, Regulation 17."""
 
-    return await ollama.generate(
+    return await gemini.generate(
         model=settings.MODEL_EXTRACTION,
         prompt=prompt,
         system=system,
@@ -511,8 +524,8 @@ Be specific, practical, and reference IRDAI (Health Insurance) Regulations 2024,
 
 # ── 6. Embeddings ─────────────────────────────────────────────────
 async def generate_embeddings(text: str) -> list[float]:
-    """Local embeddings via Ollama nomic-embed-text. Zero cloud calls."""
-    return await ollama.embed(model=settings.MODEL_EMBEDDING, text=text)
+    """Embeddings via Gemini text-embedding-004 (768-dim, free tier)."""
+    return await gemini.embed(text=text)
 
 
 # ── Helpers ───────────────────────────────────────────────────────

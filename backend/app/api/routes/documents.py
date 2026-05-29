@@ -13,7 +13,7 @@ from app.services.ocr.ocr_pipeline import (
     extract_text_from_pdf, extract_text_from_image, chunk_text
 )
 from app.services.rag.rag_pipeline import upsert_document_chunks
-from app.services.llm.ollama_service import extract_policy_clauses
+from app.services.llm.gemini_service import extract_policy_clauses
 from app.services.storage.minio_service import upload_file, get_file_url
 from app.api.deps.auth import get_current_user
 

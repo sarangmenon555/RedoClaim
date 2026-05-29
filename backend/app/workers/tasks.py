@@ -25,7 +25,7 @@ def process_document(self, document_id: str, file_path: str, mime_type: str, doc
             extract_text_from_pdf, extract_text_from_image, chunk_text
         )
         from app.services.rag.rag_pipeline import upsert_document_chunks
-        from app.services.llm.ollama_service import extract_policy_clauses
+        from app.services.llm.gemini_service import extract_policy_clauses
         from app.core.database import AsyncSessionLocal
         from app.models.models import Document, DocumentType
 
@@ -116,7 +116,7 @@ def generate_appeal_task(self, claim_id: str, appeal_type: str, user_id: str):
         async def _run():
             from app.core.database import AsyncSessionLocal
             from app.models.models import Claim, Appeal, AppealType
-            from app.services.llm.ollama_service import generate_appeal_letter
+            from app.services.llm.gemini_service import generate_appeal_letter
             import time
 
             async with AsyncSessionLocal() as db:
