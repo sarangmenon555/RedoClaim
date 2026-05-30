@@ -1,7 +1,8 @@
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
-from typing import List
+from typing import List, Union
 import json
+import logging
 
 
 class Settings(BaseSettings):
@@ -44,10 +45,10 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # CORS — accepts either a JSON string or a real list
-    ALLOWED_ORIGINS: List[str] = [
+    # CORS — accepts a plain URL, comma-separated string, or JSON array
+    ALLOWED_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
-        "https://your-app.vercel.app",
+        "https://redoclaim.vercel.app",
     ]
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
@@ -55,12 +56,15 @@ class Settings(BaseSettings):
     def parse_allowed_origins(cls, v):
         if isinstance(v, str):
             v = v.strip().strip("'\"")
+            # Try JSON array first: ["url1", "url2"]
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
                     return parsed
             except json.JSONDecodeError:
-                return [o.strip() for o in v.split(",") if o.strip()]
+                pass
+            # Fall back to comma-separated: url1,url2
+            return [o.strip() for o in v.split(",") if o.strip()]
         return v
 
     # Rate limiting
@@ -84,5 +88,4 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-import logging
 logging.getLogger(__name__).info(f"CORS allowed origins: {settings.ALLOWED_ORIGINS}")

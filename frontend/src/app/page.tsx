@@ -1,11 +1,38 @@
 'use client';
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   ShieldCheck, FileSearch, FileText, Clock,
-  ArrowRight, CheckCircle, AlertTriangle, Scale, Zap, Lock, Cpu
+  ArrowRight, AlertTriangle, Scale, Cpu, Loader2, Zap
 } from "lucide-react";
+import { authApi } from "@/lib/api";
+import { useAuthStore } from "@/store/auth";
+import toast from "react-hot-toast";
+
+const DEMO_EMAIL    = "demo@redoclaim.in";
+const DEMO_PASSWORD = "RedoClaim@demo2024";
 
 export default function HomePage() {
+  const router = useRouter();
+  const { setAuth } = useAuthStore();
+  const [demoLoading, setDemoLoading] = useState(false);
+
+  const handleDemo = async () => {
+    setDemoLoading(true);
+    try {
+      const res   = await authApi.login(DEMO_EMAIL, DEMO_PASSWORD);
+      const meRes = await authApi.me();
+      setAuth(meRes.data, res.data);
+      toast.success("Welcome! You're in the demo.");
+      router.push("/dashboard");
+    } catch {
+      toast.error("Demo login failed — please try again.");
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{background:"var(--surface)"}}>
       {/* Nav */}
@@ -24,6 +51,16 @@ export default function HomePage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {/* Demo button in nav */}
+            <button
+              onClick={handleDemo}
+              disabled={demoLoading}
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium transition-all"
+              style={{background:"rgba(74,222,128,0.1)",color:"#4ADE80",border:"1px solid rgba(74,222,128,0.25)"}}>
+              {demoLoading
+                ? <><Loader2 size={13} className="animate-spin" /> Loading...</>
+                : <><Zap size={13} /> Try Demo</>}
+            </button>
             <Link href="/auth/login" className="btn-ghost text-sm">Login</Link>
             <Link href="/auth/register" className="btn-primary text-sm">Get Started Free</Link>
           </div>
@@ -32,9 +69,7 @@ export default function HomePage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        {/* Grid bg */}
         <div className="absolute inset-0 grid-bg opacity-30" />
-        {/* Violet glow blob */}
         <div className="absolute top-[-100px] left-[50%] translate-x-[-50%] w-[600px] h-[400px] rounded-full blur-[120px] opacity-20"
           style={{background:"radial-gradient(circle,#7C3AED,transparent)"}} />
 
@@ -49,22 +84,39 @@ export default function HomePage() {
             <span className="gradient-text">Claim Rejections</span>
           </h1>
 
-          <p className="text-lg mb-4 max-w-2xl mx-auto leading-relaxed"
+          <p className="text-lg mb-8 max-w-2xl mx-auto leading-relaxed"
             style={{color:"var(--text-secondary)"}}>
-            India's dedicated, fully automated AI research tool for policyholders. 
+            India's dedicated, fully automated AI research tool for policyholders.
             Upload your rejection letter — get an IRDAI Master Circular 2024-compliant audit and AI-drafted appeal letters in minutes.
           </p>
 
+          {/* Primary CTA row */}
           <div className="flex items-center justify-center gap-4 flex-wrap">
+            {/* ── Try Demo — most prominent ── */}
+            <button
+              onClick={handleDemo}
+              disabled={demoLoading}
+              className="flex items-center gap-2 text-base px-8 py-3.5 rounded-xl font-semibold transition-all"
+              style={{
+                background:"linear-gradient(135deg,#4ADE80,#22D3EE)",
+                color:"#0a0a0f",
+                boxShadow: demoLoading ? "none" : "0 0 24px rgba(74,222,128,0.35)",
+              }}>
+              {demoLoading
+                ? <><Loader2 size={16} className="animate-spin" /> Signing in...</>
+                : <><Zap size={16} /> Try Demo — No signup</>}
+            </button>
+
             <Link href="/auth/register" className="btn-primary text-base px-7 py-3">
-              Start for free <ArrowRight size={16} />
+              Get started free <ArrowRight size={16} />
             </Link>
             <Link href="#features" className="btn-secondary text-base px-7 py-3">
               See features
             </Link>
           </div>
+
           <p className="mt-4 text-xs" style={{color:"var(--text-tertiary)"}}>
-            AI Claim Analysis Tool for Research Assistance
+            No credit card · No signup · AI Claim Analysis Tool for Research Assistance
           </p>
         </div>
       </section>
@@ -73,10 +125,10 @@ export default function HomePage() {
       <section className="border-y py-8" style={{borderColor:"var(--surface-4)",background:"var(--surface-1)"}}>
         <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
-            { value: "₹50L", label: "Ombudsman claim limit", color: "#A78BFA" },
-            { value: "5 yrs", label: "Moratorium period (2024)", color: "#22D3EE" },
-            { value: "1 hr", label: "Cashless TAT (IRDAI)", color: "#4ADE80" },
-            { value: "30 days", label: "Settlement deadline", color: "#FBBF24" },
+            { value: "₹50L",    label: "Ombudsman claim limit",  color: "#A78BFA" },
+            { value: "5 yrs",   label: "Moratorium period (2024)", color: "#22D3EE" },
+            { value: "1 hr",    label: "Cashless TAT (IRDAI)",   color: "#4ADE80" },
+            { value: "30 days", label: "Settlement deadline",     color: "#FBBF24" },
           ].map((s) => (
             <div key={s.label}>
               <div className="text-3xl font-bold mb-1" style={{color: s.color}}>{s.value}</div>
@@ -159,9 +211,24 @@ export default function HomePage() {
         <p className="mb-8 max-w-lg mx-auto text-sm" style={{color:"var(--text-secondary)"}}>
           For legal action, always consult a licensed insurance advocate.
         </p>
-        <Link href="/auth/register" className="btn-primary text-base px-8 py-3">
-          Get started free <ArrowRight size={16} />
-        </Link>
+        <div className="flex items-center justify-center gap-4 flex-wrap">
+          <button
+            onClick={handleDemo}
+            disabled={demoLoading}
+            className="flex items-center gap-2 text-base px-8 py-3.5 rounded-xl font-semibold transition-all"
+            style={{
+              background:"linear-gradient(135deg,#4ADE80,#22D3EE)",
+              color:"#0a0a0f",
+              boxShadow: demoLoading ? "none" : "0 0 24px rgba(74,222,128,0.35)",
+            }}>
+            {demoLoading
+              ? <><Loader2 size={16} className="animate-spin" /> Signing in...</>
+              : <><Zap size={16} /> Try Demo — No signup</>}
+          </button>
+          <Link href="/auth/register" className="btn-primary text-base px-8 py-3">
+            Get started free <ArrowRight size={16} />
+          </Link>
+        </div>
       </section>
 
       {/* Footer */}

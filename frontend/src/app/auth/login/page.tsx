@@ -5,13 +5,17 @@ import Link from "next/link";
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import toast from "react-hot-toast";
-import { ShieldCheck, Loader2, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { ShieldCheck, Loader2, Eye, EyeOff, AlertTriangle, Zap } from "lucide-react";
+
+const DEMO_EMAIL    = "demo@redoclaim.in";
+const DEMO_PASSWORD = "RedoClaim@demo2024";
 
 export default function LoginPage() {
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,6 +31,21 @@ export default function LoginPage() {
       toast.error(error?.response?.data?.detail || "Login failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDemo = async () => {
+    setDemoLoading(true);
+    try {
+      const res   = await authApi.login(DEMO_EMAIL, DEMO_PASSWORD);
+      const meRes = await authApi.me();
+      setAuth(meRes.data, res.data);
+      toast.success("Welcome! You're in the demo.");
+      router.push("/dashboard");
+    } catch {
+      toast.error("Demo login failed — please try again.");
+    } finally {
+      setDemoLoading(false);
     }
   };
 
@@ -49,6 +68,29 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-bold" style={{color:"var(--text-primary)"}}>Welcome back</h1>
           <p className="text-sm mt-1" style={{color:"var(--text-secondary)"}}>Sign in to your account</p>
+        </div>
+
+        {/* ── Try Demo banner ── */}
+        <button
+          onClick={handleDemo}
+          disabled={demoLoading}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm mb-4 transition-all"
+          style={{
+            background:"linear-gradient(135deg,#4ADE80,#22D3EE)",
+            color:"#0a0a0f",
+            boxShadow: demoLoading ? "none" : "0 0 20px rgba(74,222,128,0.3)",
+          }}
+          suppressHydrationWarning>
+          {demoLoading
+            ? <><Loader2 size={14} className="animate-spin" /> Signing in to demo...</>
+            : <><Zap size={14} /> Try Demo — No signup needed</>}
+        </button>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px" style={{background:"var(--surface-4)"}} />
+          <span className="text-xs" style={{color:"var(--text-tertiary)"}}>or sign in with your account</span>
+          <div className="flex-1 h-px" style={{background:"var(--surface-4)"}} />
         </div>
 
         <form onSubmit={handleSubmit} className="card p-7 space-y-4"
@@ -82,8 +124,7 @@ export default function LoginPage() {
                 onClick={() => setShowPwd(!showPwd)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 transition"
                 style={{color:"var(--text-tertiary)"}}
-                suppressHydrationWarning
-              >
+                suppressHydrationWarning>
                 {showPwd ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
@@ -93,8 +134,7 @@ export default function LoginPage() {
             type="submit"
             disabled={loading}
             className="btn-primary w-full justify-center mt-2 py-3"
-            suppressHydrationWarning
-          >
+            suppressHydrationWarning>
             {loading ? <><Loader2 size={15} className="animate-spin" /> Signing in...</> : "Sign in"}
           </button>
 
