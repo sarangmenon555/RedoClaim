@@ -84,7 +84,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
         id=uuid.uuid4(),
         email=req.email,
         full_name=req.full_name,
-        phone=req.phone,
+        phone=req.phone.strip() or None if req.phone else None,  # empty string → NULL
         hashed_password=hash_password(req.password),
         role=UserRole.USER,
         is_active=True,
@@ -165,7 +165,7 @@ async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
 
     return TokenResponse(
         access_token=create_access_token(user_id),
-        refresh_token=create_refresh_token(user_id),   # rotate refresh token too
+        refresh_token=create_refresh_token(user_id),
     )
 
 
