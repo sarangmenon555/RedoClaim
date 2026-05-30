@@ -32,8 +32,6 @@ app = FastAPI(
 )
 
 # ─── SECURITY MIDDLEWARES ─────────────────────────────────────────
-# NOTE: Middlewares are applied in reverse order of registration.
-# Add custom middlewares first so CORS wraps them as the outermost layer.
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(AuditLogMiddleware)
 
@@ -60,3 +58,8 @@ app.include_router(admin.router,     prefix="/api/v1/admin",      tags=["Admin"]
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok", "service": "redoclaim"}
+
+
+@app.get("/api/debug-cors")
+async def debug_cors():
+    return {"allowed_origins": settings.ALLOWED_ORIGINS}
