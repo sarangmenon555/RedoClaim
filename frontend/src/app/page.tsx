@@ -59,7 +59,7 @@ export default function HomePage() {
               style={{background:"rgba(74,222,128,0.1)",color:"#4ADE80",border:"1px solid rgba(74,222,128,0.25)"}}>
               {demoLoading
                 ? <><Loader2 size={13} className="animate-spin" /> Loading...</>
-                : <><Zap size={13} /> Try Demo</>}
+                : <>Try Demo</>}
             </button>
             <Link href="/auth/login" className="btn-ghost text-sm">Login</Link>
             <Link href="/auth/register" className="btn-primary text-sm">Get Started Free</Link>
@@ -104,7 +104,7 @@ export default function HomePage() {
               }}>
               {demoLoading
                 ? <><Loader2 size={16} className="animate-spin" /> Signing in...</>
-                : <><Zap size={16} /> Try Demo — No signup</>}
+                : <>Try Demo — No signup</>}
             </button>
 
             <Link href="/auth/register" className="btn-primary text-base px-7 py-3">
@@ -116,7 +116,7 @@ export default function HomePage() {
           </div>
 
           <p className="mt-4 text-xs" style={{color:"var(--text-tertiary)"}}>
-            No credit card · No signup · AI Claim Analysis Tool for Research Assistance
+            AI Claim Analysis Tool for Research Assistance
           </p>
         </div>
       </section>
@@ -223,7 +223,7 @@ export default function HomePage() {
             }}>
             {demoLoading
               ? <><Loader2 size={16} className="animate-spin" /> Signing in...</>
-              : <><Zap size={16} /> Try Demo — No signup</>}
+              : <>Try Demo — No signup</>}
           </button>
           <Link href="/auth/register" className="btn-primary text-base px-8 py-3">
             Get started free <ArrowRight size={16} />

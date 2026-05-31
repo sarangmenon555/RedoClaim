@@ -46,7 +46,7 @@ export default function RegisterPage() {
             <span className="font-bold text-xl" style={{color:"var(--text-primary)"}}>RedoClaim</span>
           </div>
           <h1 className="text-2xl font-bold" style={{color:"var(--text-primary)"}}>Create your account</h1>
-          <p className="text-sm mt-1" style={{color:"var(--text-secondary)"}}>Free forever • Your data stays local</p>
+          <p className="text-sm mt-1" style={{color:"var(--text-secondary)"}}>Get started in minutes and explore all features</p>
         </div>
 
         <form onSubmit={handleSubmit} className="card p-7 space-y-4"
@@ -95,19 +95,6 @@ export default function RegisterPage() {
               required
               suppressHydrationWarning
             />
-          </div>
-
-          {/* Privacy promises */}
-          <div className="rounded-xl p-3 space-y-2"
-            style={{background:"var(--surface-2)",border:"1px solid var(--surface-5)"}}>
-            {[
-              { icon: Lock, color:"#4ADE80", text:"Documents never leave your server" },
-              { icon: Cpu,  color:"#22D3EE", text:"AI runs locally — no cloud APIs" },
-            ].map(({ icon: Icon, color, text }) => (
-              <div key={text} className="flex items-center gap-2 text-xs" style={{color:"var(--text-secondary)"}}>
-                <Icon size={12} style={{color}} />{text}
-              </div>
-            ))}
           </div>
 
           <button

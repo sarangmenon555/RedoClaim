@@ -83,7 +83,7 @@ export default function LoginPage() {
           suppressHydrationWarning>
           {demoLoading
             ? <><Loader2 size={14} className="animate-spin" /> Signing in to demo...</>
-            : <><Zap size={14} /> Try Demo — No signup needed</>}
+            : <>Try Demo — No signup needed</>}
         </button>
 
         {/* Divider */}
