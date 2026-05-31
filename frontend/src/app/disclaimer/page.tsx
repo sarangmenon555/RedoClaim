@@ -43,7 +43,6 @@ export default function DisclaimerPage() {
               "An AI-assisted research tool to help you understand IRDAI insurance regulations",
               "A document drafting aid that generates starting-point letters for your review",
               "A reference tool that points to relevant IRDAI circulars and consumer rights",
-              "A privacy-first platform where all AI runs locally and your data stays on your server",
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
                 <CheckCircle size={13} className="shrink-0 mt-0.5" style={{color:"#4ADE80"}} />{item}

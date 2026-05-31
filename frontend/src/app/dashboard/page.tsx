@@ -287,8 +287,7 @@ export default function DashboardPage() {
             Hey, {user?.full_name?.split(" ")[0]}
           </h2>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            AI-assisted insurance research • All models run locally on your
-            server
+            AI-assisted insurance research
           </p>
         </div>
         <Sparkles
