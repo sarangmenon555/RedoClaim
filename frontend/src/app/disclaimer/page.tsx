@@ -74,7 +74,7 @@ export default function DisclaimerPage() {
         <div className="card p-6 space-y-3">
           <h2 className="text-lg font-bold" style={{color:"var(--text-primary)"}}>AI Limitations You Must Understand</h2>
           <div className="space-y-3 text-sm" style={{color:"var(--text-secondary)"}}>
-            <p><strong style={{color:"var(--text-primary)"}}>AI models can hallucinate.</strong> The local language models (Ollama) used by RedoClaim
+            <p><strong style={{color:"var(--text-primary)"}}>AI models can hallucinate.</strong> The AI models used by RedoClaim
             can generate plausible-sounding but incorrect regulation citations, wrong dates, fabricated
             clause references, or legally inaccurate arguments. Always verify every citation independently.</p>
             <p><strong style={{color:"var(--text-primary)"}}>OCR can misread documents.</strong> Scanned PDFs, low-quality images, and handwritten
