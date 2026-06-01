@@ -23,6 +23,16 @@ class DocumentType(str, enum.Enum):
     DISCHARGE_SUMMARY = "discharge_summary"
     HOSPITAL_BILL = "hospital_bill"
     INSURER_LETTER = "insurer_letter"
+    # Motor insurance documents
+    SURVEY_REPORT = "survey_report"
+    RC_BOOK = "rc_book"
+    DRIVING_LICENCE = "driving_licence"
+    FIR = "fir"
+    REPAIR_ESTIMATE = "repair_estimate"
+    # Life insurance documents
+    DEATH_CERTIFICATE = "death_certificate"
+    NOMINEE_ID = "nominee_id"
+    MEDICAL_REPORT = "medical_report"
     OTHER = "other"
 
 class ClaimStatus(str, enum.Enum):
@@ -43,6 +53,7 @@ class AppealType(str, enum.Enum):
 class InsuranceType(str, enum.Enum):
     HEALTH = "health"
     MOTOR = "motor"
+    LIFE = "life"
 
 
 # ─── MODELS ──────────────────────────────────────────────────────

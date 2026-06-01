@@ -6,6 +6,7 @@ Full IRDAI Hierarchy of Evidence implementation:
   Step 3: Redressal route determination
   
 Plus: CIS scanner, portability advisor
+Supports: Health, Motor, and Life insurance
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,12 +18,14 @@ import logging
 from app.core.database import get_db
 from app.models.models import Document, Claim, InsuranceType, ClaimStatus, DocumentType
 from app.services.llm.gemini_service import (
-    audit_rejection, analyze_cis, generate_portability_guide
+    audit_rejection, analyze_cis, generate_portability_guide,
+    audit_motor_rejection, audit_life_rejection, extract_motor_life_policy_clauses,
 )
 from app.services.rag.rag_pipeline import (
     search_irdai_regulations, search_rejection_patterns, search_policy_chunks
 )
 from app.services.irdai.rules_engine import irdai_engine
+from app.services.irdai.motor_life_rules_engine import motor_engine, life_engine
 from app.api.deps.auth import get_current_user
 
 router = APIRouter()
@@ -57,6 +60,12 @@ class AuditRequest(BaseModel):
     rejection_date: Optional[datetime] = None
     gro_filed: bool = False
     gro_filed_date: Optional[datetime] = None
+    # Motor-specific fields
+    survey_appointment_date: Optional[datetime] = None
+    survey_report_date: Optional[datetime] = None
+    # Life-specific fields
+    policy_inception_date: Optional[datetime] = None
+    documents_complete_date: Optional[datetime] = None
 
 
 @router.post("/audit-rejection")
@@ -100,34 +109,101 @@ async def audit_claim_rejection(
     if req.gro_filed and req.gro_filed_date:
         gro_days_elapsed = (datetime.now() - req.gro_filed_date).days
 
-    sla_result = irdai_engine.check_sla_violations(
-        claim_date=req.claim_date,
-        rejection_date=req.rejection_date,
-        grievance_date=req.gro_filed_date,
-    )
-
     # ── Step 2: RAG — retrieve relevant IRDAI regulations ─────────
-    rejection_category = irdai_engine.get_rejection_category(rejection_doc.ocr_text)
-    rag_query = (
-        f"{rejection_category} claim rejection "
-        f"{req.insurance_type.value} insurance "
-        f"{rejection_doc.ocr_text[:300]}"
-    )
-    irdai_context = await search_irdai_regulations(rag_query)
-    rejection_patterns = await search_rejection_patterns(rejection_doc.ocr_text)
+    # Route to the correct engine and audit function based on insurance type
+    if req.insurance_type == InsuranceType.MOTOR:
+        sla_result = motor_engine.check_sla_violations(
+            claim_intimation_date=req.claim_date,
+            survey_appointment_date=req.survey_appointment_date,
+            survey_report_date=req.survey_report_date,
+            rejection_date=req.rejection_date,
+            grievance_date=req.gro_filed_date,
+        )
+        rejection_category = motor_engine.get_rejection_category(rejection_doc.ocr_text)
+        motor_rules_analysis = motor_engine.check_rejection_grounds(rejection_doc.ocr_text)
+        rag_query = (
+            f"{rejection_category} motor insurance claim rejection "
+            f"{rejection_doc.ocr_text[:300]}"
+        )
+        irdai_context = await search_irdai_regulations(rag_query)
+        rejection_patterns = await search_rejection_patterns(rejection_doc.ocr_text)
+        audit_result = await audit_motor_rejection(
+            rejection_text=rejection_doc.ocr_text,
+            policy_clauses=policy_clauses,
+            irdai_context=irdai_context,
+            motor_rules_analysis=motor_rules_analysis,
+        )
+        moratorium = {"moratorium_applies": False}
+        portability_advice = None
+        cis_check = {"cis_violation": False, "note": "CIS check not applicable for motor insurance"}
 
-    # ── Step 2: LLM audit with full context ───────────────────────
-    audit_result = await audit_rejection(
-        rejection_text=rejection_doc.ocr_text,
-        policy_clauses=policy_clauses,
-        irdai_context=irdai_context,
-        rejection_patterns=rejection_patterns,
-    )
+    elif req.insurance_type == InsuranceType.LIFE:
+        # Determine policy inception for incontestability
+        policy_inception = req.policy_inception_date
+        if not policy_inception:
+            inception_str = policy_clauses.get("inception_date")
+            if inception_str:
+                try:
+                    policy_inception = datetime.fromisoformat(str(inception_str))
+                except Exception:
+                    pass
 
-    # ── Step 2: Moratorium check ───────────────────────────────────
-    moratorium = {"moratorium_applies": False}
-    portability_advice = None
-    if req.insurance_type == InsuranceType.HEALTH:
+        incontestability_check = life_engine.check_incontestability(
+            policy_inception_date=policy_inception,
+            rejection_reason=rejection_doc.ocr_text[:500],
+        )
+        sla_result = life_engine.check_sla_violations(
+            claim_submission_date=req.claim_date,
+            documents_complete_date=req.documents_complete_date,
+            rejection_date=req.rejection_date,
+            grievance_date=req.gro_filed_date,
+        )
+        rejection_category = life_engine.get_rejection_category(rejection_doc.ocr_text)
+        life_rules_analysis = life_engine.check_rejection_grounds(rejection_doc.ocr_text)
+        rag_query = (
+            f"{rejection_category} life insurance claim rejection "
+            f"{rejection_doc.ocr_text[:300]}"
+        )
+        irdai_context = await search_irdai_regulations(rag_query)
+        rejection_patterns = await search_rejection_patterns(rejection_doc.ocr_text)
+        audit_result = await audit_life_rejection(
+            rejection_text=rejection_doc.ocr_text,
+            policy_clauses=policy_clauses,
+            irdai_context=irdai_context,
+            life_rules_analysis=life_rules_analysis,
+            incontestability_check=incontestability_check,
+        )
+        moratorium = {"moratorium_applies": False}
+        portability_advice = None
+        cis_check = {"cis_violation": False, "note": "CIS check not applicable for life insurance"}
+
+    else:
+        # ── HEALTH (original path) ─────────────────────────────────
+        sla_result = irdai_engine.check_sla_violations(
+            claim_date=req.claim_date,
+            rejection_date=req.rejection_date,
+            grievance_date=req.gro_filed_date,
+        )
+
+        rejection_category = irdai_engine.get_rejection_category(rejection_doc.ocr_text)
+        rag_query = (
+            f"{rejection_category} claim rejection "
+            f"{req.insurance_type.value} insurance "
+            f"{rejection_doc.ocr_text[:300]}"
+        )
+        irdai_context = await search_irdai_regulations(rag_query)
+        rejection_patterns = await search_rejection_patterns(rejection_doc.ocr_text)
+
+        audit_result = await audit_rejection(
+            rejection_text=rejection_doc.ocr_text,
+            policy_clauses=policy_clauses,
+            irdai_context=irdai_context,
+            rejection_patterns=rejection_patterns,
+        )
+
+        # Moratorium check (health only)
+        moratorium = {"moratorium_applies": False}
+        portability_advice = None
         policy_start = None
         inception = policy_clauses.get("inception_date")
         if inception:
@@ -139,7 +215,6 @@ async def audit_claim_rejection(
             policy_start_date=policy_start,
             rejection_reason=rejection_doc.ocr_text[:500],
         )
-        # Portability advisor
         if policy_start:
             years_covered = (datetime.now() - policy_start).days / 365.25
             portability_advice = irdai_engine.portability_advisor(
@@ -147,11 +222,12 @@ async def audit_claim_rejection(
                 years_covered=years_covered,
             )
 
-    # ── Step 2: CIS violation check ────────────────────────────────
-    cis_check = irdai_engine.check_cis_violation(
-        rejection_reason=rejection_doc.ocr_text,
-        cis_exclusions=cis_exclusions,
-    )
+        # CIS violation check (health only)
+        cis_check = irdai_engine.check_cis_violation(
+            rejection_reason=rejection_doc.ocr_text,
+            cis_exclusions=cis_exclusions,
+        )
+
 
     # ── Step 2: Deficiency in Service determination ───────────────
     all_irdai_violations = audit_result.get("step2_regulatory_violations", [])
@@ -165,7 +241,7 @@ async def audit_claim_rejection(
         rejection_appears_arbitrary=rejection_appears_arbitrary,
     )
 
-    # ── Step 3: Escalation path ────────────────────────────────────
+    # ── Step 3: Escalation path (common for all types) ────────────
     escalation = irdai_engine.determine_escalation_path(
         claim_amount=req.claim_amount,
         gro_filed=req.gro_filed,
@@ -185,6 +261,7 @@ async def audit_claim_rejection(
             },
             "step3_redressal": escalation,
         },
+        "insurance_type": req.insurance_type.value,
         "rejection_category": rejection_category,
         "portability_advice": portability_advice,
         "rag_context_used": bool(irdai_context),
@@ -213,11 +290,29 @@ async def audit_claim_rejection(
     await db.flush()
 
     total_violations = len(all_irdai_violations) + len(sla_result["sla_violations"])
+
+    # Build type-specific summary extras
+    type_specific = {}
+    if req.insurance_type == InsuranceType.MOTOR:
+        type_specific = {
+            "surveyor_issues": audit_result.get("surveyor_report_issues", {}),
+            "depreciation_applicable": audit_result.get("depreciation_applicable"),
+            "zero_dep_check": audit_result.get("zero_dep_rider_check"),
+        }
+    elif req.insurance_type == InsuranceType.LIFE:
+        incontestability_data = audit_result.get("incontestability", {})
+        type_specific = {
+            "incontestability_applies": incontestability_data.get("applies", False),
+            "section_45_applicable": audit_result.get("section_45_insurance_act", {}).get("applicable", False),
+            "cause_of_death_relevance": audit_result.get("cause_of_death_relevance", {}),
+        }
+
     return {
         "claim_id": str(claim.id),
         "report": full_report,
         "ai_disclaimer": AI_DISCLAIMER,
         "summary": {
+            "insurance_type": req.insurance_type.value,
             "is_valid_rejection": audit_result.get("is_valid_rejection"),
             "total_violations_found": total_violations,
             "sla_violations": len(sla_result["sla_violations"]),
@@ -229,6 +324,7 @@ async def audit_claim_rejection(
             "cis_violation": cis_check.get("cis_violation", False),
             "interest_applicable": sla_result.get("interest_applicable", False),
             "edaakhil_applicable": escalation["escalation_path"][2].get("edaakhil_now_applicable", False),
+            **type_specific,
         },
     }
 

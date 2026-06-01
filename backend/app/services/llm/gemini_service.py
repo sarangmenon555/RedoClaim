@@ -345,6 +345,7 @@ async def generate_appeal_letter(
 ) -> str:
     """
     Generate a professional legal appeal letter.
+    Supports Health, Motor, and Life insurance.
     Mandatorily uses:
     - "Deficiency in Service" (CPA 2019, S.2(11)) in relevant letters
     - Exact IRDAI regulation citations with paragraph numbers
@@ -352,7 +353,35 @@ async def generate_appeal_letter(
     - Interest demand where TAT is violated
     Model: gemini-2.0-flash — excellent formal legal drafting.
     """
-    system = """You are an AI writing assistant that helps draft insurance appeal letters
+    insurance_type = claim_data.get("insurance_type", "health")
+    if hasattr(insurance_type, "value"):
+        insurance_type = insurance_type.value
+
+    # Build insurance-type-specific legal context addendum
+    type_context = {
+        "health": (
+            "References: IRDAI (Health Insurance) Regulations 2024, IRDAI Master Circular 2024. "
+            "Cite moratorium under Regulation 8(6) if applicable. "
+            "Reference CIS disclosures, cashless rights, and PED waiting period rules."
+        ),
+        "motor": (
+            "References: IRDAI Motor Insurance Guidelines 2017, "
+            "IRDAI (Surveyors and Loss Assessors) Regulations 2015, Motor Vehicles Act 1988. "
+            "For OD claims: cite surveyor TAT violations, IDV disputes, depreciation schedule. "
+            "For driving licence grounds: cite Swaran Singh (2004) SC principle. "
+            "Demand the full Survey Report and Surveyor's certificate under Reg 19."
+        ),
+        "life": (
+            "References: IRDAI (Life Insurance) Regulations 2023, Insurance Act 1938 Section 45, "
+            "IRDAI Master Circular 2024. "
+            "Cite incontestability (Reg 27) if policy is 3+ years old. "
+            "For non-disclosure: demand insurer prove fraudulent intent, not mere omission. "
+            "For suicide clause: cite IRDAI mandated minimum payout after 1 year. "
+            "Nominee has right to full claim documentation under IRDAI Regulations."
+        ),
+    }.get(insurance_type, "")
+
+    system = f"""You are an AI writing assistant that helps draft insurance appeal letters
 based on IRDAI regulations. You are NOT a lawyer. These are AI-generated DRAFTS that
 must be reviewed and corrected by the user before sending. The user is responsible for
 verifying all facts, regulation citations, and legal arguments. Draft letters that:
@@ -361,7 +390,9 @@ verifying all facts, regulation citations, and legal arguments. Draft letters th
 - Reference Insurance Ombudsman Rules 2017 where applicable
 - Include E-Daakhil portal reference when appropriate
 - Demand interest on delayed claims citing IRDAI Master Circular 2024, Para 7.4
-- Follow correct Indian legal letter format with proper salutation and closing"""
+- Follow correct Indian legal letter format with proper salutation and closing
+- Insurance type: {insurance_type.upper()}
+- {type_context}"""
 
     appeal_descriptions = {
         "gro": {
@@ -522,7 +553,313 @@ Be specific, practical, and reference IRDAI (Health Insurance) Regulations 2024,
     )
 
 
-# ── 6. Embeddings ─────────────────────────────────────────────────
+# ── 6. Motor Insurance Audit ─────────────────────────────────────
+async def audit_motor_rejection(
+    rejection_text: str,
+    policy_clauses: dict,
+    irdai_context: str,
+    motor_rules_analysis: dict,
+) -> dict:
+    """
+    Full legal audit of a motor insurance claim rejection.
+    References IRDAI Motor Guidelines 2017, MV Act 1988, and Master Circular 2024.
+    Model: gemini-2.0-flash — strong legal reasoning.
+    """
+    system = """You are an AI legal research assistant helping Indian motor insurance policyholders
+understand their rights under IRDAI regulations and the Motor Vehicles Act 1988. You are NOT a
+lawyer and your output is NOT legal advice. You help users identify potential regulatory issues
+as a research starting point.
+
+You reference:
+- IRDAI Motor Insurance Guidelines 2017
+- IRDAI (Surveyors and Loss Assessors) Regulations 2015
+- Motor Vehicles Act 1988
+- IRDAI Master Circular on Protection of Policyholders Interests (2024)
+- Insurance Ombudsman Rules 2017
+- Consumer Protection Act 2019
+
+Return ONLY valid JSON. Note: output may contain errors — always verify citations."""
+
+    prompt = f"""MOTOR INSURANCE CLAIM REJECTION AUDIT.
+
+REJECTION LETTER TEXT:
+{rejection_text[:3500]}
+
+POLICY CLAUSES ON RECORD:
+{json.dumps(policy_clauses, indent=2)[:2000] if policy_clauses else "Not provided"}
+
+MOTOR-SPECIFIC RULES ANALYSIS:
+{json.dumps(motor_rules_analysis, indent=2)[:1500]}
+
+IRDAI REGULATIONS (from knowledge base):
+{irdai_context[:2000]}
+
+Perform a complete audit. Return ONLY valid JSON:
+{{
+  "rejection_reason_category": "driving_licence|drunk_driving|policy_lapse|consequential_damage|depreciation_dispute|vehicle_use_violation|fraud|theft_conditions|other",
+  "rejection_reason_summary": "1-2 sentence summary",
+  "is_valid_rejection": true|false,
+  "confidence": "high|medium|low",
+
+  "step1_sla_analysis": {{
+    "tat_violated": true|false,
+    "violations": [
+      {{"type": "...", "regulation": "...", "detail": "..."}}
+    ],
+    "interest_applicable": true|false
+  }},
+
+  "step2_regulatory_violations": [
+    {{
+      "violation": "Specific description",
+      "regulation": "Exact citation e.g. IRDAI Motor Guidelines 2017, Para X",
+      "severity": "high|medium|low",
+      "argument": "How to use this in an appeal",
+      "case_law": "Relevant Supreme Court / NCDRC case if applicable"
+    }}
+  ],
+
+  "surveyor_report_issues": {{
+    "report_provided": true|false,
+    "issues": ["..."],
+    "demand_note": "What to demand from insurer regarding survey"
+  }},
+
+  "depreciation_applicable": true|false,
+  "zero_dep_rider_check": "Does policy have zero depreciation rider? Check policy schedule.",
+  "own_damage_vs_tp": "own_damage|third_party|both",
+
+  "deficiency_in_service": true|false,
+  "deficiency_grounds": ["..."],
+  "deficiency_statement": "Formal legal statement using CPA 2019 Section 2(11) language",
+
+  "step3_redressal": {{
+    "recommended_action": "gro_appeal|ombudsman|consumer_court|accept",
+    "ombudsman_eligible": true|false,
+    "edaakhil_applicable": true|false,
+    "reasoning": "Why this route is recommended"
+  }},
+
+  "strength_of_case": "strong|moderate|weak",
+  "strength_reasoning": "...",
+  "key_arguments": ["Argument 1", "Argument 2"],
+  "evidence_needed": ["Document 1", "Document 2"],
+  "interest_demand": "Specify exact interest demand if TAT violated, else null"
+}}"""
+
+    start = time.time()
+    raw = await gemini.generate(
+        model=settings.MODEL_LEGAL,
+        prompt=prompt,
+        system=system,
+        temperature=0.05,
+        max_tokens=3500,
+    )
+    ms = int((time.time() - start) * 1000)
+    logger.info(f"Motor rejection audit: {ms}ms")
+    return _parse_json(raw, "motor_rejection_audit")
+
+
+# ── 7. Life Insurance Audit ───────────────────────────────────────
+async def audit_life_rejection(
+    rejection_text: str,
+    policy_clauses: dict,
+    irdai_context: str,
+    life_rules_analysis: dict,
+    incontestability_check: dict,
+) -> dict:
+    """
+    Full legal audit of a life insurance claim rejection.
+    References IRDAI Life Regulations 2023, Insurance Act 1938 S.45, Master Circular 2024.
+    Model: gemini-2.0-flash.
+    """
+    system = """You are an AI legal research assistant helping Indian life insurance claimants
+(nominees/beneficiaries) understand their rights under IRDAI regulations and Insurance Act 1938.
+You are NOT a lawyer and your output is NOT legal advice.
+
+You reference:
+- IRDAI (Life Insurance) Regulations 2023
+- Insurance Act 1938, Section 45 (incontestability)
+- IRDAI Master Circular on Protection of Policyholders Interests (2024)
+- Insurance Ombudsman Rules 2017
+- Consumer Protection Act 2019
+
+Return ONLY valid JSON. Always verify citations at irdai.gov.in."""
+
+    prompt = f"""LIFE INSURANCE CLAIM REJECTION AUDIT.
+
+REJECTION LETTER TEXT:
+{rejection_text[:3500]}
+
+POLICY CLAUSES ON RECORD:
+{json.dumps(policy_clauses, indent=2)[:2000] if policy_clauses else "Not provided"}
+
+INCONTESTABILITY CHECK:
+{json.dumps(incontestability_check, indent=2)[:800]}
+
+LIFE-SPECIFIC RULES ANALYSIS:
+{json.dumps(life_rules_analysis, indent=2)[:1500]}
+
+IRDAI REGULATIONS (from knowledge base):
+{irdai_context[:2000]}
+
+Return ONLY valid JSON:
+{{
+  "rejection_reason_category": "non_disclosure|suicide|policy_lapse|early_claim|nominee_dispute|accidental_death|fraud|other",
+  "rejection_reason_summary": "1-2 sentence summary",
+  "is_valid_rejection": true|false,
+  "confidence": "high|medium|low",
+
+  "step1_sla_analysis": {{
+    "tat_violated": true|false,
+    "violations": [
+      {{"type": "...", "regulation": "...", "detail": "..."}}
+    ],
+    "interest_applicable": true|false
+  }},
+
+  "incontestability": {{
+    "applies": true|false,
+    "years_active": 0,
+    "argument": "...",
+    "strength": "very_strong|strong|moderate|weak"
+  }},
+
+  "step2_regulatory_violations": [
+    {{
+      "violation": "Specific description",
+      "regulation": "Exact citation e.g. IRDAI Life Regs 2023, Reg 27",
+      "severity": "high|medium|low",
+      "argument": "How to use in appeal"
+    }}
+  ],
+
+  "section_45_insurance_act": {{
+    "applicable": true|false,
+    "argument": "Section 45 Insurance Act 1938 argument if applicable"
+  }},
+
+  "cause_of_death_relevance": {{
+    "undisclosed_condition_related_to_death": true|false|"unknown",
+    "note": "If undisclosed condition is unrelated to cause of death, repudiation is weaker"
+  }},
+
+  "deficiency_in_service": true|false,
+  "deficiency_grounds": ["..."],
+  "deficiency_statement": "Formal legal statement using CPA 2019 Section 2(11) language",
+
+  "step3_redressal": {{
+    "recommended_action": "gro_appeal|ombudsman|consumer_court|accept",
+    "ombudsman_eligible": true|false,
+    "edaakhil_applicable": true|false,
+    "reasoning": "Why this route is recommended"
+  }},
+
+  "strength_of_case": "strong|moderate|weak",
+  "strength_reasoning": "...",
+  "key_arguments": ["Argument 1", "Argument 2"],
+  "evidence_needed": ["Document 1", "Document 2"],
+  "interest_demand": "Specify exact interest demand if TAT violated, else null"
+}}"""
+
+    start = time.time()
+    raw = await gemini.generate(
+        model=settings.MODEL_LEGAL,
+        prompt=prompt,
+        system=system,
+        temperature=0.05,
+        max_tokens=3500,
+    )
+    ms = int((time.time() - start) * 1000)
+    logger.info(f"Life rejection audit: {ms}ms")
+    return _parse_json(raw, "life_rejection_audit")
+
+
+# ── 8. Motor/Life Policy Clause Extractor ────────────────────────
+async def extract_motor_life_policy_clauses(policy_text: str, insurance_type: str) -> dict:
+    """
+    Extract clauses from motor or life insurance policy documents.
+    insurance_type: "motor" | "life"
+    """
+    system = """You are an AI research assistant that extracts insurance policy clauses.
+You are NOT a legal expert. Extract key clauses and return ONLY valid JSON with no markdown."""
+
+    if insurance_type == "motor":
+        schema = """{
+  "document_type": "policy|rejection_letter|survey_report|other",
+  "policy_type": "comprehensive|third_party|own_damage|two_wheeler",
+  "insurer_name": "...",
+  "policy_number": "...",
+  "vehicle_registration": "...",
+  "idv": "Insured Declared Value in INR",
+  "inception_date": "YYYY-MM-DD or null",
+  "expiry_date": "YYYY-MM-DD or null",
+  "premium_paid": "...",
+  "add_ons": [
+    {"name": "Zero Depreciation|Engine Protect|NCB Protect|...", "active": true|false}
+  ],
+  "exclusions": [
+    {"clause": "...", "description": "...", "risk_level": "high|medium|low"}
+  ],
+  "deductibles": {"compulsory": "...", "voluntary": "...", "note": "..."},
+  "ncb_percentage": "No Claim Bonus percentage if applicable",
+  "cashless_garages": "number or description",
+  "risky_clauses": [
+    {"clause": "...", "why_risky": "...", "irdai_reference": "..."}
+  ],
+  "plain_english_summary": "3-4 sentence summary"
+}"""
+    else:  # life
+        schema = """{
+  "document_type": "policy|rejection_letter|death_certificate|other",
+  "policy_type": "term|endowment|ulip|whole_life|money_back",
+  "insurer_name": "...",
+  "policy_number": "...",
+  "sum_assured": "...",
+  "premium": "...",
+  "policy_term": "...",
+  "inception_date": "YYYY-MM-DD or null",
+  "maturity_date": "YYYY-MM-DD or null",
+  "nominee_name": "...",
+  "nominee_relationship": "...",
+  "is_active": true|false,
+  "exclusions": [
+    {"clause": "...", "description": "...", "risk_level": "high|medium|low"}
+  ],
+  "riders": [
+    {"name": "Accidental Death|Critical Illness|Waiver of Premium|...", "sum_assured": "..."}
+  ],
+  "suicide_clause": "...",
+  "revival_clause": "...",
+  "incontestability_period": "3 years per IRDAI Life Regulations 2023",
+  "risky_clauses": [
+    {"clause": "...", "why_risky": "...", "irdai_reference": "..."}
+  ],
+  "plain_english_summary": "3-4 sentence summary"
+}"""
+
+    prompt = f"""Analyze this Indian {insurance_type} insurance policy document and extract ALL clauses.
+
+DOCUMENT TEXT:
+{policy_text[:7000]}
+
+Return ONLY this JSON structure (no markdown, no explanation):
+{schema}"""
+
+    start = time.time()
+    raw = await gemini.generate(
+        model=settings.MODEL_EXTRACTION,
+        prompt=prompt,
+        system=system,
+        temperature=0.05,
+        max_tokens=3500,
+    )
+    ms = int((time.time() - start) * 1000)
+    logger.info(f"{insurance_type.capitalize()} policy extraction: {ms}ms")
+    return _parse_json(raw, f"{insurance_type}_policy_extraction")
+
+
+# ── 9. Embeddings ─────────────────────────────────────────────────
 async def generate_embeddings(text: str) -> list[float]:
     """Embeddings via Gemini text-embedding-004 (768-dim, free tier)."""
     return await gemini.embed(text=text)
