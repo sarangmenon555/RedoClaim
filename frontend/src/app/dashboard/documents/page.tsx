@@ -15,6 +15,16 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   discharge_summary: "Discharge Summary",
   hospital_bill: "Hospital Bill",
   insurer_letter: "Insurer Letter",
+  // Motor
+  survey_report: "Survey Report",
+  rc_book: "RC Book",
+  driving_licence: "Driving Licence",
+  fir: "FIR",
+  repair_estimate: "Repair Estimate",
+  // Life
+  death_certificate: "Death Certificate",
+  nominee_id: "Nominee ID",
+  medical_report: "Medical Report",
   other: "Other",
 };
 
@@ -109,9 +119,9 @@ useEffect(() => {
                   <div>
                     <p className="font-medium style-text-primary text-sm truncate max-w-xs">{doc.file_name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="badge-info text-xs">{DOC_TYPE_LABELS[doc.doc_type]}</span>
+                      <span className="badge-info text-xs">{DOC_TYPE_LABELS[doc.doc_type] ?? doc.doc_type}</span>
                       {doc.insurance_type && (
-                        <span className="text-xs style-text-tertiary">{doc.insurance_type}</span>
+                        <span className="text-xs style-text-tertiary capitalize">{doc.insurance_type}</span>
                       )}
                       <span className="text-xs style-text-tertiary">
                         {doc.created_at ? format(new Date(doc.created_at), "dd MMM yyyy") : ""}

@@ -144,6 +144,12 @@ export const analysisApi = {
     rejection_date?: string;
     gro_filed?: boolean;
     gro_filed_date?: string;
+    // Motor-specific
+    survey_appointment_date?: string;
+    survey_report_date?: string;
+    // Life-specific
+    policy_inception_date?: string;
+    documents_complete_date?: string;
   }) => api.post("/analysis/audit-rejection", data),
 
   scanCIS: (documentId: string) => api.post(`/analysis/scan-cis/${documentId}`),

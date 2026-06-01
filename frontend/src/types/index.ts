@@ -19,9 +19,19 @@ export type DocType =
   | "discharge_summary"
   | "hospital_bill"
   | "insurer_letter"
+  // Motor insurance documents
+  | "survey_report"
+  | "rc_book"
+  | "driving_licence"
+  | "fir"
+  | "repair_estimate"
+  // Life insurance documents
+  | "death_certificate"
+  | "nominee_id"
+  | "medical_report"
   | "other";
 
-export type InsuranceType = "health" | "motor";
+export type InsuranceType = "health" | "motor" | "life";
 export type OcrStatus = "pending" | "processing" | "done" | "failed";
 
 export interface Document {
@@ -255,6 +265,7 @@ export interface AuditResponse {
     free_legal_aid: string;
   };
   summary: {
+    insurance_type: InsuranceType;
     is_valid_rejection: boolean;
     total_violations_found: number;
     sla_violations: number;
@@ -266,6 +277,14 @@ export interface AuditResponse {
     cis_violation: boolean;
     interest_applicable: boolean;
     edaakhil_applicable: boolean;
+    // Motor-specific
+    surveyor_issues?: { report_provided: boolean; issues: string[]; demand_note: string };
+    depreciation_applicable?: boolean;
+    zero_dep_check?: string;
+    // Life-specific
+    incontestability_applies?: boolean;
+    section_45_applicable?: boolean;
+    cause_of_death_relevance?: { undisclosed_condition_related_to_death: boolean | "unknown"; note: string };
   };
 }
 

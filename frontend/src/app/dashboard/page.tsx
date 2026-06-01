@@ -37,7 +37,7 @@ const CATEGORIES: {
     icon: Car,
     color: "#60A5FA",
     accent: "rgba(96,165,250,",
-    live: false,
+    live: true,
   },
   {
     id: "life",
@@ -45,7 +45,7 @@ const CATEGORIES: {
     icon: TrendingUp,
     color: "#4ADE80",
     accent: "rgba(74,222,128,",
-    live: false,
+    live: true,
   },
 ];
 
@@ -409,10 +409,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Category Content ── */}
-      {activeCategory !== "health" ? (
-        <ComingSoonPanel category={activeCat} />
-      ) : (
-        <>
+      <>
           {/* Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {stats.map(({ label, value, icon: Icon, color, bg, border, href }) => (
@@ -658,7 +655,6 @@ export default function DashboardPage() {
             </div>
           )}
         </>
-      )}
     </div>
   );
 }
