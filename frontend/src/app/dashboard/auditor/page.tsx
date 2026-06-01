@@ -14,7 +14,6 @@ import Link from "next/link";
 
 type Step = "upload" | "form" | "analyzing" | "result";
 
-// useSearchParams must be inside a Suspense boundary in Next.js app router
 function AuditorPageInner() {
   const searchParams = useSearchParams();
 
@@ -33,13 +32,10 @@ function AuditorPageInner() {
     insurerName: "", policyNumber: "", claimAmount: "",
     insuranceType: "health", policyDocumentId: "", cisDocumentId: "",
     claimDate: "", rejectionDate: "", groFiled: false, groFiledDate: "",
-    // Motor-specific
     surveyAppointmentDate: "", surveyReportDate: "",
-    // Life-specific
     policyInceptionDate: "", documentsCompleteDate: "",
   });
 
-  // Load all user documents for policy/CIS dropdowns
   useEffect(() => {
     documentsApi.list().then((r) => {
       const all: Document[] = r.data;
@@ -48,18 +44,14 @@ function AuditorPageInner() {
     }).catch(() => {});
   }, []);
 
-  // ── FIX: Load existing document if ?doc= param is present ──────
   useEffect(() => {
     const docId = searchParams.get("doc");
     if (!docId) return;
-
     setLoadingDoc(true);
-
     const tryLoad = async () => {
       try {
         const res = await documentsApi.get(docId);
         const doc: Document = res.data;
-
         if (doc.ocr_status === "done") {
           setRejectionDoc(doc);
           setStep("form");
@@ -69,7 +61,6 @@ function AuditorPageInner() {
           toast.error("Document OCR failed. Please re-upload.");
           setLoadingDoc(false);
         } else {
-          // Still processing — poll until done
           toast("Document is still processing, waiting...", { icon: "⏳" });
           const interval = setInterval(async () => {
             try {
@@ -90,22 +81,16 @@ function AuditorPageInner() {
               setLoadingDoc(false);
             }
           }, 3000);
-          // Give up after 2 minutes
-          setTimeout(() => {
-            clearInterval(interval);
-            setLoadingDoc(false);
-          }, 120000);
+          setTimeout(() => { clearInterval(interval); setLoadingDoc(false); }, 120000);
         }
       } catch {
         toast.error("Could not load document. Please re-upload.");
         setLoadingDoc(false);
       }
     };
-
     tryLoad();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  // ────────────────────────────────────────────────────────────────
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { "application/pdf": [".pdf"], "image/*": [] },
@@ -144,14 +129,8 @@ function AuditorPageInner() {
   });
 
   const runAudit = async () => {
-    if (!rejectionDoc) {
-      toast.error("No rejection document loaded");
-      return;
-    }
-    if (!form.insurerName.trim()) {
-      toast.error("Fill in insurer name at minimum");
-      return;
-    }
+    if (!rejectionDoc) { toast.error("No rejection document loaded"); return; }
+    if (!form.insurerName.trim()) { toast.error("Fill in insurer name at minimum"); return; }
     setStep("analyzing");
     try {
       const res = await analysisApi.auditRejection({
@@ -166,10 +145,8 @@ function AuditorPageInner() {
         rejection_date: form.rejectionDate || undefined,
         gro_filed: form.groFiled,
         gro_filed_date: form.groFiledDate || undefined,
-        // Motor-specific
         survey_appointment_date: form.insuranceType === "motor" ? (form.surveyAppointmentDate || undefined) : undefined,
         survey_report_date: form.insuranceType === "motor" ? (form.surveyReportDate || undefined) : undefined,
-        // Life-specific
         policy_inception_date: form.insuranceType === "life" ? (form.policyInceptionDate || undefined) : undefined,
         documents_complete_date: form.insuranceType === "life" ? (form.documentsCompleteDate || undefined) : undefined,
       });
@@ -189,7 +166,7 @@ function AuditorPageInner() {
   const toggle = (k: string) => setExpandedSections(p => ({ ...p, [k]: !p[k] }));
 
   return (
-    <div className="max-w-4xl space-y-6 animate-fade-in" style={{color:"var(--text-primary)"}}>
+    <div className="max-w-4xl space-y-6 animate-fade-in" style={{ color: "var(--text-primary)" }}>
       <div>
         <h2 className="text-2xl font-bold style-text-primary">Claim Rejection Auditor</h2>
         <p className="style-text-tertiary text-sm mt-1">
@@ -197,20 +174,18 @@ function AuditorPageInner() {
         </p>
       </div>
 
-      {/* Hierarchy of Evidence info */}
-      <div className="card p-4 bg-surface-2 border-violet-500/20">
+      <div className="card p-4 bg-surface-2" style={{ borderColor: "rgba(139,92,246,0.2)" }}>
         <p className="text-xs font-semibold style-text-secondary mb-2">IRDAI Hierarchy of Evidence</p>
         <div className="flex gap-4 text-xs text-violet-400 flex-wrap">
           {["Step 1: SLA/TAT violations", "Step 2: Master Circular 2024 violations", "Step 3: Redressal route"].map((s, i) => (
             <div key={i} className="flex items-center gap-1.5">
-              <span className="w-5 h-5 bg-violet-500 text-white rounded-full flex items-center justify-center font-bold text-xs">{i+1}</span>
+              <span className="w-5 h-5 bg-violet-500 text-white rounded-full flex items-center justify-center font-bold text-xs">{i + 1}</span>
               {s.replace(/Step \d: /, "")}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Loading existing doc from ?doc= param */}
       {loadingDoc && (
         <div className="card p-8 text-center">
           <Loader2 className="animate-spin text-violet-400 mx-auto mb-3" size={32} />
@@ -246,7 +221,7 @@ function AuditorPageInner() {
 
       {!loadingDoc && step === "form" && rejectionDoc && (
         <div className="space-y-4 animate-slide-up">
-          <div className="card p-4 flex items-center gap-3 bg-surface-2 border-neon-500\/20">
+          <div className="card p-4 flex items-center gap-3 bg-surface-2">
             <CheckCircle className="text-green-600 shrink-0" size={18} />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-green-800 text-sm truncate">Document ready: {rejectionDoc.file_name}</p>
@@ -262,26 +237,27 @@ function AuditorPageInner() {
 
           <div className="card p-6 space-y-4">
             <h3 className="font-semibold style-text-primary">Claim details</h3>
+
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="label">Insurer name *</label>
                 <input className="input" placeholder="e.g. Star Health Insurance"
-                  value={form.insurerName} onChange={(e) => setForm({...form, insurerName: e.target.value})} />
+                  value={form.insurerName} onChange={(e) => setForm({ ...form, insurerName: e.target.value })} />
               </div>
               <div>
                 <label className="label">Policy number</label>
                 <input className="input" placeholder="e.g. P/211115/01/2024/001234"
-                  value={form.policyNumber} onChange={(e) => setForm({...form, policyNumber: e.target.value})} />
+                  value={form.policyNumber} onChange={(e) => setForm({ ...form, policyNumber: e.target.value })} />
               </div>
               <div>
                 <label className="label">Claim amount (₹)</label>
                 <input className="input" type="number" placeholder="e.g. 500000"
-                  value={form.claimAmount} onChange={(e) => setForm({...form, claimAmount: e.target.value})} />
+                  value={form.claimAmount} onChange={(e) => setForm({ ...form, claimAmount: e.target.value })} />
               </div>
               <div>
                 <label className="label">Insurance type</label>
                 <select className="input" value={form.insuranceType}
-                  onChange={(e) => setForm({...form, insuranceType: e.target.value})}>
+                  onChange={(e) => setForm({ ...form, insuranceType: e.target.value })}>
                   <option value="health">Health Insurance</option>
                   <option value="motor">Motor Insurance</option>
                   <option value="life">Life Insurance</option>
@@ -292,80 +268,86 @@ function AuditorPageInner() {
                   {form.insuranceType === "life" ? "Claim submission date" : "Claim date"}
                 </label>
                 <input className="input" type="date" value={form.claimDate}
-                  onChange={(e) => setForm({...form, claimDate: e.target.value})} />
+                  onChange={(e) => setForm({ ...form, claimDate: e.target.value })} />
               </div>
               <div>
                 <label className="label">Rejection date</label>
                 <input className="input" type="date" value={form.rejectionDate}
-                  onChange={(e) => setForm({...form, rejectionDate: e.target.value})} />
+                  onChange={(e) => setForm({ ...form, rejectionDate: e.target.value })} />
               </div>
 
-              {/* Motor-specific fields */}
-              {form.insuranceType === "motor" && (<>
-                <div>
-                  <label className="label">Surveyor appointment date</label>
-                  <input className="input" type="date" value={form.surveyAppointmentDate}
-                    onChange={(e) => setForm({...form, surveyAppointmentDate: e.target.value})} />
-                  <p className="text-xs style-text-tertiary mt-1">IRDAI mandates appointment within 48 hours of claim intimation</p>
-                </div>
-                <div>
-                  <label className="label">Survey report date</label>
-                  <input className="input" type="date" value={form.surveyReportDate}
-                    onChange={(e) => setForm({...form, surveyReportDate: e.target.value})} />
-                  <p className="text-xs style-text-tertiary mt-1">Report must be submitted within 30 days of appointment</p>
-                </div>
-              </>)}
+              {form.insuranceType === "motor" && (
+                <>
+                  <div>
+                    <label className="label">Surveyor appointment date</label>
+                    <input className="input" type="date" value={form.surveyAppointmentDate}
+                      onChange={(e) => setForm({ ...form, surveyAppointmentDate: e.target.value })} />
+                    <p className="text-xs style-text-tertiary mt-1">IRDAI mandates appointment within 48 hours of claim intimation</p>
+                  </div>
+                  <div>
+                    <label className="label">Survey report date</label>
+                    <input className="input" type="date" value={form.surveyReportDate}
+                      onChange={(e) => setForm({ ...form, surveyReportDate: e.target.value })} />
+                    <p className="text-xs style-text-tertiary mt-1">Report must be submitted within 30 days of appointment</p>
+                  </div>
+                </>
+              )}
 
-              {/* Life-specific fields */}
-              {form.insuranceType === "life" && (<>
-                <div>
-                  <label className="label">Policy inception date</label>
-                  <input className="input" type="date" value={form.policyInceptionDate}
-                    onChange={(e) => setForm({...form, policyInceptionDate: e.target.value})} />
-                  <p className="text-xs style-text-tertiary mt-1">Used to check the 3-year incontestability period (IRDAI Life Regs 2023, Reg 27)</p>
-                </div>
-                <div>
-                  <label className="label">Documents complete date</label>
-                  <input className="input" type="date" value={form.documentsCompleteDate}
-                    onChange={(e) => setForm({...form, documentsCompleteDate: e.target.value})} />
-                  <p className="text-xs style-text-tertiary mt-1">Date insurer confirmed all claim documents received — 30-day TAT starts here</p>
-                </div>
-              </>)}
-              </div>
+              {form.insuranceType === "life" && (
+                <>
+                  <div>
+                    <label className="label">Policy inception date</label>
+                    <input className="input" type="date" value={form.policyInceptionDate}
+                      onChange={(e) => setForm({ ...form, policyInceptionDate: e.target.value })} />
+                    <p className="text-xs style-text-tertiary mt-1">Used to check the 3-year incontestability period (IRDAI Life Regs 2023, Reg 27)</p>
+                  </div>
+                  <div>
+                    <label className="label">Documents complete date</label>
+                    <input className="input" type="date" value={form.documentsCompleteDate}
+                      onChange={(e) => setForm({ ...form, documentsCompleteDate: e.target.value })} />
+                    <p className="text-xs style-text-tertiary mt-1">Date insurer confirmed all documents received — 30-day TAT starts here</p>
+                  </div>
+                </>
+              )}
+
               {policyDocs.length > 0 && (
                 <div>
                   <label className="label">Policy document (improves accuracy)</label>
                   <select className="input" value={form.policyDocumentId}
-                    onChange={(e) => setForm({...form, policyDocumentId: e.target.value})}>
+                    onChange={(e) => setForm({ ...form, policyDocumentId: e.target.value })}>
                     <option value="">None selected</option>
                     {policyDocs.map((d) => <option key={d.id} value={d.id}>{d.file_name}</option>)}
                   </select>
                 </div>
               )}
+
               {cisDocs.length > 0 && (
                 <div>
                   <label className="label">CIS document (for exclusion check)</label>
                   <select className="input" value={form.cisDocumentId}
-                    onChange={(e) => setForm({...form, cisDocumentId: e.target.value})}>
+                    onChange={(e) => setForm({ ...form, cisDocumentId: e.target.value })}>
                     <option value="">None selected</option>
                     {cisDocs.map((d) => <option key={d.id} value={d.id}>{d.file_name}</option>)}
                   </select>
                 </div>
               )}
+
               <div className="md:col-span-2 flex items-center gap-3">
                 <input type="checkbox" id="gro" checked={form.groFiled}
-                  onChange={(e) => setForm({...form, groFiled: e.target.checked})}
+                  onChange={(e) => setForm({ ...form, groFiled: e.target.checked })}
                   className="w-4 h-4 accent-violet-500" />
                 <label htmlFor="gro" className="text-sm style-text-secondary">I have already filed a GRO complaint</label>
               </div>
+
               {form.groFiled && (
                 <div>
                   <label className="label">GRO complaint date</label>
                   <input className="input" type="date" value={form.groFiledDate}
-                    onChange={(e) => setForm({...form, groFiledDate: e.target.value})} />
+                    onChange={(e) => setForm({ ...form, groFiledDate: e.target.value })} />
                 </div>
               )}
             </div>
+
             <div className="flex gap-3 pt-2">
               <button onClick={runAudit} className="btn-primary">
                 Run IRDAI Audit <ArrowRight size={15} />
@@ -387,7 +369,7 @@ function AuditorPageInner() {
             <p className="text-green-600">✓ RAG: retrieving IRDAI regulations from Qdrant</p>
             <p className="text-blue-500 animate-pulse">⟳ Step 1: Checking SLA/TAT violations...</p>
             {form.insuranceType === "motor" && (
-              <p className="text-blue-500 animate-pulse">⟳ Motor: Checking surveyor TAT & depreciation...</p>
+              <p className="text-blue-500 animate-pulse">⟳ Motor: Checking surveyor TAT &amp; depreciation...</p>
             )}
             {form.insuranceType === "life" && (
               <p className="text-blue-500 animate-pulse">⟳ Life: Checking incontestability period (Reg 27)...</p>
@@ -428,7 +410,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
   const deficiency = reg?.deficiency_in_service || {};
   const cis = reg?.cis_check || {};
   const portability = report?.portability_advice;
-  const insuranceType = summary?.insurance_type || report?.insurance_type || "health";
+  const insuranceType: string = summary?.insurance_type || report?.insurance_type || "health";
 
   return (
     <div className="space-y-4 animate-slide-up">
@@ -451,11 +433,9 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
                 {summary.cis_violation && <span className="badge-high">CIS Violation</span>}
                 {summary.interest_applicable && <span className="badge-medium">Interest Applicable</span>}
                 {summary.edaakhil_applicable && <span className="badge-high">E-Daakhil NOW</span>}
-                {/* Motor-specific badges */}
                 {insuranceType === "motor" && summary.depreciation_applicable === false && (
                   <span className="badge-low">No Depreciation</span>
                 )}
-                {/* Life-specific badges */}
                 {insuranceType === "life" && summary.incontestability_applies && (
                   <span className="badge-low">Incontestability Shield</span>
                 )}
@@ -475,7 +455,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
         </div>
       </div>
 
-      {/* Motor-specific: Surveyor Issues */}
+      {/* Motor: Surveyor Issues */}
       {insuranceType === "motor" && summary.surveyor_issues && (
         <div className="card p-5 border-l-4 border-blue-500 bg-surface-2">
           <div className="flex items-start gap-3">
@@ -484,7 +464,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
               <p className="font-semibold text-blue-900">Motor Surveyor Report Check</p>
               {!summary.surveyor_issues.report_provided && (
                 <p className="text-sm text-blue-800 mt-1 font-medium">
-                  ⚠️ Survey report not provided — insurer must share under IRDAI Surveyor Regulations 2015, Reg 19
+                  Survey report not provided — insurer must share under IRDAI Surveyor Regulations 2015, Reg 19
                 </p>
               )}
               {summary.surveyor_issues.issues?.length > 0 && (
@@ -497,17 +477,17 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
                 </ul>
               )}
               {summary.surveyor_issues.demand_note && (
-                <p className="text-xs text-blue-600 mt-2 italic">💡 {summary.surveyor_issues.demand_note}</p>
+                <p className="text-xs text-blue-600 mt-2 italic">{summary.surveyor_issues.demand_note}</p>
               )}
               {summary.zero_dep_check && (
-                <p className="text-xs text-blue-600 mt-1">🔍 {summary.zero_dep_check}</p>
+                <p className="text-xs text-blue-600 mt-1">{summary.zero_dep_check}</p>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Life-specific: Incontestability Shield */}
+      {/* Life: Incontestability Shield */}
       {insuranceType === "life" && summary.incontestability_applies && audit.incontestability && (
         <div className="card p-5 border-l-4 border-violet-500 bg-surface-2">
           <div className="flex items-start gap-3">
@@ -518,14 +498,14 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
               </p>
               <p className="text-sm style-text-secondary mt-1">{audit.incontestability.argument}</p>
               {audit.incontestability.counter_to_insurer && (
-                <p className="text-xs text-violet-400 mt-2 italic">💡 {audit.incontestability.counter_to_insurer}</p>
+                <p className="text-xs text-violet-400 mt-2 italic">{audit.incontestability.counter_to_insurer}</p>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Life-specific: Section 45 */}
+      {/* Life: Section 45 */}
       {insuranceType === "life" && audit.section_45_insurance_act?.applicable && (
         <div className="card p-5 border-l-4 border-amber-500 bg-surface-2">
           <div className="flex items-start gap-3">
@@ -538,7 +518,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
         </div>
       )}
 
-      {/* Life-specific: Cause of Death Relevance */}
+      {/* Life: Cause of Death */}
       {insuranceType === "life" && summary.cause_of_death_relevance?.undisclosed_condition_related_to_death === false && (
         <div className="card p-5 border-l-4 border-green-500 bg-surface-2">
           <div className="flex items-start gap-3">
@@ -551,7 +531,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
         </div>
       )}
 
-      {/* Step 1: SLA Violations */}
+      {/* Step 1: SLA */}
       <Accordion
         title={`Step 1 — SLA/TAT Violations (${sla?.violations_found || 0} found)`}
         icon={<Clock size={16} className="text-amber-500" />}
@@ -567,13 +547,13 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium style-text-primary text-sm">{v.detail}</p>
-                    <p className="text-xs text-violet-400 mt-1">📋 {v.regulation}</p>
+                    <p className="text-xs text-violet-400 mt-1">{v.regulation}</p>
                     {v.interest_applicable && (
-                      <p className="text-xs text-amber-700 mt-1 font-medium">💰 {v.interest_note}</p>
+                      <p className="text-xs text-amber-700 mt-1 font-medium">{v.interest_note}</p>
                     )}
                     {v.edaakhil_trigger && (
                       <p className="text-xs text-red-700 mt-1 font-medium">
-                        🚨 E-Daakhil filing now applicable — insurer GRO overdue
+                        E-Daakhil filing now applicable — insurer GRO overdue
                       </p>
                     )}
                   </div>
@@ -586,18 +566,17 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
           <p className="p-4 text-sm style-text-tertiary">No SLA violations detected based on provided dates.</p>
         )}
         {sla?.interest_applicable && (
-          <div className="p-4 bg-surface-2 border-t border-amber-500\/20 flex items-start gap-2">
+          <div className="p-4 bg-surface-2 border-t border-surface-4 flex items-start gap-2">
             <Banknote size={15} className="text-amber-600 mt-0.5 shrink-0" />
             <p className="text-xs text-amber-800">
               <strong>Interest demand:</strong> Under IRDAI Master Circular 2024, Para 7.4, the insurer must pay
               interest at Bank Rate + 2% per annum on the claim amount for every day of delay beyond 30 days.
-              Include this in your appeal letter.
             </p>
           </div>
         )}
       </Accordion>
 
-      {/* Step 2: IRDAI Regulatory Violations */}
+      {/* Step 2: IRDAI Violations */}
       <Accordion
         title={`Step 2 — IRDAI Regulatory Violations (${audit?.step2_regulatory_violations?.length || 0} found)`}
         icon={<AlertTriangle size={16} className="text-red-500" />}
@@ -613,7 +592,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium style-text-primary text-sm">{v.violation}</p>
-                    <p className="text-xs text-violet-400 mt-1">📋 {v.regulation}</p>
+                    <p className="text-xs text-violet-400 mt-1">{v.regulation}</p>
                     {v.argument && <p className="text-xs style-text-tertiary mt-1 italic">{v.argument}</p>}
                   </div>
                   <span className={`badge-${v.severity} shrink-0`}>{v.severity}</span>
@@ -625,7 +604,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
           <p className="p-4 text-sm style-text-tertiary">No specific regulatory violations identified by AI.</p>
         )}
         {cis?.cis_violation && (
-          <div className="p-4 bg-surface-2 border-t border-red-500\/20">
+          <div className="p-4 bg-surface-2 border-t border-surface-4">
             <p className="text-xs font-semibold text-red-800 mb-1">CIS Violation — IRDAI Master Circular 2024, Para 4.2</p>
             <p className="text-xs text-red-700">{cis.argument}</p>
           </div>
@@ -648,7 +627,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
         </div>
       )}
 
-      {/* Moratorium Shield */}
+      {/* Moratorium Shield (health only) */}
       {moratorium?.moratorium_applies && (
         <div className="card p-5 border-l-4 border-violet-500 bg-surface-2">
           <div className="flex items-start gap-3">
@@ -657,7 +636,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
               <p className="font-semibold style-text-secondary">Moratorium Shield Active — IRDAI Health Regs 2024, Reg 8(6)</p>
               <p className="text-sm style-text-secondary mt-1">{moratorium.argument}</p>
               {moratorium.counter_to_insurer && (
-                <p className="text-xs text-violet-400 mt-2 italic">💡 {moratorium.counter_to_insurer}</p>
+                <p className="text-xs text-violet-400 mt-2 italic">{moratorium.counter_to_insurer}</p>
               )}
             </div>
           </div>
@@ -702,8 +681,8 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
       >
         <div className="p-5 space-y-4">
           {esc?.recommended_immediate_action && (
-            <div className="bg-surface-2 border border-red-500\/20 rounded-lg p-3">
-              <p className="text-sm font-semibold text-red-800">⚡ Immediate action required:</p>
+            <div className="bg-surface-2 border border-surface-4 rounded-lg p-3">
+              <p className="text-sm font-semibold text-red-800">Immediate action required:</p>
               <p className="text-sm text-red-700 mt-0.5">{esc.recommended_immediate_action}</p>
             </div>
           )}
@@ -741,7 +720,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
         </div>
       </Accordion>
 
-      {/* Portability */}
+      {/* Portability (health only) */}
       {portability && (
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-3">
@@ -763,7 +742,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
       )}
 
       {/* CTA */}
-      <div className="card p-5 bg-surface-2 border-violet-500/20">
+      <div className="card p-5 bg-surface-2" style={{ borderColor: "rgba(139,92,246,0.2)" }}>
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <p className="font-semibold style-text-primary">Generate your appeal letter</p>
