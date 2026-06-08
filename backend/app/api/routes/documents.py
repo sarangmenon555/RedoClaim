@@ -141,6 +141,7 @@ async def process_document_async(
 
         except Exception as e:
             logger.error(f"Document processing failed for {doc_id}: {e}", exc_info=True)
+            print(f"BACKGROUND TASK ERROR for {doc_id}: {e}", flush=True)
             try:
                 if doc:
                     doc.ocr_status = "failed"
