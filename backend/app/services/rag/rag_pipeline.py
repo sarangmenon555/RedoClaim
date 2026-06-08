@@ -23,7 +23,10 @@ from app.services.llm.gemini_service import generate_embeddings
 logger = logging.getLogger(__name__)
 EMBEDDING_DIM = 768  # nomic-embed-text
 
-client = QdrantClient(url=settings.QDRANT_URL)
+client = QdrantClient(
+    url=settings.QDRANT_URL,
+    api_key=getattr(settings, "QDRANT_API_KEY", None),
+)
 
 COLLECTIONS = {
     "policy":     settings.QDRANT_POLICY_COLLECTION,

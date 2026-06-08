@@ -26,7 +26,8 @@ class Settings(BaseSettings):
     MODEL_SUMMARIZE: str = "gemini-2.0-flash-lite"     # summaries
 
     # Qdrant
-    QDRANT_URL: str = "http://localhost:6333"
+    QDRANT_URL: str = "https://09e2dda0-b0a8-4a22-a746-a3f3c297b066.eu-central-1-0.aws.cloud.qdrant.io"
+    QDRANT_API_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6NjA5YzNkMjItNjA5Yy00NTBmLWJjYjktNTU5YzM0MGZmYjk1In0.7aUuVhRX0ImCNlImvOE4Pcq9yE515YGgR5F67RTdOOk"
     QDRANT_POLICY_COLLECTION: str = "policy_chunks"
     QDRANT_IRDAI_COLLECTION: str = "irdai_regulations"
     QDRANT_REJECTION_COLLECTION: str = "rejection_patterns"
