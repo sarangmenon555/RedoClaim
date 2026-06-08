@@ -18,7 +18,7 @@ def get_storage_client():
             aws_access_key_id=settings.MINIO_ACCESS_KEY,
             aws_secret_access_key=settings.MINIO_SECRET_KEY,
             config=Config(signature_version="s3v4"),
-            region_name="ap-southeast-1",
+            region_name="ap-south-1",
         )
         # Ensure buckets exist
         existing = [b["Name"] for b in _client.list_buckets().get("Buckets", [])]
