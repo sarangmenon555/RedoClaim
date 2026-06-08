@@ -24,6 +24,7 @@ qdrant-client==1.9.1
 
 # File storage
 minio==7.2.7
+boto3==1.34.0
 
 # ── LLM (Gemini API — replaces Ollama) ───────────────────────────
 # No local model runner needed. Just httpx (already a FastAPI dep).
