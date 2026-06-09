@@ -19,11 +19,11 @@ class Settings(BaseSettings):
     # ── Gemini API ────────────────────────────────────────────────
     GEMINI_API_KEY: str = ""
 
-    # Model assignments (all free-tier Gemini models)
-    MODEL_EXTRACTION: str = "gemini-2.0-flash-lite"   # fast + cheap for extraction
-    MODEL_LEGAL: str = "gemini-2.0-flash"              # stronger reasoning for audit
-    MODEL_DRAFTING: str = "gemini-2.0-flash"           # letter drafting
-    MODEL_SUMMARIZE: str = "gemini-2.0-flash-lite"     # summaries
+    # Models
+    MODEL_EXTRACTION: str = "gemini-2.5-flash"   
+    MODEL_LEGAL: str = "gemini-2.5-flash"              
+    MODEL_DRAFTING: str = "gemini-2.5-flash"       
+    MODEL_SUMMARIZE: str = "gemini-2.5-flash"    
 
     # Qdrant
     QDRANT_URL: str = "https://09e2dda0-b0a8-4a22-a746-a3f3c297b066.eu-central-1-0.aws.cloud.qdrant.io"
@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     QDRANT_IRDAI_COLLECTION: str = "irdai_regulations"
     QDRANT_REJECTION_COLLECTION: str = "rejection_patterns"
 
-    # MinIO (file storage — swap for S3/Cloudflare R2 on Render/Vercel)
+    # Supabase
     MINIO_ENDPOINT: str = "localhost:9000"
     MINIO_ACCESS_KEY: str = "minioadmin"
     MINIO_SECRET_KEY: str = "minioadmin123"
