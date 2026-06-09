@@ -6,47 +6,45 @@ import logging
 
 
 class Settings(BaseSettings):
-    # App
     ENVIRONMENT: str = "development"
     APP_NAME: str = "RedoClaim"
 
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://redoclaim:redoclaim_secret@localhost:5432/redoclaim_db"
+    DATABASE_URL: str
 
-    # Redis (optional — used for rate limiting; falls back gracefully if absent)
+    # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # ── Gemini API ────────────────────────────────────────────────
-    GEMINI_API_KEY: str = ""
+    GEMINI_API_KEY: str
 
-    # Models
-    MODEL_EXTRACTION: str = "gemini-2.5-flash"   
-    MODEL_LEGAL: str = "gemini-2.5-flash"              
-    MODEL_DRAFTING: str = "gemini-2.5-flash"       
-    MODEL_SUMMARIZE: str = "gemini-2.5-flash"    
+    # Model assignments
+    MODEL_EXTRACTION: str = "gemini-2.5-flash"
+    MODEL_LEGAL: str = "gemini-2.5-flash"
+    MODEL_DRAFTING: str = "gemini-2.5-flash"
+    MODEL_SUMMARIZE: str = "gemini-2.5-flash"
 
     # Qdrant
-    QDRANT_URL: str = "https://09e2dda0-b0a8-4a22-a746-a3f3c297b066.eu-central-1-0.aws.cloud.qdrant.io"
-    QDRANT_API_KEY: str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIiwic3ViamVjdCI6ImFwaS1rZXk6NjA5YzNkMjItNjA5Yy00NTBmLWJjYjktNTU5YzM0MGZmYjk1In0.7aUuVhRX0ImCNlImvOE4Pcq9yE515YGgR5F67RTdOOk"
+    QDRANT_URL: str
+    QDRANT_API_KEY: str
     QDRANT_POLICY_COLLECTION: str = "policy_chunks"
     QDRANT_IRDAI_COLLECTION: str = "irdai_regulations"
     QDRANT_REJECTION_COLLECTION: str = "rejection_patterns"
 
     # Supabase
     MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ACCESS_KEY: str = "minioadmin"
-    MINIO_SECRET_KEY: str = "minioadmin123"
+    MINIO_ACCESS_KEY: str
+    MINIO_SECRET_KEY: str
     MINIO_BUCKET_DOCUMENTS: str = "redoclaim-documents"
     MINIO_BUCKET_REPORTS: str = "redoclaim-reports"
     MINIO_SECURE: bool = False
 
     # JWT Auth
-    JWT_SECRET: str = "change_this_to_a_long_random_string"
+    JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # CORS — accepts a plain URL, comma-separated string, or JSON array
+    # CORS
     ALLOWED_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
         "https://redoclaim.vercel.app",
@@ -57,16 +55,18 @@ class Settings(BaseSettings):
     def parse_allowed_origins(cls, v):
         if isinstance(v, str):
             v = v.strip().strip("'\"")
-            # Try JSON array first: ["url1", "url2"]
+
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
                     return parsed
             except json.JSONDecodeError:
                 pass
-            # Fall back to comma-separated: url1,url2
+
             return [o.strip() for o in v.split(",") if o.strip()]
         return v
+
+    PADDLEOCR_ENABLED: bool = False
 
     # Rate limiting
     RATE_LIMIT_PER_MINUTE: int = 60

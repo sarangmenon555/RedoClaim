@@ -1,12 +1,12 @@
 """
 OCR Pipeline for Indian Insurance Documents.
 Supports: PDF, scanned images, hospital bills, discharge summaries.
-Primary: PaddleOCR (better for mixed Hindi/English docs)
+Primary: PaddleOCR (better for mixed Hindi/English docs) — disabled by default on cloud
 Fallback: Tesseract
 """
 import io
+import os
 import logging
-from pathlib import Path
 from typing import Optional
 import pdfplumber
 from PIL import Image
@@ -14,24 +14,27 @@ import pytesseract
 
 logger = logging.getLogger(__name__)
 
-# Lazy-load PaddleOCR to avoid startup delay
+PADDLEOCR_ENABLED = os.getenv("PADDLEOCR_ENABLED", "false").lower() == "true"
+
 _paddle_ocr = None
 
 
 def get_paddle_ocr():
     global _paddle_ocr
+    if not PADDLEOCR_ENABLED:
+        return None
     if _paddle_ocr is None:
         try:
             from paddleocr import PaddleOCR
             _paddle_ocr = PaddleOCR(
                 use_angle_cls=True,
                 lang="en",
-                use_gpu=False,  # CPU mode - works without GPU
+                use_gpu=False,
                 show_log=False,
             )
             logger.info("PaddleOCR initialized successfully")
-        except ImportError:
-            logger.warning("PaddleOCR not available, using Tesseract only")
+        except Exception as e:
+            logger.warning(f"PaddleOCR not available, using Tesseract only: {e}")
     return _paddle_ocr
 
 
@@ -46,12 +49,12 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
     try:
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             for page_num, page in enumerate(pdf.pages):
-                # Try native text extraction
+
                 page_text = page.extract_text()
                 if page_text and len(page_text.strip()) > 50:
                     text_parts.append(page_text)
                 else:
-                    # Page is likely scanned — convert to image and OCR
+
                     logger.info(f"Page {page_num+1} appears scanned, using OCR")
                     img = page.to_image(resolution=200).original
                     ocr_text = _ocr_image(img)
@@ -73,7 +76,7 @@ def extract_text_from_image(image_bytes: bytes, mime_type: str = "image/jpeg") -
 
 
 def _ocr_image(img: Image.Image) -> str:
-    """Run OCR on a PIL Image. PaddleOCR first, Tesseract fallback."""
+    """Run OCR on a PIL Image. PaddleOCR first (if enabled), Tesseract fallback."""
     paddle = get_paddle_ocr()
 
     if paddle:
@@ -87,11 +90,10 @@ def _ocr_image(img: Image.Image) -> str:
         except Exception as e:
             logger.warning(f"PaddleOCR failed: {e}, falling back to Tesseract")
 
-    # Tesseract fallback - supports Hindi + English (useful for Indian docs)
     try:
         text = pytesseract.image_to_string(
             img,
-            lang="eng+hin",  # English + Hindi
+            lang="eng+hin", 
             config="--oem 3 --psm 6",
         )
         return text
@@ -103,10 +105,10 @@ def _ocr_image(img: Image.Image) -> str:
 def clean_extracted_text(text: str) -> str:
     """Clean and normalize extracted text."""
     import re
-    # Remove excessive whitespace
+
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = re.sub(r" {2,}", " ", text)
-    # Fix common OCR artifacts in Indian documents
+
     text = text.replace("Rs.", "Rs. ")
     text = text.replace("₹", "Rs. ")
     text = text.strip()
@@ -124,7 +126,7 @@ def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> list[dic
 
     while start < len(text):
         end = start + chunk_size
-        # Try to break at sentence boundary
+
         if end < len(text):
             last_period = text.rfind(".", start, end)
             last_newline = text.rfind("\n", start, end)
