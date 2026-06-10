@@ -1,28 +1,42 @@
 """
-LLM Service — RedoClaim (Gemini API)
-All inference via Google Gemini 2.0 Flash (free tier).
+LLM Service — RedoClaim (Groq API)
+All inference via Groq (free tier, OpenAI-compatible).
 
 Model routing:
-  gemini-2.0-flash-lite  → policy clause extraction, CIS analysis, classification (fast + cheap)
-  gemini-2.0-flash       → legal reasoning, IRDAI audit (Hierarchy of Evidence)
-  gemini-2.0-flash       → appeal letter drafting (GRO, Ombudsman, Consumer Court)
-  text-embedding-004     → RAG embeddings (free, 768-dim)
+  llama-3.1-8b-instant   → policy clause extraction, CIS analysis, summaries (fast)
+  llama-3.3-70b-versatile → legal reasoning, IRDAI audit, appeal letter drafting
+  text-embedding-004      → RAG embeddings (still via Gemini — Groq has no embedding model)
 """
 import json
 import time
 import logging
 import httpx
+from groq import AsyncGroq
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
+# Groq model aliases — map old Gemini model names to Groq equivalents
+_MODEL_MAP = {
+    # Fast/extraction models
+    "gemini-2.0-flash-lite": "llama-3.1-8b-instant",
+    "gemini-2.5-flash-lite": "llama-3.1-8b-instant",
+    "gemini-2.5-flash":      "llama-3.3-70b-versatile",
+    "gemini-2.0-flash":      "llama-3.3-70b-versatile",
+    # Pass-through if already a Groq model name
+    "llama-3.3-70b-versatile": "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant":    "llama-3.1-8b-instant",
+    "llama4-scout-17b-16e-instruct": "llama4-scout-17b-16e-instruct",
+}
+
+def _resolve_model(model: str) -> str:
+    """Map any model name to a valid Groq model string."""
+    return _MODEL_MAP.get(model, "llama-3.3-70b-versatile")
 
 
-class GeminiClient:
+class GroqClient:
     def __init__(self):
-        self.api_key = settings.GEMINI_API_KEY
-        self.timeout = 120  # Gemini is fast; 2 min is plenty
+        self.client = AsyncGroq(api_key=settings.GROQ_API_KEY)
 
     async def generate(
         self,
@@ -32,58 +46,55 @@ class GeminiClient:
         temperature: float = 0.05,
         max_tokens: int = 4096,
     ) -> str:
-        contents = []
+        groq_model = _resolve_model(model)
+        messages = []
         if system:
-            # Gemini uses "system_instruction" at the top level
-            pass  # handled below via system_instruction field
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
 
-        contents.append({"role": "user", "parts": [{"text": prompt}]})
-
-        payload = {
-            "contents": contents,
-            "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": max_tokens,
-            },
-        }
-        if system:
-            payload["system_instruction"] = {"parts": [{"text": system}]}
-
-        url = f"{GEMINI_API_BASE}/models/{model}:generateContent?key={self.api_key}"
-
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            try:
-                resp = await client.post(url, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"]
-            except httpx.HTTPStatusError as e:
-                body = e.response.text
-                logger.error(f"Gemini API error {e.response.status_code}: {body}")
-                raise RuntimeError(f"Gemini API error: {e.response.status_code} — {body}")
-            except httpx.ConnectError:
-                raise RuntimeError(
-                    "Cannot connect to Gemini API. Check your internet connection "
-                    "and that GEMINI_API_KEY is set correctly."
-                )
+        try:
+            completion = await self.client.chat.completions.create(
+                model=groq_model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=False,
+            )
+            return completion.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Groq API error: {e}")
+            raise RuntimeError(f"Groq API error: {e}")
 
     async def embed(self, text: str) -> list[float]:
-        """Generate embeddings using text-embedding-004 (768-dim, free tier)."""
+        """
+        Groq has no embedding model — fall back to Gemini text-embedding-004.
+        If Gemini key is also unavailable, returns an empty list (RAG will be skipped).
+        """
+        gemini_key = getattr(settings, "GEMINI_API_KEY", "")
+        if not gemini_key:
+            logger.warning("No GEMINI_API_KEY set — embeddings unavailable, skipping RAG")
+            return []
+
         url = (
-            f"{GEMINI_API_BASE}/models/text-embedding-004:embedContent"
-            f"?key={self.api_key}"
+            "https://generativelanguage.googleapis.com/v1beta"
+            f"/models/text-embedding-004:embedContent?key={gemini_key}"
         )
         payload = {
             "model": "models/text-embedding-004",
             "content": {"parts": [{"text": text}]},
         }
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(url, json=payload)
-            resp.raise_for_status()
-            return resp.json()["embedding"]["values"]
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(url, json=payload)
+                resp.raise_for_status()
+                return resp.json()["embedding"]["values"]
+        except Exception as e:
+            logger.warning(f"Embedding failed: {e} — RAG context will be skipped")
+            return []
 
 
-gemini = GeminiClient()
+# Singleton
+gemini = GroqClient()
 
 
 # ── 1. Policy Clause Extractor ────────────────────────────────────
@@ -91,7 +102,6 @@ async def extract_policy_clauses(policy_text: str) -> dict:
     """
     Extract ALL important clauses from a policy document.
     Also detects if the document is a CIS (Customer Information Sheet).
-    Model: gemini-2.0-flash-lite — fast structured extraction.
     """
     system = """You are an AI research assistant that helps extract insurance policy clauses
 from documents. You are NOT a legal expert. Your extractions may be incomplete or
@@ -154,7 +164,6 @@ Return ONLY this JSON structure (no markdown, no explanation):
     )
     ms = int((time.time() - start) * 1000)
     logger.info(f"Policy extraction: {ms}ms")
-
     return _parse_json(raw, "policy_extraction")
 
 
@@ -162,8 +171,7 @@ Return ONLY this JSON structure (no markdown, no explanation):
 async def analyze_cis(cis_text: str) -> dict:
     """
     Dedicated Customer Information Sheet (CIS) analyzer.
-    IRDAI Master Circular 2024, Para 4.2: Insurer must provide CIS with
-    clear inclusions and exclusions.
+    IRDAI Master Circular 2024, Para 4.2.
     """
     system = """You are an AI assistant that extracts information from insurance Customer
 Information Sheets (CIS). Your output is AI-generated and may contain errors.
@@ -226,11 +234,7 @@ async def audit_rejection(
 ) -> dict:
     """
     Full legal audit of a claim rejection.
-    Strictly follows the Hierarchy of Evidence:
-      Step 1: SLA violations
-      Step 2: IRDAI Master Circular violations
-      Step 3: Redressal route
-    Model: gemini-2.0-flash — strong legal reasoning.
+    Strictly follows the Hierarchy of Evidence.
     """
     system = """You are an AI legal research assistant helping Indian insurance policyholders
 understand their rights under IRDAI regulations. You are NOT a lawyer and your output
@@ -329,7 +333,6 @@ Perform a complete audit. Return ONLY valid JSON:
     )
     ms = int((time.time() - start) * 1000)
     logger.info(f"Rejection audit: {ms}ms")
-
     return _parse_json(raw, "rejection_audit")
 
 
@@ -346,18 +349,11 @@ async def generate_appeal_letter(
     """
     Generate a professional legal appeal letter.
     Supports Health, Motor, and Life insurance.
-    Mandatorily uses:
-    - "Deficiency in Service" (CPA 2019, S.2(11)) in relevant letters
-    - Exact IRDAI regulation citations with paragraph numbers
-    - E-Daakhil reference where appropriate
-    - Interest demand where TAT is violated
-    Model: gemini-2.0-flash — excellent formal legal drafting.
     """
     insurance_type = claim_data.get("insurance_type", "health")
     if hasattr(insurance_type, "value"):
         insurance_type = insurance_type.value
 
-    # Build insurance-type-specific legal context addendum
     type_context = {
         "health": (
             "References: IRDAI (Health Insurance) Regulations 2024, IRDAI Master Circular 2024. "
@@ -515,10 +511,6 @@ async def generate_portability_guide(
     years_covered: float,
     reason_for_porting: str,
 ) -> str:
-    """
-    Generate a step-by-step portability guide for the user.
-    IRDAI Health Insurance Regulations 2024, Regulation 17.
-    """
     system = """You are an AI research assistant that helps users understand Indian health
 insurance portability rules based on IRDAI Regulations 2024. Your output is AI-generated
 research guidance, NOT legal advice. Always recommend verifying with the insurer and
@@ -553,22 +545,16 @@ Be specific, practical, and reference IRDAI (Health Insurance) Regulations 2024,
     )
 
 
-# ── 6. Motor Insurance Audit ─────────────────────────────────────
+# ── 6. Motor Insurance Audit ──────────────────────────────────────
 async def audit_motor_rejection(
     rejection_text: str,
     policy_clauses: dict,
     irdai_context: str,
     motor_rules_analysis: dict,
 ) -> dict:
-    """
-    Full legal audit of a motor insurance claim rejection.
-    References IRDAI Motor Guidelines 2017, MV Act 1988, and Master Circular 2024.
-    Model: gemini-2.0-flash — strong legal reasoning.
-    """
     system = """You are an AI legal research assistant helping Indian motor insurance policyholders
 understand their rights under IRDAI regulations and the Motor Vehicles Act 1988. You are NOT a
-lawyer and your output is NOT legal advice. You help users identify potential regulatory issues
-as a research starting point.
+lawyer and your output is NOT legal advice.
 
 You reference:
 - IRDAI Motor Insurance Guidelines 2017
@@ -603,9 +589,7 @@ Perform a complete audit. Return ONLY valid JSON:
 
   "step1_sla_analysis": {{
     "tat_violated": true|false,
-    "violations": [
-      {{"type": "...", "regulation": "...", "detail": "..."}}
-    ],
+    "violations": [{{"type": "...", "regulation": "...", "detail": "..."}}],
     "interest_applicable": true|false
   }},
 
@@ -668,11 +652,6 @@ async def audit_life_rejection(
     life_rules_analysis: dict,
     incontestability_check: dict,
 ) -> dict:
-    """
-    Full legal audit of a life insurance claim rejection.
-    References IRDAI Life Regulations 2023, Insurance Act 1938 S.45, Master Circular 2024.
-    Model: gemini-2.0-flash.
-    """
     system = """You are an AI legal research assistant helping Indian life insurance claimants
 (nominees/beneficiaries) understand their rights under IRDAI regulations and Insurance Act 1938.
 You are NOT a lawyer and your output is NOT legal advice.
@@ -712,9 +691,7 @@ Return ONLY valid JSON:
 
   "step1_sla_analysis": {{
     "tat_violated": true|false,
-    "violations": [
-      {{"type": "...", "regulation": "...", "detail": "..."}}
-    ],
+    "violations": [{{"type": "...", "regulation": "...", "detail": "..."}}],
     "interest_applicable": true|false
   }},
 
@@ -740,7 +717,7 @@ Return ONLY valid JSON:
   }},
 
   "cause_of_death_relevance": {{
-    "undisclosed_condition_related_to_death": true|false|"unknown",
+    "undisclosed_condition_related_to_death": true|false,
     "note": "If undisclosed condition is unrelated to cause of death, repudiation is weaker"
   }},
 
@@ -777,10 +754,6 @@ Return ONLY valid JSON:
 
 # ── 8. Motor/Life Policy Clause Extractor ────────────────────────
 async def extract_motor_life_policy_clauses(policy_text: str, insurance_type: str) -> dict:
-    """
-    Extract clauses from motor or life insurance policy documents.
-    insurance_type: "motor" | "life"
-    """
     system = """You are an AI research assistant that extracts insurance policy clauses.
 You are NOT a legal expert. Extract key clauses and return ONLY valid JSON with no markdown."""
 
@@ -861,7 +834,7 @@ Return ONLY this JSON structure (no markdown, no explanation):
 
 # ── 9. Embeddings ─────────────────────────────────────────────────
 async def generate_embeddings(text: str) -> list[float]:
-    """Embeddings via Gemini text-embedding-004 (768-dim, free tier)."""
+    """Embeddings via Gemini text-embedding-004 (Groq has no embedding model)."""
     return await gemini.embed(text=text)
 
 
