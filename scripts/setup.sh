@@ -4,7 +4,7 @@
 # Run this ONCE on your server to initialize everything.
 # Usage: chmod +x scripts/setup.sh && ./scripts/setup.sh
 # ============================================================
-
+0
 set -e
 
 RED='\033[0;31m'
@@ -19,7 +19,7 @@ error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 echo -e "${BLUE}"
 echo "╔════════════════════════════════════════════╗"
-echo "║       RedoClaim — Setup Script         ║"
+echo "║       RedoClaim — Setup Script             ║"
 echo "║   AI Insurance Rights Platform for India   ║"
 echo "╚════════════════════════════════════════════╝"
 echo -e "${NC}"

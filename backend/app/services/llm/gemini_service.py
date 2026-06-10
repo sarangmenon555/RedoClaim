@@ -3,7 +3,7 @@ LLM Service — RedoClaim (Groq API)
 All inference via Groq (free tier, OpenAI-compatible).
 
 Model routing:
-  llama-3.1-8b-instant   → policy clause extraction, CIS analysis, summaries (fast)
+  llama-3.1-8b-instant    → policy clause extraction, CIS analysis, summaries (fast)
   llama-3.3-70b-versatile → legal reasoning, IRDAI audit, appeal letter drafting
   text-embedding-004      → RAG embeddings (still via Gemini — Groq has no embedding model)
 """
@@ -18,19 +18,16 @@ logger = logging.getLogger(__name__)
 
 # Groq model aliases — map old Gemini model names to Groq equivalents
 _MODEL_MAP = {
-    # Fast/extraction models
-    "gemini-2.0-flash-lite": "llama-3.1-8b-instant",
-    "gemini-2.5-flash-lite": "llama-3.1-8b-instant",
-    "gemini-2.5-flash":      "llama-3.3-70b-versatile",
-    "gemini-2.0-flash":      "llama-3.3-70b-versatile",
-    # Pass-through if already a Groq model name
-    "llama-3.3-70b-versatile": "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant":    "llama-3.1-8b-instant",
+    "gemini-2.0-flash-lite":         "llama-3.1-8b-instant",
+    "gemini-2.5-flash-lite":         "llama-3.1-8b-instant",
+    "gemini-2.5-flash":              "llama-3.3-70b-versatile",
+    "gemini-2.0-flash":              "llama-3.3-70b-versatile",
+    "llama-3.3-70b-versatile":       "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant":          "llama-3.1-8b-instant",
     "llama4-scout-17b-16e-instruct": "llama4-scout-17b-16e-instruct",
 }
 
 def _resolve_model(model: str) -> str:
-    """Map any model name to a valid Groq model string."""
     return _MODEL_MAP.get(model, "llama-3.3-70b-versatile")
 
 
@@ -68,7 +65,7 @@ class GroqClient:
     async def embed(self, text: str) -> list[float]:
         """
         Groq has no embedding model — fall back to Gemini text-embedding-004.
-        If Gemini key is also unavailable, returns an empty list (RAG will be skipped).
+        If Gemini key is unavailable, returns [] and RAG is skipped gracefully.
         """
         gemini_key = getattr(settings, "GEMINI_API_KEY", "")
         if not gemini_key:
@@ -99,21 +96,20 @@ gemini = GroqClient()
 
 # ── 1. Policy Clause Extractor ────────────────────────────────────
 async def extract_policy_clauses(policy_text: str) -> dict:
-    """
-    Extract ALL important clauses from a policy document.
-    Also detects if the document is a CIS (Customer Information Sheet).
-    """
-    system = """You are an AI research assistant that helps extract insurance policy clauses
-from documents. You are NOT a legal expert. Your extractions may be incomplete or
-contain errors, especially for scanned or poorly formatted documents. Extract key
-clauses and return ONLY valid JSON with no markdown, no preamble."""
+    system = (
+        "You are an AI research assistant that extracts Indian insurance policy clauses. "
+        "You are NOT a legal expert. Extractions may be incomplete for scanned documents. "
+        "Return ONLY a valid JSON object. "
+        "CRITICAL: Output MUST start with { and end with }. "
+        "No markdown fences, no preamble, no explanation, no text after the closing brace."
+    )
 
     prompt = f"""Analyze this Indian insurance policy document and extract ALL clauses.
 
 DOCUMENT TEXT:
 {policy_text[:7000]}
 
-Return ONLY this JSON structure (no markdown, no explanation):
+Return ONLY this JSON structure. Start your response with {{ and end with }}. Nothing else:
 {{
   "document_type": "policy|cis|rejection_letter|other",
   "policy_type": "health|motor|life|other",
@@ -122,7 +118,7 @@ Return ONLY this JSON structure (no markdown, no explanation):
   "sum_insured": "...",
   "inception_date": "YYYY-MM-DD or null",
   "renewal_date": "YYYY-MM-DD or null",
-  "is_cis": true|false,
+  "is_cis": true,
   "waiting_periods": [
     {{"condition": "...", "duration": "...", "risk_level": "high|medium|low"}}
   ],
@@ -142,8 +138,8 @@ Return ONLY this JSON structure (no markdown, no explanation):
   "claim_restrictions": ["..."],
   "network_hospitals": "cashless|reimbursement|both",
   "portability_allowed": true,
-  "cis_inclusions_summary": "... (only if is_cis=true, else null)",
-  "cis_exclusions_summary": "... (only if is_cis=true, else null)",
+  "cis_inclusions_summary": null,
+  "cis_exclusions_summary": null,
   "risky_clauses": [
     {{
       "clause": "...",
@@ -169,14 +165,12 @@ Return ONLY this JSON structure (no markdown, no explanation):
 
 # ── 2. CIS Analyzer ───────────────────────────────────────────────
 async def analyze_cis(cis_text: str) -> dict:
-    """
-    Dedicated Customer Information Sheet (CIS) analyzer.
-    IRDAI Master Circular 2024, Para 4.2.
-    """
-    system = """You are an AI assistant that extracts information from insurance Customer
-Information Sheets (CIS). Your output is AI-generated and may contain errors.
-Users should verify all extracted information against the original CIS document.
-Extract CIS contents clearly and return ONLY valid JSON."""
+    system = (
+        "You are an AI assistant that extracts information from Indian insurance Customer "
+        "Information Sheets (CIS). Output is AI-generated and may contain errors. "
+        "Return ONLY a valid JSON object. "
+        "CRITICAL: Output MUST start with { and end with }. No markdown, no extra text."
+    )
 
     prompt = f"""This is a Customer Information Sheet (CIS) from an Indian insurer.
 Extract all inclusions and exclusions clearly.
@@ -184,7 +178,7 @@ Extract all inclusions and exclusions clearly.
 CIS TEXT:
 {cis_text[:6000]}
 
-Return ONLY this JSON:
+Return ONLY this JSON. Start with {{ end with }}:
 {{
   "insurer_name": "...",
   "policy_name": "...",
@@ -193,7 +187,7 @@ Return ONLY this JSON:
     {{"benefit": "...", "coverage_limit": "...", "conditions": "..."}}
   ],
   "exclusions": [
-    {{"exclusion": "...", "scope": "...", "irdai_permissible": true|false}}
+    {{"exclusion": "...", "scope": "...", "irdai_permissible": true}}
   ],
   "waiting_periods": [
     {{"type": "...", "duration": "...", "applies_to": "..."}}
@@ -232,28 +226,18 @@ async def audit_rejection(
     irdai_context: str,
     rejection_patterns: str = "",
 ) -> dict:
-    """
-    Full legal audit of a claim rejection.
-    Strictly follows the Hierarchy of Evidence.
-    """
-    system = """You are an AI legal research assistant helping Indian insurance policyholders
-understand their rights under IRDAI regulations. You are NOT a lawyer and your output
-is NOT legal advice. You help users identify potential regulatory issues as a starting
-point for their own research and for consulting a licensed advocate.
-
-You reference:
-- IRDAI Master Circular on Protection of Policyholders Interests (2024)
-- IRDAI (Health Insurance) Regulations 2024
-- Insurance Ombudsman Rules 2017
-- Consumer Protection Act 2019
-
-You STRICTLY follow the Hierarchy of Evidence:
-Step 1: SLA violations (TAT breaches)
-Step 2: IRDAI Master Circular regulatory violations
-Step 3: Redressal route recommendation
-
-Return ONLY valid JSON. Note: your output may contain errors — always verify citations.
-Remind the user this is AI-generated research, not legal advice."""
+    system = (
+        "You are an AI legal research assistant helping Indian insurance policyholders "
+        "understand their rights under IRDAI regulations. You are NOT a lawyer. "
+        "Your output is NOT legal advice. "
+        "You reference IRDAI Master Circular 2024, IRDAI Health Regs 2024, "
+        "Insurance Ombudsman Rules 2017, Consumer Protection Act 2019. "
+        "You STRICTLY follow the Hierarchy of Evidence: "
+        "Step 1: SLA violations. Step 2: IRDAI regulatory violations. Step 3: Redressal route. "
+        "CRITICAL: Return ONLY a valid JSON object. "
+        "Output MUST start with { and end with }. "
+        "No markdown fences, no preamble, no text before {{ or after }}."
+    )
 
     prompt = f"""CLAIM REJECTION AUDIT — Follow the Hierarchy of Evidence strictly.
 
@@ -269,19 +253,19 @@ IRDAI REGULATIONS (from RAG knowledge base):
 KNOWN REJECTION PATTERNS:
 {rejection_patterns[:800] if rejection_patterns else "Not available"}
 
-Perform a complete audit. Return ONLY valid JSON:
+Return ONLY this JSON object. Start with {{ and end with }}. Nothing before or after:
 {{
   "rejection_reason_category": "pre_existing_disease|waiting_period|exclusion|documentation|cashless_denial|fraud|procedure_not_covered|sub_limit|other",
   "rejection_reason_summary": "1-2 sentence summary of what insurer claims",
-  "is_valid_rejection": true|false,
+  "is_valid_rejection": false,
   "confidence": "high|medium|low",
 
   "step1_sla_analysis": {{
-    "tat_violated": true|false,
+    "tat_violated": false,
     "violations": [
       {{"type": "...", "regulation": "IRDAI Master Circular 2024, Para X.Y", "detail": "..."}}
     ],
-    "interest_applicable": true|false
+    "interest_applicable": false
   }},
 
   "step2_regulatory_violations": [
@@ -293,34 +277,34 @@ Perform a complete audit. Return ONLY valid JSON:
     }}
   ],
 
-  "deficiency_in_service": true|false,
+  "deficiency_in_service": false,
   "deficiency_grounds": ["..."],
   "deficiency_statement": "Formal legal statement using CPA 2019 Section 2(11) language",
 
-  "product_liability_applicable": true|false,
+  "product_liability_applicable": false,
   "product_liability_note": "...",
 
-  "moratorium_applies": true|false,
+  "moratorium_applies": false,
   "moratorium_note": "...",
 
-  "cis_violation": true|false,
+  "cis_violation": false,
   "cis_violation_note": "...",
 
-  "document_demand_violation": true|false,
+  "document_demand_violation": false,
   "document_demand_note": "...",
 
   "step3_redressal": {{
     "recommended_action": "gro_appeal|ombudsman|consumer_court|accept",
-    "ombudsman_eligible": true|false,
-    "edaakhil_applicable": true|false,
+    "ombudsman_eligible": true,
+    "edaakhil_applicable": true,
     "reasoning": "Why this route is recommended"
   }},
 
   "strength_of_case": "strong|moderate|weak",
   "strength_reasoning": "...",
-  "key_arguments": ["Argument 1", "Argument 2", "..."],
-  "evidence_needed": ["Document 1", "Document 2", "..."],
-  "interest_demand": "Specify exact interest demand if TAT violated, else null"
+  "key_arguments": ["Argument 1", "Argument 2"],
+  "evidence_needed": ["Document 1", "Document 2"],
+  "interest_demand": null
 }}"""
 
     start = time.time()
@@ -346,10 +330,6 @@ async def generate_appeal_letter(
     policy_number: str,
     insurer_name: str,
 ) -> str:
-    """
-    Generate a professional legal appeal letter.
-    Supports Health, Motor, and Life insurance.
-    """
     insurance_type = claim_data.get("insurance_type", "health")
     if hasattr(insurance_type, "value"):
         insurance_type = insurance_type.value
@@ -377,34 +357,31 @@ async def generate_appeal_letter(
         ),
     }.get(insurance_type, "")
 
-    system = f"""You are an AI writing assistant that helps draft insurance appeal letters
-based on IRDAI regulations. You are NOT a lawyer. These are AI-generated DRAFTS that
-must be reviewed and corrected by the user before sending. The user is responsible for
-verifying all facts, regulation citations, and legal arguments. Draft letters that:
-- Use the EXACT legal term "Deficiency in Service" (Consumer Protection Act 2019, Section 2(11))
-- Cite specific IRDAI regulations with paragraph numbers
-- Reference Insurance Ombudsman Rules 2017 where applicable
-- Include E-Daakhil portal reference when appropriate
-- Demand interest on delayed claims citing IRDAI Master Circular 2024, Para 7.4
-- Follow correct Indian legal letter format with proper salutation and closing
-- Insurance type: {insurance_type.upper()}
-- {type_context}"""
+    system = (
+        f"You are an AI writing assistant that drafts Indian insurance appeal letters "
+        f"based on IRDAI regulations. You are NOT a lawyer. These are AI-generated DRAFTS "
+        f"the user must verify before sending. "
+        f"Use the EXACT legal term 'Deficiency in Service' (CPA 2019 Section 2(11)). "
+        f"Cite specific IRDAI regulations with paragraph numbers. "
+        f"Follow correct Indian legal letter format. "
+        f"Insurance type: {insurance_type.upper()}. {type_context}"
+    )
 
     appeal_descriptions = {
         "gro": {
             "to": "The Grievance Redressal Officer (GRO)",
             "org": f"{insurer_name}",
             "context": (
-                "This is the first formal escalation. Cite IRDAI Master Circular 2024 TATs. "
+                "First formal escalation. Cite IRDAI Master Circular 2024 TATs. "
                 "Demand resolution within 15 days. Warn of Ombudsman escalation. "
-                "If TAT was violated, demand interest under Para 7.4."
+                "If TAT violated, demand interest under Para 7.4."
             ),
         },
         "insurer_escalation": {
             "to": "The Chief Executive Officer / Chairman & Managing Director",
             "org": f"{insurer_name}",
             "context": (
-                "This is a direct CEO escalation. Use strong language about regulatory violations. "
+                "Direct CEO escalation. Use strong language about regulatory violations. "
                 "Mention potential IRDAI complaint and Ombudsman filing. "
                 "Reference Deficiency in Service under Consumer Protection Act 2019."
             ),
@@ -414,9 +391,9 @@ verifying all facts, regulation citations, and legal arguments. Draft letters th
             "org": "Office of the Insurance Ombudsman",
             "context": (
                 "Formal Ombudsman complaint under Insurance Ombudsman Rules 2017. "
-                "State GRO was filed and unresolved. Cite all IRDAI violations found. "
-                "Claim full amount + interest + costs up to ₹5,000. "
-                "Reference 'Deficiency in Service' under CPA 2019 S.2(11)."
+                "State GRO was filed and unresolved. Cite all IRDAI violations. "
+                "Claim full amount + interest + costs up to Rs.5,000. "
+                "Reference Deficiency in Service under CPA 2019 S.2(11)."
             ),
         },
         "bima_bharosa": {
@@ -432,7 +409,7 @@ verifying all facts, regulation citations, and legal arguments. Draft letters th
             "to": "The Hon'ble President",
             "org": "District Consumer Disputes Redressal Commission",
             "context": (
-                "Formal Consumer Court complaint. Lead with 'Deficiency in Service' under "
+                "Formal Consumer Court complaint. Lead with Deficiency in Service under "
                 "CPA 2019 Section 2(11). Reference E-Daakhil filing. "
                 "Claim full amount + interest (9-12% p.a.) + mental agony compensation "
                 "+ litigation costs + punitive damages if warranted. "
@@ -458,7 +435,7 @@ CLAIMANT DETAILS:
 Name: {user_name}
 Policy Number: {policy_number}
 Insurer: {insurer_name}
-Claim Amount: ₹{claim_data.get("claim_amount", "As per claim")}
+Claim Amount: Rs.{claim_data.get("claim_amount", "As per claim")}
 Insurance Type: {claim_data.get("insurance_type", "Health")}
 Rejection Date: {claim_data.get("rejection_date", "[DATE]")}
 
@@ -511,10 +488,12 @@ async def generate_portability_guide(
     years_covered: float,
     reason_for_porting: str,
 ) -> str:
-    system = """You are an AI research assistant that helps users understand Indian health
-insurance portability rules based on IRDAI Regulations 2024. Your output is AI-generated
-research guidance, NOT legal advice. Always recommend verifying with the insurer and
-consulting a licensed advisor for important decisions."""
+    system = (
+        "You are an AI research assistant that helps users understand Indian health insurance "
+        "portability rules under IRDAI Regulations 2024. Output is AI-generated research, "
+        "NOT legal advice. Always recommend verifying with the insurer and consulting a "
+        "licensed advisor for important decisions."
+    )
 
     prompt = f"""Generate a detailed portability guide for this policyholder.
 
@@ -552,19 +531,14 @@ async def audit_motor_rejection(
     irdai_context: str,
     motor_rules_analysis: dict,
 ) -> dict:
-    system = """You are an AI legal research assistant helping Indian motor insurance policyholders
-understand their rights under IRDAI regulations and the Motor Vehicles Act 1988. You are NOT a
-lawyer and your output is NOT legal advice.
-
-You reference:
-- IRDAI Motor Insurance Guidelines 2017
-- IRDAI (Surveyors and Loss Assessors) Regulations 2015
-- Motor Vehicles Act 1988
-- IRDAI Master Circular on Protection of Policyholders Interests (2024)
-- Insurance Ombudsman Rules 2017
-- Consumer Protection Act 2019
-
-Return ONLY valid JSON. Note: output may contain errors — always verify citations."""
+    system = (
+        "You are an AI legal research assistant helping Indian motor insurance policyholders "
+        "understand their rights. You are NOT a lawyer. Output is NOT legal advice. "
+        "You reference IRDAI Motor Insurance Guidelines 2017, Motor Vehicles Act 1988, "
+        "IRDAI Master Circular 2024, Insurance Ombudsman Rules 2017, CPA 2019. "
+        "CRITICAL: Return ONLY a valid JSON object. "
+        "Output MUST start with { and end with }. No markdown, no text outside the JSON."
+    )
 
     prompt = f"""MOTOR INSURANCE CLAIM REJECTION AUDIT.
 
@@ -580,55 +554,48 @@ MOTOR-SPECIFIC RULES ANALYSIS:
 IRDAI REGULATIONS (from knowledge base):
 {irdai_context[:2000]}
 
-Perform a complete audit. Return ONLY valid JSON:
+Return ONLY this JSON. Start with {{ end with }}:
 {{
   "rejection_reason_category": "driving_licence|drunk_driving|policy_lapse|consequential_damage|depreciation_dispute|vehicle_use_violation|fraud|theft_conditions|other",
   "rejection_reason_summary": "1-2 sentence summary",
-  "is_valid_rejection": true|false,
+  "is_valid_rejection": false,
   "confidence": "high|medium|low",
-
   "step1_sla_analysis": {{
-    "tat_violated": true|false,
+    "tat_violated": false,
     "violations": [{{"type": "...", "regulation": "...", "detail": "..."}}],
-    "interest_applicable": true|false
+    "interest_applicable": false
   }},
-
   "step2_regulatory_violations": [
     {{
       "violation": "Specific description",
-      "regulation": "Exact citation e.g. IRDAI Motor Guidelines 2017, Para X",
+      "regulation": "Exact citation",
       "severity": "high|medium|low",
       "argument": "How to use this in an appeal",
-      "case_law": "Relevant Supreme Court / NCDRC case if applicable"
+      "case_law": "Relevant SC/NCDRC case if applicable"
     }}
   ],
-
   "surveyor_report_issues": {{
-    "report_provided": true|false,
+    "report_provided": false,
     "issues": ["..."],
     "demand_note": "What to demand from insurer regarding survey"
   }},
-
-  "depreciation_applicable": true|false,
+  "depreciation_applicable": false,
   "zero_dep_rider_check": "Does policy have zero depreciation rider? Check policy schedule.",
   "own_damage_vs_tp": "own_damage|third_party|both",
-
-  "deficiency_in_service": true|false,
+  "deficiency_in_service": false,
   "deficiency_grounds": ["..."],
   "deficiency_statement": "Formal legal statement using CPA 2019 Section 2(11) language",
-
   "step3_redressal": {{
     "recommended_action": "gro_appeal|ombudsman|consumer_court|accept",
-    "ombudsman_eligible": true|false,
-    "edaakhil_applicable": true|false,
+    "ombudsman_eligible": true,
+    "edaakhil_applicable": true,
     "reasoning": "Why this route is recommended"
   }},
-
   "strength_of_case": "strong|moderate|weak",
   "strength_reasoning": "...",
   "key_arguments": ["Argument 1", "Argument 2"],
   "evidence_needed": ["Document 1", "Document 2"],
-  "interest_demand": "Specify exact interest demand if TAT violated, else null"
+  "interest_demand": null
 }}"""
 
     start = time.time()
@@ -652,18 +619,15 @@ async def audit_life_rejection(
     life_rules_analysis: dict,
     incontestability_check: dict,
 ) -> dict:
-    system = """You are an AI legal research assistant helping Indian life insurance claimants
-(nominees/beneficiaries) understand their rights under IRDAI regulations and Insurance Act 1938.
-You are NOT a lawyer and your output is NOT legal advice.
-
-You reference:
-- IRDAI (Life Insurance) Regulations 2023
-- Insurance Act 1938, Section 45 (incontestability)
-- IRDAI Master Circular on Protection of Policyholders Interests (2024)
-- Insurance Ombudsman Rules 2017
-- Consumer Protection Act 2019
-
-Return ONLY valid JSON. Always verify citations at irdai.gov.in."""
+    system = (
+        "You are an AI legal research assistant helping Indian life insurance claimants "
+        "understand their rights under IRDAI regulations and Insurance Act 1938. "
+        "You are NOT a lawyer. Output is NOT legal advice. "
+        "You reference IRDAI Life Regs 2023, Insurance Act 1938 S.45, "
+        "IRDAI Master Circular 2024, Ombudsman Rules 2017, CPA 2019. "
+        "CRITICAL: Return ONLY a valid JSON object. "
+        "Output MUST start with { and end with }. No markdown, no text outside the JSON."
+    )
 
     prompt = f"""LIFE INSURANCE CLAIM REJECTION AUDIT.
 
@@ -682,26 +646,23 @@ LIFE-SPECIFIC RULES ANALYSIS:
 IRDAI REGULATIONS (from knowledge base):
 {irdai_context[:2000]}
 
-Return ONLY valid JSON:
+Return ONLY this JSON. Start with {{ end with }}:
 {{
   "rejection_reason_category": "non_disclosure|suicide|policy_lapse|early_claim|nominee_dispute|accidental_death|fraud|other",
   "rejection_reason_summary": "1-2 sentence summary",
-  "is_valid_rejection": true|false,
+  "is_valid_rejection": false,
   "confidence": "high|medium|low",
-
   "step1_sla_analysis": {{
-    "tat_violated": true|false,
+    "tat_violated": false,
     "violations": [{{"type": "...", "regulation": "...", "detail": "..."}}],
-    "interest_applicable": true|false
+    "interest_applicable": false
   }},
-
   "incontestability": {{
-    "applies": true|false,
+    "applies": false,
     "years_active": 0,
     "argument": "...",
     "strength": "very_strong|strong|moderate|weak"
   }},
-
   "step2_regulatory_violations": [
     {{
       "violation": "Specific description",
@@ -710,33 +671,28 @@ Return ONLY valid JSON:
       "argument": "How to use in appeal"
     }}
   ],
-
   "section_45_insurance_act": {{
-    "applicable": true|false,
+    "applicable": false,
     "argument": "Section 45 Insurance Act 1938 argument if applicable"
   }},
-
   "cause_of_death_relevance": {{
-    "undisclosed_condition_related_to_death": true|false,
+    "undisclosed_condition_related_to_death": false,
     "note": "If undisclosed condition is unrelated to cause of death, repudiation is weaker"
   }},
-
-  "deficiency_in_service": true|false,
+  "deficiency_in_service": false,
   "deficiency_grounds": ["..."],
   "deficiency_statement": "Formal legal statement using CPA 2019 Section 2(11) language",
-
   "step3_redressal": {{
     "recommended_action": "gro_appeal|ombudsman|consumer_court|accept",
-    "ombudsman_eligible": true|false,
-    "edaakhil_applicable": true|false,
+    "ombudsman_eligible": true,
+    "edaakhil_applicable": true,
     "reasoning": "Why this route is recommended"
   }},
-
   "strength_of_case": "strong|moderate|weak",
   "strength_reasoning": "...",
   "key_arguments": ["Argument 1", "Argument 2"],
   "evidence_needed": ["Document 1", "Document 2"],
-  "interest_demand": "Specify exact interest demand if TAT violated, else null"
+  "interest_demand": null
 }}"""
 
     start = time.time()
@@ -754,8 +710,12 @@ Return ONLY valid JSON:
 
 # ── 8. Motor/Life Policy Clause Extractor ────────────────────────
 async def extract_motor_life_policy_clauses(policy_text: str, insurance_type: str) -> dict:
-    system = """You are an AI research assistant that extracts insurance policy clauses.
-You are NOT a legal expert. Extract key clauses and return ONLY valid JSON with no markdown."""
+    system = (
+        "You are an AI research assistant that extracts Indian insurance policy clauses. "
+        "You are NOT a legal expert. "
+        "Return ONLY a valid JSON object. "
+        "CRITICAL: Output MUST start with { and end with }. No markdown, no extra text."
+    )
 
     if insurance_type == "motor":
         schema = """{
@@ -768,21 +728,15 @@ You are NOT a legal expert. Extract key clauses and return ONLY valid JSON with 
   "inception_date": "YYYY-MM-DD or null",
   "expiry_date": "YYYY-MM-DD or null",
   "premium_paid": "...",
-  "add_ons": [
-    {"name": "Zero Depreciation|Engine Protect|NCB Protect|...", "active": true|false}
-  ],
-  "exclusions": [
-    {"clause": "...", "description": "...", "risk_level": "high|medium|low"}
-  ],
+  "add_ons": [{"name": "Zero Depreciation|Engine Protect|NCB Protect", "active": true}],
+  "exclusions": [{"clause": "...", "description": "...", "risk_level": "high|medium|low"}],
   "deductibles": {"compulsory": "...", "voluntary": "...", "note": "..."},
   "ncb_percentage": "No Claim Bonus percentage if applicable",
   "cashless_garages": "number or description",
-  "risky_clauses": [
-    {"clause": "...", "why_risky": "...", "irdai_reference": "..."}
-  ],
+  "risky_clauses": [{"clause": "...", "why_risky": "...", "irdai_reference": "..."}],
   "plain_english_summary": "3-4 sentence summary"
 }"""
-    else:  # life
+    else:
         schema = """{
   "document_type": "policy|rejection_letter|death_certificate|other",
   "policy_type": "term|endowment|ulip|whole_life|money_back",
@@ -795,28 +749,22 @@ You are NOT a legal expert. Extract key clauses and return ONLY valid JSON with 
   "maturity_date": "YYYY-MM-DD or null",
   "nominee_name": "...",
   "nominee_relationship": "...",
-  "is_active": true|false,
-  "exclusions": [
-    {"clause": "...", "description": "...", "risk_level": "high|medium|low"}
-  ],
-  "riders": [
-    {"name": "Accidental Death|Critical Illness|Waiver of Premium|...", "sum_assured": "..."}
-  ],
+  "is_active": true,
+  "exclusions": [{"clause": "...", "description": "...", "risk_level": "high|medium|low"}],
+  "riders": [{"name": "Accidental Death|Critical Illness|Waiver of Premium", "sum_assured": "..."}],
   "suicide_clause": "...",
   "revival_clause": "...",
   "incontestability_period": "3 years per IRDAI Life Regulations 2023",
-  "risky_clauses": [
-    {"clause": "...", "why_risky": "...", "irdai_reference": "..."}
-  ],
+  "risky_clauses": [{"clause": "...", "why_risky": "...", "irdai_reference": "..."}],
   "plain_english_summary": "3-4 sentence summary"
 }"""
 
-    prompt = f"""Analyze this Indian {insurance_type} insurance policy document and extract ALL clauses.
+    prompt = f"""Analyze this Indian {insurance_type} insurance policy and extract ALL clauses.
 
 DOCUMENT TEXT:
 {policy_text[:7000]}
 
-Return ONLY this JSON structure (no markdown, no explanation):
+Return ONLY this JSON. Start with {{ end with }}:
 {schema}"""
 
     start = time.time()
@@ -840,15 +788,32 @@ async def generate_embeddings(text: str) -> list[float]:
 
 # ── Helpers ───────────────────────────────────────────────────────
 def _parse_json(raw: str, context: str) -> dict:
-    """Safely parse LLM JSON output."""
+    """
+    Safely parse LLM JSON output.
+    Handles markdown fences, leading/trailing text, and truncated responses.
+    """
     try:
         clean = raw.strip()
-        for prefix in ["```json", "```"]:
-            if clean.startswith(prefix):
-                clean = clean[len(prefix):]
+
+        # Strip markdown fences
+        for fence in ["```json", "```"]:
+            if clean.startswith(fence):
+                clean = clean[len(fence):]
         if clean.endswith("```"):
             clean = clean[:-3]
-        return json.loads(clean.strip())
+        clean = clean.strip()
+
+        # If there's text before the JSON, find the first {
+        brace_start = clean.find("{")
+        if brace_start > 0:
+            clean = clean[brace_start:]
+
+        # If there's text after the JSON, find the last }
+        brace_end = clean.rfind("}")
+        if brace_end != -1 and brace_end < len(clean) - 1:
+            clean = clean[:brace_end + 1]
+
+        return json.loads(clean)
     except json.JSONDecodeError as e:
         logger.warning(f"JSON parse failed in {context}: {e}")
         return {"raw_analysis": raw, "parse_error": True, "context": context}
