@@ -10,22 +10,28 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     APP_NAME: str = "RedoClaim"
 
-    # Database — required, no default (set in Render env vars)
+    # Database — required, set in Render env vars
     DATABASE_URL: str
 
-    # Redis (optional — used for rate limiting; falls back gracefully if absent)
+    # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # ── Groq API (primary LLM) ───────────────────────────────────
-    # Required — set in Render env vars, never hardcode
+    # ── Groq API (primary LLM) ────────────────────────────────────
+    # Required — set in Render env vars
     GROQ_API_KEY: str
 
-    # ── Gemini API (embeddings only) ─────────────────────────────
-    # Optional — only needed for RAG embeddings; set in Render env vars
+    # ── Jina AI (embeddings) ──────────────────────────────────────
+    # Free tier: 1M tokens, no credit card, works in India
+    # Sign up at jina.ai → Dashboard → API Keys → starts with jina_
+    # Optional — RAG gracefully skips if not set
+    JINA_API_KEY: str = ""
+
+    # ── Gemini API (legacy — no longer used) ─────────────────────
+    # Can be removed once Jina is confirmed working
     GEMINI_API_KEY: str = ""
 
-    # Model assignments (free-tier Gemini 2.5 Flash)
-    MODEL_EXTRACTION: str = "gemini-2.5-flash"
+    # Model assignments (Groq)
+    MODEL_EXTRACTION: str = "gemini-2.5-flash"   # maps to llama-3.3-70b-versatile
     MODEL_LEGAL: str = "gemini-2.5-flash"
     MODEL_DRAFTING: str = "gemini-2.5-flash"
     MODEL_SUMMARIZE: str = "gemini-2.5-flash"
@@ -51,7 +57,7 @@ class Settings(BaseSettings):
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # CORS — accepts a plain URL, comma-separated string, or JSON array
+    # CORS
     ALLOWED_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
         "https://redoclaim.vercel.app",
@@ -62,20 +68,16 @@ class Settings(BaseSettings):
     def parse_allowed_origins(cls, v):
         if isinstance(v, str):
             v = v.strip().strip("'\"")
-            # Try JSON array first: ["url1", "url2"]
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
                     return parsed
             except json.JSONDecodeError:
                 pass
-            # Fall back to comma-separated: url1,url2
             return [o.strip() for o in v.split(",") if o.strip()]
         return v
 
-    # OCR — set PADDLEOCR_ENABLED=true in env only if you want PaddleOCR
-    # Leave unset (defaults false) on Render to avoid cold-start model downloads
-    # that kill background tasks
+    # OCR — leave unset on Render (defaults false) to avoid cold-start model downloads
     PADDLEOCR_ENABLED: bool = False
 
     # Rate limiting

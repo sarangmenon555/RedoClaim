@@ -5,7 +5,7 @@ All inference via Groq (free tier, OpenAI-compatible).
 Model routing:
   llama-3.1-8b-instant    → policy clause extraction, CIS analysis, summaries (fast)
   llama-3.3-70b-versatile → legal reasoning, IRDAI audit, appeal letter drafting
-  text-embedding-004      → RAG embeddings (still via Gemini — Groq has no embedding model)
+  Jina AI                 → RAG embeddings (free, 768-dim, works in India)
 """
 import json
 import time
@@ -64,27 +64,31 @@ class GroqClient:
 
     async def embed(self, text: str) -> list[float]:
         """
-        Groq has no embedding model — fall back to Gemini text-embedding-004.
-        If Gemini key is unavailable, returns [] and RAG is skipped gracefully.
+        Embeddings via Jina AI (free tier, 1M tokens free, works in India).
+        Falls back gracefully if key unavailable — RAG skipped, hardcoded context used.
+        Model: jina-embeddings-v2-base-en (768-dim, matches Qdrant collection config).
+        Sign up free at jina.ai — set JINA_API_KEY in Render env vars.
         """
-        gemini_key = getattr(settings, "GEMINI_API_KEY", "")
-        if not gemini_key:
-            logger.warning("No GEMINI_API_KEY set — embeddings unavailable, skipping RAG")
+        jina_key = getattr(settings, "JINA_API_KEY", "")
+        if not jina_key:
+            logger.warning("No JINA_API_KEY set — embeddings unavailable, skipping RAG")
             return []
 
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta"
-            f"/models/text-embedding-004:embedContent?key={gemini_key}"
-        )
-        payload = {
-            "model": "models/text-embedding-004",
-            "content": {"parts": [{"text": text}]},
-        }
         try:
             async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(url, json=payload)
+                resp = await client.post(
+                    "https://api.jina.ai/v1/embeddings",
+                    headers={
+                        "Authorization": f"Bearer {jina_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "jina-embeddings-v2-base-en",
+                        "input": [text],
+                    },
+                )
                 resp.raise_for_status()
-                return resp.json()["embedding"]["values"]
+                return resp.json()["data"][0]["embedding"]
         except Exception as e:
             logger.warning(f"Embedding failed: {e} — RAG context will be skipped")
             return []
@@ -109,6 +113,9 @@ async def extract_policy_clauses(policy_text: str) -> dict:
 DOCUMENT TEXT:
 {policy_text[:7000]}
 
+IMPORTANT FOR CO-PAYMENT: Extract BOTH the percentage AND the exact age/condition it applies to.
+Example: if policy says "20% for age 60 and above, NIL for below 60", extract both parts.
+
 Return ONLY this JSON structure. Start your response with {{ and end with }}. Nothing else:
 {{
   "document_type": "policy|cis|rejection_letter|other",
@@ -118,7 +125,7 @@ Return ONLY this JSON structure. Start your response with {{ and end with }}. No
   "sum_insured": "...",
   "inception_date": "YYYY-MM-DD or null",
   "renewal_date": "YYYY-MM-DD or null",
-  "is_cis": true,
+  "is_cis": false,
   "waiting_periods": [
     {{"condition": "...", "duration": "...", "risk_level": "high|medium|low"}}
   ],
@@ -132,7 +139,12 @@ Return ONLY this JSON structure. Start your response with {{ and end with }}. No
     {{"item": "...", "limit": "...", "note": "..."}}
   ],
   "room_rent_cap": {{"limit": "...", "type": "per_day|percentage|none", "note": "..."}},
-  "co_payment": {{"percentage": "...", "conditions": "...", "note": "..."}},
+  "co_payment": {{
+    "percentage": "exact percentage e.g. 20% or NIL",
+    "applies_to": "exact age/condition e.g. applicable only if insured age >= 60 years, NIL for age below 60",
+    "conditions": "full condition text copied from policy",
+    "note": "any additional note e.g. does not apply to accidents"
+  }},
   "pre_existing_disease_waiting": "...",
   "moratorium_period": "5 years per IRDAI Health Regulations 2024",
   "claim_restrictions": ["..."],
@@ -236,7 +248,7 @@ async def audit_rejection(
         "Step 1: SLA violations. Step 2: IRDAI regulatory violations. Step 3: Redressal route. "
         "CRITICAL: Return ONLY a valid JSON object. "
         "Output MUST start with { and end with }. "
-        "No markdown fences, no preamble, no text before {{ or after }}."
+        "No markdown fences, no preamble, no text before { or after }."
     )
 
     prompt = f"""CLAIM REJECTION AUDIT — Follow the Hierarchy of Evidence strictly.
@@ -782,7 +794,7 @@ Return ONLY this JSON. Start with {{ end with }}:
 
 # ── 9. Embeddings ─────────────────────────────────────────────────
 async def generate_embeddings(text: str) -> list[float]:
-    """Embeddings via Gemini text-embedding-004 (Groq has no embedding model)."""
+    """Embeddings via Jina AI (free tier, 768-dim, works in India)."""
     return await gemini.embed(text=text)
 
 
