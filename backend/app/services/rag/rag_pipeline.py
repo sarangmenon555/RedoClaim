@@ -1,7 +1,9 @@
 """
 RAG Pipeline — RedoClaim
 Qdrant vector DB for IRDAI regulations, policy chunks, CIS documents.
-All embeddings generated locally via Ollama nomic-embed-text (no cloud).
+Embeddings via Gemini text-embedding-004 (768-dim).
+If embeddings are unavailable (e.g. invalid API key), RAG is gracefully skipped
+and the hardcoded IRDAI context is used as fallback.
 
 Collections:
   - redoclaim_policy_chunks     : user policy document chunks
@@ -21,7 +23,7 @@ from app.core.config import settings
 from app.services.llm.gemini_service import generate_embeddings
 
 logger = logging.getLogger(__name__)
-EMBEDDING_DIM = 768  # nomic-embed-text
+EMBEDDING_DIM = 768  # Gemini text-embedding-004
 
 client = QdrantClient(
     url=settings.QDRANT_URL,
@@ -34,6 +36,11 @@ COLLECTIONS = {
     "rejections": settings.QDRANT_REJECTION_COLLECTION,
     "cis":        "redoclaim_cis_chunks",
 }
+
+
+def _is_valid_vector(vector: list) -> bool:
+    """Return True only if vector is a non-empty list of floats."""
+    return bool(vector) and isinstance(vector, list) and len(vector) > 0
 
 
 async def ensure_collections():
@@ -55,11 +62,22 @@ async def upsert_document_chunks(
 ) -> int:
     if collection is None:
         collection = COLLECTIONS["policy"]
+
     await ensure_collections()
+
     points = []
+    skipped = 0
+
     for chunk in chunks:
         try:
             vector = await generate_embeddings(chunk["text"])
+
+            # Skip chunks with empty vectors — happens when embedding API is unavailable
+            if not _is_valid_vector(vector):
+                skipped += 1
+                logger.debug(f"Skipping chunk {chunk['chunk_index']} — empty embedding")
+                continue
+
             points.append(PointStruct(
                 id=str(uuid.uuid4()),
                 vector=vector,
@@ -71,21 +89,43 @@ async def upsert_document_chunks(
                 },
             ))
         except Exception as e:
+            skipped += 1
             logger.warning(f"Embed chunk {chunk['chunk_index']} failed: {e}")
+
+    if skipped > 0:
+        logger.warning(
+            f"Skipped {skipped}/{len(chunks)} chunks due to missing embeddings. "
+            "RAG search for this document will use hardcoded fallback context. "
+            "To enable full RAG, set a valid GEMINI_API_KEY in Render env vars."
+        )
+
     if points:
         client.upsert(collection_name=collection, points=points)
         logger.info(f"Stored {len(points)} chunks → {collection}")
+    else:
+        logger.warning(
+            f"No vectors stored for document {document_id} — "
+            "embeddings unavailable. Document processing will continue "
+            "using hardcoded IRDAI context for audits."
+        )
+
+    # Return 0 but do NOT raise — document processing should continue
     return len(points)
 
 
 async def search_irdai_regulations(query: str, top_k: int = 6) -> str:
     """
     RAG retrieval of IRDAI regulations relevant to the query.
-    Falls back to hardcoded context if Qdrant is empty or unavailable.
+    Falls back to hardcoded context if embeddings unavailable or Qdrant is empty.
     """
     await ensure_collections()
     try:
         vector = await generate_embeddings(query)
+
+        if not _is_valid_vector(vector):
+            logger.info("Embeddings unavailable — using hardcoded IRDAI context")
+            return _get_hardcoded_irdai_context()
+
         results = client.search(
             collection_name=COLLECTIONS["irdai"],
             query_vector=vector,
@@ -96,7 +136,7 @@ async def search_irdai_regulations(query: str, top_k: int = 6) -> str:
             logger.info(f"RAG: retrieved {len(texts)} IRDAI chunks for query: {query[:60]}")
             return "\n\n---\n\n".join(texts)
         else:
-            logger.info("Qdrant returned <2 results, using hardcoded IRDAI context")
+            logger.info("Qdrant returned <2 results — using hardcoded IRDAI context")
             return _get_hardcoded_irdai_context()
     except Exception as e:
         logger.warning(f"Qdrant search failed: {e} — using hardcoded context")
@@ -108,6 +148,10 @@ async def search_rejection_patterns(rejection_text: str, top_k: int = 4) -> str:
     await ensure_collections()
     try:
         vector = await generate_embeddings(rejection_text[:500])
+
+        if not _is_valid_vector(vector):
+            return ""
+
         results = client.search(
             collection_name=COLLECTIONS["rejections"],
             query_vector=vector,
@@ -125,6 +169,10 @@ async def search_policy_chunks(query: str, document_id: str, top_k: int = 5) -> 
     await ensure_collections()
     try:
         vector = await generate_embeddings(query)
+
+        if not _is_valid_vector(vector):
+            return []
+
         results = client.search(
             collection_name=COLLECTIONS["policy"],
             query_vector=vector,
@@ -144,6 +192,10 @@ async def search_cis_chunks(query: str, document_id: str, top_k: int = 4) -> lis
     await ensure_collections()
     try:
         vector = await generate_embeddings(query)
+
+        if not _is_valid_vector(vector):
+            return []
+
         results = client.search(
             collection_name=COLLECTIONS["cis"],
             query_vector=vector,
