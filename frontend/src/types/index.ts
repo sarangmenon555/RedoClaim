@@ -56,7 +56,12 @@ export interface PolicyClauses {
   exclusions: Exclusion[];
   sub_limits: SubLimit[];
   room_rent_cap: { limit: string; type: string };
-  co_payment: { percentage: string; conditions: string };
+  co_payment: {
+    percentage: string;
+    applies_to?: string;   // age/condition e.g. "applicable only if insured age >= 60 years"
+    conditions: string;
+    note?: string;
+  };
   pre_existing_disease_waiting: string;
   moratorium_period: string;
   claim_restrictions: string[];

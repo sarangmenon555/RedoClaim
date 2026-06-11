@@ -289,7 +289,14 @@ function AnalyzerPageInner() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
               { label: "Room Rent Cap", value: clauses.room_rent_cap?.limit || "No cap detected" },
-              { label: "Co-payment", value: clauses.co_payment?.percentage || "None detected" },
+              { 
+                label: "Co-payment", 
+                value: clauses.co_payment?.percentage 
+                ? clauses.co_payment.applies_to 
+                ? `${clauses.co_payment.percentage} (${clauses.co_payment.applies_to})`
+                : clauses.co_payment.percentage
+                : "None detected"
+              },
               { label: "PED Waiting", value: clauses.pre_existing_disease_waiting || "N/A" },
               { label: "Moratorium", value: clauses.moratorium_period || "5 years (IRDAI 2024)" },
               { label: "Network", value: clauses.network_hospitals || "Unknown" },
