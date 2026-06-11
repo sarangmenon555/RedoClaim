@@ -157,7 +157,7 @@ function AnalyzerPageInner() {
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="animate-spin text-violet-400" size={36} />
               <p className="font-medium style-text-secondary">
-                {uploading ? "Uploading..." : "AI analyzing your policy (1–3 min on CPU)..."}
+                {uploading ? "Uploading..." : "Analysing policy"}
               </p>
             </div>
           ) : (
@@ -239,7 +239,7 @@ function AnalyzerPageInner() {
                       <p className="font-medium style-text-primary text-sm">{flag.clause}</p>
                       <p className="text-sm text-red-600 mt-1">{flag.why_risky}</p>
                       {flag.irdai_reference && (
-                        <p className="text-xs style-text-tertiary mt-1">📋 {flag.irdai_reference}</p>
+                        <p className="text-xs style-text-tertiary mt-1">{flag.irdai_reference}</p>
                       )}
                     </div>
                   ))}
@@ -293,7 +293,7 @@ function AnalyzerPageInner() {
               { label: "PED Waiting", value: clauses.pre_existing_disease_waiting || "N/A" },
               { label: "Moratorium", value: clauses.moratorium_period || "5 years (IRDAI 2024)" },
               { label: "Network", value: clauses.network_hospitals || "Unknown" },
-              { label: "Portability", value: clauses.portability_allowed ? "✅ Allowed" : "❌ Check policy" },
+              { label: "Portability", value: clauses.portability_allowed ? "Allowed" : "Check policy" },
             ].map(({ label, value }) => (
               <div key={label} className="card p-4">
                 <p className="text-xs style-text-tertiary mb-1">{label}</p>
