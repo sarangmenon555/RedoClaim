@@ -157,7 +157,7 @@ function AnalyzerPageInner() {
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="animate-spin text-violet-400" size={36} />
               <p className="font-medium style-text-secondary">
-                {uploading ? "Uploading..." : "Analysing policy"}
+                {uploading ? "Uploading..." : "Analyzing policy"}
               </p>
             </div>
           ) : (
