@@ -374,7 +374,7 @@ function AuditorPageInner() {
             {form.insuranceType === "life" && (
               <p className="text-blue-500 animate-pulse">⟳ Life: Checking incontestability period (Reg 27)...</p>
             )}
-            <p className="style-text-tertiary">⟳ Step 2: Gemini legal reasoning...</p>
+            <p className="style-text-tertiary">⟳ Step 2: Legal reasoning...</p>
             <p className="style-text-tertiary">⟳ Step 3: Determining redressal route...</p>
           </div>
         </div>

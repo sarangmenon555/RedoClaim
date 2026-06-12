@@ -187,13 +187,13 @@ export default function AppealsPage() {
           <button onClick={generateAppeal} disabled={generating || !selectedClaimId}
             className="btn-primary w-full justify-center">
             {generating
-              ? <><Loader2 size={15} className="animate-spin" /> Drafting with local AI...</>
+              ? <><Loader2 size={15} className="animate-spin" /> Drafting...</>
               : <><FileText size={15} /> Generate Draft <ArrowRight size={13} /></>}
           </button>
 
           {generating && (
             <p className="text-xs text-center style-text-tertiary">
-              Mistral 7B running locally — 30–90 seconds on CPU
+              Generating your appeal
             </p>
           )}
         </div>
@@ -215,7 +215,7 @@ export default function AppealsPage() {
               <Loader2 className="animate-spin text-violet-400" size={40} />
               <div>
                 <p className="font-semibold style-text-primary">Drafting your {selectedAppeal?.label}...</p>
-                <p className="text-sm style-text-tertiary mt-1">Local Mistral 7B model composing letter</p>
+                <p className="text-sm style-text-tertiary mt-1">Composing your letter...</p>
               </div>
             </div>
           )}
