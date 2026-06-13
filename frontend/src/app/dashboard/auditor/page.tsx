@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import {
   Upload, AlertTriangle, CheckCircle, XCircle, Shield,
   Scale, ArrowRight, Loader2, ExternalLink, Info,
-  Clock, FileText, ChevronDown, ChevronUp, Banknote
+  Clock, FileText, ChevronDown, ChevronUp, Banknote, Sparkles
 } from "lucide-react";
 import type { Document } from "@/types";
 import Link from "next/link";
@@ -36,6 +36,7 @@ function AuditorPageInner() {
     policyInceptionDate: "", documentsCompleteDate: "",
   });
 
+  // Load all processed documents
   useEffect(() => {
     documentsApi.list().then((r) => {
       const all: Document[] = r.data;
@@ -44,6 +45,20 @@ function AuditorPageInner() {
     }).catch(() => {});
   }, []);
 
+  // Auto-fill policy number + insurer name when a policy document is selected
+  useEffect(() => {
+    if (!form.policyDocumentId) return;
+    const doc = policyDocs.find((d) => d.id === form.policyDocumentId);
+    if (!doc?.extracted_clauses) return;
+    const clauses = doc.extracted_clauses as any;
+    setForm((f) => ({
+      ...f,
+      policyNumber: f.policyNumber || clauses.policy_number || f.policyNumber,
+      insurerName: f.insurerName || clauses.insurer_name || f.insurerName,
+    }));
+  }, [form.policyDocumentId, policyDocs]);
+
+  // Load existing doc if ?doc= param present
   useEffect(() => {
     const docId = searchParams.get("doc");
     if (!docId) return;
@@ -244,16 +259,28 @@ function AuditorPageInner() {
                 <input className="input" placeholder="e.g. Star Health Insurance"
                   value={form.insurerName} onChange={(e) => setForm({ ...form, insurerName: e.target.value })} />
               </div>
+
               <div>
-                <label className="label">Policy number</label>
-                <input className="input" placeholder="e.g. P/211115/01/2024/001234"
-                  value={form.policyNumber} onChange={(e) => setForm({ ...form, policyNumber: e.target.value })} />
+                <label className="label">
+                  Policy number
+                  {form.policyDocumentId && !form.policyNumber && (
+                    <span className="ml-1 text-xs text-violet-400">(auto-fills from policy document)</span>
+                  )}
+                </label>
+                <input
+                  className="input"
+                  placeholder="e.g. P/211115/01/2024/001234 — check your policy document"
+                  value={form.policyNumber}
+                  onChange={(e) => setForm({ ...form, policyNumber: e.target.value })}
+                />
               </div>
+
               <div>
-                <label className="label">Claim amount (₹)</label>
-                <input className="input" type="number" placeholder="e.g. 500000"
+                <label className="label">Claim amount (Rs.)</label>
+                <input className="input" type="number" placeholder="e.g. 42500"
                   value={form.claimAmount} onChange={(e) => setForm({ ...form, claimAmount: e.target.value })} />
               </div>
+
               <div>
                 <label className="label">Insurance type</label>
                 <select className="input" value={form.insuranceType}
@@ -263,6 +290,7 @@ function AuditorPageInner() {
                   <option value="life">Life Insurance</option>
                 </select>
               </div>
+
               <div>
                 <label className="label">
                   {form.insuranceType === "life" ? "Claim submission date" : "Claim date"}
@@ -270,6 +298,7 @@ function AuditorPageInner() {
                 <input className="input" type="date" value={form.claimDate}
                   onChange={(e) => setForm({ ...form, claimDate: e.target.value })} />
               </div>
+
               <div>
                 <label className="label">Rejection date</label>
                 <input className="input" type="date" value={form.rejectionDate}
@@ -312,12 +341,20 @@ function AuditorPageInner() {
 
               {policyDocs.length > 0 && (
                 <div>
-                  <label className="label">Policy document (improves accuracy)</label>
+                  <label className="label flex items-center gap-1.5">
+                    Policy document (improves accuracy)
+                    <Sparkles size={12} className="text-violet-400" />
+                  </label>
                   <select className="input" value={form.policyDocumentId}
                     onChange={(e) => setForm({ ...form, policyDocumentId: e.target.value })}>
                     <option value="">None selected</option>
                     {policyDocs.map((d) => <option key={d.id} value={d.id}>{d.file_name}</option>)}
                   </select>
+                  {form.policyDocumentId && (
+                    <p className="text-xs text-violet-400 mt-1">
+                      Policy number and insurer name auto-filled from this document
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -627,7 +664,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
         </div>
       )}
 
-      {/* Moratorium Shield (health only) */}
+      {/* Moratorium Shield */}
       {moratorium?.moratorium_applies && (
         <div className="card p-5 border-l-4 border-violet-500 bg-surface-2">
           <div className="flex items-start gap-3">
@@ -720,7 +757,7 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
         </div>
       </Accordion>
 
-      {/* Portability (health only) */}
+      {/* Portability */}
       {portability && (
         <div className="card p-5">
           <div className="flex items-center gap-2 mb-3">

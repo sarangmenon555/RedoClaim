@@ -5,7 +5,7 @@ import { appealsApi, claimsApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import {
   FileText, Loader2, Download, Copy, CheckCircle,
-  Building2, Scale, Shield, Monitor, ArrowRight, AlertTriangle
+  Building2, Scale, Shield, Monitor, ArrowRight, AlertTriangle, Info
 } from "lucide-react";
 import type { AppealType, Claim } from "@/types";
 import { DisclaimerBanner, LetterDisclaimer, AIOutputLabel } from "@/components/shared/DisclaimerBanner";
@@ -34,7 +34,7 @@ const APPEAL_TYPES = [
   {
     type: "ombudsman" as AppealType,
     label: "Ombudsman Complaint",
-    desc: "Insurance Ombudsman (up to ₹50 Lakhs)",
+    desc: "Insurance Ombudsman (up to Rs.50 Lakhs)",
     icon: Scale,
     activeColor: "border-green-500 bg-surface-2",
     borderColor: "border-surface-4 hover:border-green-300",
@@ -82,6 +82,8 @@ export default function AppealsPage() {
     }).catch(() => {});
   }, []);
 
+  const selectedClaim = claims.find((c) => c.id === selectedClaimId);
+
   const generateAppeal = async () => {
     if (!selectedClaimId) {
       toast.error("Select a claim first. Run a rejection audit to create one.");
@@ -121,6 +123,14 @@ export default function AppealsPage() {
 
   const selectedAppeal = APPEAL_TYPES.find((t) => t.type === selectedType);
 
+  // Check if selected claim has missing key fields
+  const missingFields: string[] = [];
+  if (selectedClaim) {
+    if (!selectedClaim.policy_number) missingFields.push("policy number");
+    if (!selectedClaim.claim_amount) missingFields.push("claim amount");
+    if (!selectedClaim.rejection_date) missingFields.push("rejection date");
+  }
+
   return (
     <div className="max-w-5xl space-y-6 animate-fade-in" style={{color:"var(--text-primary)"}}>
       <div>
@@ -130,12 +140,12 @@ export default function AppealsPage() {
         </p>
       </div>
 
-      {/* Disclaimer */}
       <DisclaimerBanner variant="banner" context="appeal" />
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Left: config */}
         <div className="md:col-span-1 space-y-4">
+
           {/* Claim selector */}
           <div className="card p-4">
             <label className="label">Select Claim</label>
@@ -145,14 +155,56 @@ export default function AppealsPage() {
               </div>
             ) : (
               <select className="input" value={selectedClaimId}
-                onChange={(e) => setSelectedClaimId(e.target.value)}>
+                onChange={(e) => { setSelectedClaimId(e.target.value); setLetter(""); }}>
                 <option value="">Choose a claim...</option>
                 {claims.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.insurer_name}{c.claim_amount ? ` • ₹${(c.claim_amount / 100000).toFixed(1)}L` : ""}
+                    {c.insurer_name}{c.claim_amount ? ` • Rs.${(c.claim_amount / 100000).toFixed(1)}L` : ""}
+                    {c.rejection_date ? ` • ${new Date(c.rejection_date).toLocaleDateString("en-IN")}` : ""}
                   </option>
                 ))}
               </select>
+            )}
+
+            {/* Show selected claim details */}
+            {selectedClaim && (
+              <div className="mt-3 p-3 bg-surface-2 rounded-lg text-xs space-y-1">
+                <p className="font-semibold style-text-secondary mb-1">Claim details used in letter:</p>
+                <div className="flex justify-between">
+                  <span className="style-text-tertiary">Insurer</span>
+                  <span className="style-text-primary font-medium">{selectedClaim.insurer_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="style-text-tertiary">Policy No.</span>
+                  <span className={`font-medium ${selectedClaim.policy_number ? "style-text-primary" : "text-amber-600"}`}>
+                    {selectedClaim.policy_number || "Not set"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="style-text-tertiary">Claim amount</span>
+                  <span className={`font-medium ${selectedClaim.claim_amount ? "style-text-primary" : "text-amber-600"}`}>
+                    {selectedClaim.claim_amount ? `Rs. ${selectedClaim.claim_amount.toLocaleString("en-IN")}` : "Not set"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="style-text-tertiary">Rejection date</span>
+                  <span className={`font-medium ${selectedClaim.rejection_date ? "style-text-primary" : "text-amber-600"}`}>
+                    {selectedClaim.rejection_date
+                      ? new Date(selectedClaim.rejection_date).toLocaleDateString("en-IN")
+                      : "Not set"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Warning if key fields missing */}
+            {missingFields.length > 0 && (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                <AlertTriangle size={12} className="text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-800">
+                  Missing: {missingFields.join(", ")}. Re-run the audit with these fields filled in for a better letter.
+                </p>
+              </div>
             )}
           </div>
 
@@ -160,7 +212,7 @@ export default function AppealsPage() {
           <div className="card p-4">
             <label className="label mb-3 block">Letter Type</label>
             <div className="space-y-2">
-              {APPEAL_TYPES.map(({ type, label, desc, icon: Icon, borderColor, activeColor, step }) => (
+              {APPEAL_TYPES.map(({ type, label, icon: Icon, borderColor, activeColor, step }) => (
                 <button key={type} onClick={() => setSelectedType(type)}
                   className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
                     selectedType === type ? activeColor : borderColor
@@ -179,9 +231,12 @@ export default function AppealsPage() {
           <div className="card p-4">
             <label className="label">Additional details (optional)</label>
             <textarea className="input h-20 resize-none"
-              placeholder="Any specific facts to emphasize..."
+              placeholder="Any specific facts to emphasize, e.g. 'Doctor confirmed medical necessity in writing on 5 June'"
               value={additionalContext}
               onChange={(e) => setAdditionalContext(e.target.value)} />
+            <p className="text-xs style-text-tertiary mt-1">
+              Add specific facts here to make the letter more precise and personal.
+            </p>
           </div>
 
           <button onClick={generateAppeal} disabled={generating || !selectedClaimId}
@@ -191,11 +246,13 @@ export default function AppealsPage() {
               : <><FileText size={15} /> Generate Draft <ArrowRight size={13} /></>}
           </button>
 
-          {generating && (
-            <p className="text-xs text-center style-text-tertiary">
-              Generating your appeal
+          {/* Tip about name */}
+          <div className="flex items-start gap-2 p-3 bg-surface-2 rounded-lg border border-surface-4">
+            <Info size={12} className="text-violet-400 mt-0.5 shrink-0" />
+            <p className="text-xs style-text-tertiary">
+              Your name in the letter comes from your account profile. Update it in Settings if it shows as "Demo User".
             </p>
-          )}
+          </div>
         </div>
 
         {/* Right: letter output */}
@@ -241,7 +298,7 @@ export default function AppealsPage() {
                 </div>
               </div>
 
-              {/* Review checklist before the letter */}
+              {/* Review checklist */}
               <div className="p-4 bg-surface-2 border-b border-amber-500\/20">
                 <p className="text-xs font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
                   <AlertTriangle size={12} /> Review checklist before sending:
@@ -271,7 +328,6 @@ export default function AppealsPage() {
                 </pre>
               </div>
 
-              {/* Footer disclaimer */}
               <LetterDisclaimer />
             </div>
           )}
