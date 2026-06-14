@@ -1,22 +1,13 @@
-"""
-LLM Service — RedoClaim (Groq API)
-All inference via Groq (free tier, OpenAI-compatible).
-
-Model routing:
-  llama-3.1-8b-instant    → policy clause extraction, CIS analysis, summaries (fast)
-  llama-3.3-70b-versatile → legal reasoning, IRDAI audit, appeal letter drafting
-  Jina AI                 → RAG embeddings (free, 768-dim, works in India)
-"""
 import json
 import time
 import logging
 import httpx
+from datetime import datetime
 from groq import AsyncGroq
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Groq model aliases — map old Gemini model names to Groq equivalents
 _MODEL_MAP = {
     "gemini-2.0-flash-lite":         "llama-3.1-8b-instant",
     "gemini-2.5-flash-lite":         "llama-3.1-8b-instant",
@@ -346,6 +337,9 @@ async def generate_appeal_letter(
     if hasattr(insurance_type, "value"):
         insurance_type = insurance_type.value
 
+    # Today's date for the letter header
+    today = datetime.now().strftime("%d %B %Y")
+
     type_context = {
         "health": (
             "References: IRDAI (Health Insurance) Regulations 2024, IRDAI Master Circular 2024. "
@@ -437,6 +431,17 @@ async def generate_appeal_letter(
     key_args = audit_report.get("key_arguments", [])
     interest_demand = audit_report.get("interest_demand", "")
 
+    # Format rejection date nicely if available
+    rejection_date_raw = claim_data.get("rejection_date", "")
+    if rejection_date_raw and rejection_date_raw != "[DATE]":
+        try:
+            rd = datetime.fromisoformat(str(rejection_date_raw).replace("Z", ""))
+            rejection_date_display = rd.strftime("%d %B %Y")
+        except Exception:
+            rejection_date_display = str(rejection_date_raw)
+    else:
+        rejection_date_display = "as per rejection letter"
+
     prompt = f"""Draft a {appeal_type.upper().replace("_", " ")} letter.
 
 TO: {desc["to"]}
@@ -447,9 +452,10 @@ CLAIMANT DETAILS:
 Name: {user_name}
 Policy Number: {policy_number}
 Insurer: {insurer_name}
-Claim Amount: Rs.{claim_data.get("claim_amount", "As per claim")}
+Claim Amount: Rs.{claim_data.get("claim_amount", "as per claim")}
 Insurance Type: {claim_data.get("insurance_type", "Health")}
-Rejection Date: {claim_data.get("rejection_date", "[DATE]")}
+Rejection Date: {rejection_date_display}
+Today's Date: {today}
 
 IRDAI VIOLATIONS FOUND:
 {json.dumps(violations, indent=2)[:1500] if violations else "See SLA violations below"}
@@ -470,16 +476,18 @@ ADDITIONAL CONTEXT:
 {claim_data.get("additional_context", "")}
 
 Write the complete letter. Include:
-1. Date line: [DATE]
+1. Date line: {today}
 2. Full address block to: {desc["to"]}, {desc["org"]}
 3. Subject line referencing policy number and claim
 4. Para 1: Facts of the case (policy, claim, rejection)
 5. Para 2-4: Legal arguments with specific IRDAI citations
 6. Para 5: Relief sought (specific amounts + interest if applicable)
 7. Para 6: Consequence of non-compliance (next escalation step)
-8. Closing: Yours faithfully, [NAME], with date and contact placeholders
+8. Closing: Yours faithfully, {user_name}
 
-Use formal legal English. Be assertive but professional."""
+IMPORTANT: Use {today} as the date. Use {user_name} as the name.
+Do NOT use placeholders like [DATE], [NAME], or [CONTACT DETAILS] anywhere in the letter.
+Replace contact placeholders with: [Your Phone Number] and [Your Email Address] as reminders."""
 
     start = time.time()
     letter = await gemini.generate(
