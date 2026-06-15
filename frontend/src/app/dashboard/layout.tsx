@@ -34,12 +34,6 @@ const navGroups = [
       { href: "/dashboard/documents",   label: "My Documents",       icon: Upload },
     ],
   },
-  {
-    label: "Account",
-    items: [
-      { href: "/dashboard/settings",    label: "Settings",           icon: Settings },
-    ],
-  },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
