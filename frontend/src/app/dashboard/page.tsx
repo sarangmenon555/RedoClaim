@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/auth";
 import {
   FileSearch, AlertTriangle, FileText, Clock, ArrowRight,
   ShieldCheck, AlertCircle, Heart, Car, TrendingUp, Sparkles,
-  Lock, ChevronRight, Bell
+  Lock, ChevronRight, Bell, User
 } from "lucide-react";
 import Link from "next/link";
 import type { Claim, Document } from "@/types";
@@ -270,6 +270,13 @@ export default function DashboardPage() {
       icon: Clock,
       color: "#FBBF24",
       desc: "Consumer Court",
+    },
+    {
+      href: "/settings",
+      label: "Settings",
+      icon: User,
+      color: "#f97dcc",
+      desc: "Account Settings",
     },
   ];
 
