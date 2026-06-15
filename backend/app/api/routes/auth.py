@@ -7,17 +7,19 @@ from pydantic import BaseModel, EmailStr
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+from typing import Optional
 import uuid
 import logging
 
 from app.core.database import get_db
 from app.core.config import settings
 from app.models.models import User, UserRole
+from app.api.deps.auth import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# ── Password hashing (argon2 — no 72-byte limit, more secure than bcrypt) ──
+# ── Password hashing ─────────────────────────────────────────────────────────
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
@@ -36,7 +38,12 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
-# ── Password helpers ─────────────────────────────────────────────────────────
+class UpdateProfileRequest(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+
+
+# ── Password helpers ──────────────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -46,7 +53,7 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-# ── JWT helpers ──────────────────────────────────────────────────────────────
+# ── JWT helpers ───────────────────────────────────────────────────────────────
 
 def create_access_token(user_id: str) -> str:
     expire = datetime.utcnow() + timedelta(
@@ -68,7 +75,7 @@ def create_refresh_token(user_id: str) -> str:
     )
 
 
-# ── Routes ───────────────────────────────────────────────────────────────────
+# ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
@@ -84,7 +91,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
         id=uuid.uuid4(),
         email=req.email,
         full_name=req.full_name,
-        phone=req.phone.strip() or None if req.phone else None,  # empty string → NULL
+        phone=req.phone.strip() or None if req.phone else None,
         hashed_password=hash_password(req.password),
         role=UserRole.USER,
         is_active=True,
@@ -170,12 +177,40 @@ async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/me")
-async def get_me(
-    current_user: User = Depends(
-        __import__("app.api.deps.auth", fromlist=["get_current_user"]).get_current_user
-    ),
-):
+async def get_me(current_user: User = Depends(get_current_user)):
     """Return the currently authenticated user's profile."""
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "phone": current_user.phone,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+    }
+
+
+@router.patch("/me")
+async def update_profile(
+    req: UpdateProfileRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update the current user's full name and/or phone number."""
+    if req.full_name is not None:
+        full_name = req.full_name.strip()
+        if not full_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Full name cannot be empty",
+            )
+        current_user.full_name = full_name
+
+    if req.phone is not None:
+        current_user.phone = req.phone.strip() or None
+
+    await db.flush()
+    logger.info(f"Profile updated: {current_user.email}")
+
     return {
         "id": str(current_user.id),
         "email": current_user.email,
