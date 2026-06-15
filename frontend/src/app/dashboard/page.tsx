@@ -272,7 +272,7 @@ export default function DashboardPage() {
       desc: "Consumer Court",
     },
     {
-      href: "/settings",
+      href: "/dashboard/settings",
       label: "Settings",
       icon: User,
       color: "#f97dcc",
