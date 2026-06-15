@@ -43,6 +43,11 @@ class UpdateProfileRequest(BaseModel):
     phone: Optional[str] = None
 
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
 # ── Password helpers ──────────────────────────────────────────────────────────
 
 def hash_password(password: str) -> str:
@@ -219,3 +224,50 @@ async def update_profile(
         "role": current_user.role,
         "is_active": current_user.is_active,
     }
+
+@router.post("/me/password")
+async def change_password(
+    req: "ChangePasswordRequest",
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Change the current user's password."""
+    if not verify_password(req.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+    if len(req.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters",
+        )
+    current_user.hashed_password = hash_password(req.new_password)
+    await db.flush()
+    logger.info(f"Password changed: {current_user.email}")
+    return {"message": "Password changed successfully"}
+
+
+@router.delete("/me")
+async def delete_account(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Permanently delete the current user's account and all associated data.
+    Deletes: documents, claims, appeals, then the user record.
+    """
+    from sqlalchemy import delete as sql_delete
+    from app.models.models import Document, Claim, Appeal
+
+    user_id = current_user.id
+
+    # Delete in dependency order: appeals → claims → documents → user
+    await db.execute(sql_delete(Appeal).where(Appeal.owner_id == user_id))
+    await db.execute(sql_delete(Claim).where(Claim.owner_id == user_id))
+    await db.execute(sql_delete(Document).where(Document.owner_id == user_id))
+    await db.delete(current_user)
+    await db.flush()
+
+    logger.info(f"Account deleted: {current_user.email}")
+    return {"message": "Account and all associated data deleted successfully"}

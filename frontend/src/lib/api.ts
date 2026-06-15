@@ -99,6 +99,13 @@ export const authApi = {
   updateProfile: (data: { full_name?: string; phone?: string | null }) =>
     api.patch("/auth/me", data),
 
+  // Change password
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    api.post("/auth/me/password", data),
+
+  // Delete account — permanently removes all user data
+  deleteAccount: () => api.delete("/auth/me"),
+
   logout: () => {
     clearTokens();
     window.location.href = "/auth/login";
