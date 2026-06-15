@@ -34,6 +34,57 @@ class AppealGenerateRequest(BaseModel):
     additional_context: Optional[str] = None
 
 
+def _extract_audit_data(audit_report: dict) -> tuple[dict, dict, list]:
+    """
+    Extract audit result, policy clauses, and violations from the stored report.
+
+    Stored structure:
+    {
+      "hierarchy_of_evidence": {
+        "step1_sla": {...},
+        "step2_regulations": {
+          "audit": {...},          ← main LLM audit result
+          "moratorium": {...},
+          "cis_check": {...},
+          "deficiency_in_service": {...}
+        },
+        "step3_redressal": {...}
+      },
+      "policy_clauses": {...},
+      ...
+    }
+    """
+    hoe = audit_report.get("hierarchy_of_evidence", {})
+    step2 = hoe.get("step2_regulations", {})
+    audit_result = step2.get("audit", {})
+    policy_clauses = audit_report.get("policy_clauses", {})
+
+    # Collect all violations: IRDAI + SLA
+    irdai_violations = audit_result.get("step2_regulatory_violations", [])
+    sla_violations = hoe.get("step1_sla", {}).get("sla_violations", [])
+
+    # Build a combined audit_report dict for the letter generator
+    # that includes all the fields it needs at the top level
+    combined = {
+        **audit_result,
+        "step1_sla_analysis": hoe.get("step1_sla", {}),
+        "deficiency_statement": step2.get("deficiency_in_service", {}).get("statement", ""),
+        "moratorium": step2.get("moratorium", {}),
+    }
+
+    all_violations = irdai_violations + [
+        {
+            "violation": v.get("detail", ""),
+            "regulation": v.get("regulation", ""),
+            "severity": v.get("severity", "high"),
+            "argument": v.get("interest_note", ""),
+        }
+        for v in sla_violations
+    ]
+
+    return combined, policy_clauses, all_violations
+
+
 @router.post("/generate")
 async def generate_appeal(
     req: AppealGenerateRequest,
@@ -51,6 +102,9 @@ async def generate_appeal(
     if not claim.audit_report:
         raise HTTPException(400, "Run rejection audit first before generating appeal.")
 
+    # Extract audit data from the correct nested path
+    audit_result, policy_clauses, all_violations = _extract_audit_data(claim.audit_report)
+
     start = time.time()
     letter = await generate_appeal_letter(
         appeal_type=req.appeal_type.value,
@@ -58,13 +112,13 @@ async def generate_appeal(
             "insurer_name": claim.insurer_name,
             "policy_number": claim.policy_number,
             "claim_amount": claim.claim_amount,
-            "insurance_type": claim.insurance_type,
+            "insurance_type": claim.insurance_type.value if hasattr(claim.insurance_type, "value") else claim.insurance_type,
             "rejection_reason": claim.rejection_reason_raw or "",
             "rejection_date": claim.rejection_date.isoformat() if claim.rejection_date else "",
             "additional_context": req.additional_context or "",
         },
-        audit_report=claim.audit_report.get("audit", {}),
-        policy_clauses=claim.audit_report.get("policy_clauses", {}),
+        audit_report=audit_result,
+        policy_clauses=policy_clauses,
         user_name=current_user.full_name,
         policy_number=claim.policy_number or "UNKNOWN",
         insurer_name=claim.insurer_name,
@@ -77,8 +131,8 @@ async def generate_appeal(
         claim_id=req.claim_id,
         appeal_type=req.appeal_type,
         letter_content=letter,
-        legal_references=claim.audit_report.get("audit", {}).get("irdai_violations", []),
-        model_used="gemini-2.0-flash",
+        legal_references=all_violations,
+        model_used="groq-llama-3.3-70b",
         generation_time_ms=elapsed,
     )
     db.add(appeal)
@@ -89,7 +143,7 @@ async def generate_appeal(
         "appeal_type": req.appeal_type.value,
         "ai_disclaimer": AI_DISCLAIMER,
         "letter": letter,
-        "legal_references": appeal.legal_references,
+        "legal_references": all_violations,
         "generation_time_ms": elapsed,
     }
 
