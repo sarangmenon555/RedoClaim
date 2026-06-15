@@ -49,7 +49,6 @@ api.interceptors.response.use(
             refresh_token: refreshToken,
           });
           const { access_token, refresh_token: new_refresh } = res.data;
-          // Rotate both tokens
           setTokens(access_token, new_refresh ?? refreshToken);
 
           if (error.config) {
@@ -61,7 +60,6 @@ api.interceptors.response.use(
           window.location.href = "/auth/login";
         }
       } else {
-        // No refresh token at all — send to login
         window.location.href = "/auth/login";
       }
     }
@@ -73,10 +71,6 @@ api.interceptors.response.use(
 // ── Auth API ──────────────────────────────────────────────────────────────────
 
 export const authApi = {
-  /**
-   * Register, persist tokens immediately, then fetch /me.
-   * Tokens are in localStorage before /me fires → no 401.
-   */
   register: async (data: {
     email: string;
     password: string;
@@ -84,14 +78,10 @@ export const authApi = {
     phone?: string;
   }) => {
     const res = await api.post("/auth/register", data);
-    // Persist tokens BEFORE calling /me so the request interceptor picks them up
     setTokens(res.data.access_token, res.data.refresh_token);
     return res;
   },
 
-  /**
-   * Login, persist tokens immediately, then let the caller fetch /me.
-   */
   login: async (email: string, password: string) => {
     const form = new FormData();
     form.append("username", email);
@@ -104,6 +94,10 @@ export const authApi = {
   },
 
   me: () => api.get("/auth/me"),
+
+  // Update profile — name and/or phone
+  updateProfile: (data: { full_name?: string; phone?: string | null }) =>
+    api.patch("/auth/me", data),
 
   logout: () => {
     clearTokens();
@@ -144,10 +138,8 @@ export const analysisApi = {
     rejection_date?: string;
     gro_filed?: boolean;
     gro_filed_date?: string;
-    // Motor-specific
     survey_appointment_date?: string;
     survey_report_date?: string;
-    // Life-specific
     policy_inception_date?: string;
     documents_complete_date?: string;
   }) => api.post("/analysis/audit-rejection", data),
