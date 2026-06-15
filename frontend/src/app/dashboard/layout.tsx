@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ShieldCheck, LayoutDashboard, FileSearch, AlertTriangle,
   FileText, Clock, Upload, LogOut, User, Bell,
-  ArrowRightLeft, Monitor, FileSpreadsheet, ChevronRight
+  ArrowRightLeft, Monitor, FileSpreadsheet, ChevronRight, Settings
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useEffect } from "react";
@@ -24,7 +24,7 @@ const navGroups = [
     items: [
       { href: "/dashboard/appeals",     label: "Appeal Drafter",     icon: FileText },
       { href: "/dashboard/portability", label: "Portability Advisor",icon: ArrowRightLeft },
-      { href: "/dashboard/e-jagriti",    label: "e-Jagriti Guide",    icon: Monitor },
+      { href: "/dashboard/e-jagriti",   label: "e-Jagriti Guide",    icon: Monitor },
     ],
   },
   {
@@ -32,6 +32,12 @@ const navGroups = [
     items: [
       { href: "/dashboard/timeline",    label: "Timeline Tracker",   icon: Clock },
       { href: "/dashboard/documents",   label: "My Documents",       icon: Upload },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { href: "/dashboard/settings",    label: "Settings",           icon: Settings },
     ],
   },
 ];
@@ -120,9 +126,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             style={{color:"#FCD34D",background:"rgba(251,191,36,0.07)",border:"1px solid rgba(251,191,36,0.15)"}}>
             ⚠️ AI Disclaimer
           </a>
-          <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg mt-2"
-            style={{background:"var(--surface-2)"}}>
-            <div className="w-7 h-7 rounded-full flex items-center justify-center"
+
+          {/* User avatar — click to go to settings */}
+          <Link href="/dashboard/settings"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg mt-2 transition-all"
+            style={{background:"var(--surface-2)"}}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLElement).style.background = "rgba(139,92,246,0.1)";
+              (e.currentTarget as HTMLElement).style.border = "1px solid rgba(139,92,246,0.2)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLElement).style.background = "var(--surface-2)";
+              (e.currentTarget as HTMLElement).style.border = "1px solid transparent";
+            }}
+            title="Go to Settings">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
               style={{background:"rgba(139,92,246,0.2)"}}>
               <User size={13} style={{color:"#A78BFA"}} />
             </div>
@@ -130,7 +148,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-xs font-medium truncate" style={{color:"var(--text-primary)"}}>{user?.full_name}</p>
               <p className="text-xs truncate" style={{color:"var(--text-tertiary)"}}>{user?.email}</p>
             </div>
-          </div>
+            <Settings size={12} style={{color:"var(--text-tertiary)"}} className="shrink-0" />
+          </Link>
+
           <button onClick={handleLogout}
             className="flex items-center gap-2 w-full px-3 py-2 text-xs rounded-lg transition-colors"
             style={{color:"var(--text-secondary)"}}
