@@ -28,6 +28,8 @@ from app.services.rag.rag_pipeline import (
 from app.services.irdai.rules_engine import irdai_engine
 from app.services.irdai.motor_life_rules_engine import motor_engine, life_engine
 from app.api.deps.auth import get_current_user
+from app.services.language.sarvam_service import normalize_language
+from app.services.language.localization import localize_audit_response
 
 router = APIRouter()
 
@@ -84,6 +86,8 @@ class AuditRequest(BaseModel):
     # Life-specific fields
     policy_inception_date: Optional[datetime] = None
     documents_complete_date: Optional[datetime] = None
+    # Regional language output: en, hi, ml, ta, te, kn. Defaults to English.
+    output_language: str = "en"
 
 
 @router.post("/audit-rejection")
@@ -345,7 +349,7 @@ async def audit_claim_rejection(
             "cause_of_death_relevance": audit_result.get("cause_of_death_relevance", {}),
         }
 
-    return {
+    response = {
         "claim_id": str(claim.id),
         "report": full_report,
         "ai_disclaimer": AI_DISCLAIMER,
@@ -365,6 +369,20 @@ async def audit_claim_rejection(
             **type_specific,
         },
     }
+
+    # ── Regional language output (Malayalam, Tamil, Telugu, Kannada, Hindi) ─
+    # Translated on demand via Sarvam AI; English requests skip this
+    # entirely so the primary flow has zero added latency.
+    output_lang = normalize_language(req.output_language)
+    if output_lang != "en":
+        response = await localize_audit_response(response, output_lang)
+        cache = claim.translated_reports or {}
+        cache[output_lang] = response["report"]
+        claim.translated_reports = cache
+        await db.flush()
+
+    response["language"] = output_lang
+    return response
 
 
 # ── 2. CIS Scanner ────────────────────────────────────────────────

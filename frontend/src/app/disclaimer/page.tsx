@@ -1,7 +1,10 @@
+"use client";
 import Link from "next/link";
 import { ShieldCheck, AlertTriangle, Scale, ExternalLink, CheckCircle } from "lucide-react";
+import { useT } from "@/lib/i18n/useT";
 
 export default function DisclaimerPage() {
+  const t = useT();
   return (
     <div className="min-h-screen" style={{background:"var(--surface)"}}>
       <nav className="border-b px-4 h-16 flex items-center gap-2 sticky top-0 z-50 backdrop-blur-xl"
@@ -12,7 +15,7 @@ export default function DisclaimerPage() {
         </div>
         <Link href="/" className="font-bold" style={{color:"var(--text-primary)"}}>RedoClaim</Link>
         <span style={{color:"var(--surface-5)"}} className="mx-2">|</span>
-        <span className="text-sm" style={{color:"var(--text-secondary)"}}>Disclaimer & Terms of Use</span>
+        <span className="text-sm" style={{color:"var(--text-secondary)"}}>{t("disc_page_nav_label")}</span>
       </nav>
 
       <div className="max-w-3xl mx-auto px-4 py-12 space-y-8">
@@ -22,7 +25,7 @@ export default function DisclaimerPage() {
             <AlertTriangle className="shrink-0 mt-1" size={28} style={{color:"#FBBF24"}} />
             <div>
               <h1 className="text-xl font-bold mb-2" style={{color:"#FCD34D"}}>
-                Important: AI Research Tool — Not Legal Advice
+                {t("disc_page_title")}
               </h1>
               <p className="text-sm leading-relaxed" style={{color:"#FCD34D",opacity:0.85}}>
                 RedoClaim is an AI-powered research and document drafting tool. It is <strong>not a law firm,
@@ -36,7 +39,7 @@ export default function DisclaimerPage() {
         {/* What we are */}
         <div className="card p-6 space-y-3">
           <h2 className="text-lg font-bold flex items-center gap-2" style={{color:"var(--text-primary)"}}>
-            <CheckCircle size={18} style={{color:"#4ADE80"}} /> What RedoClaim is
+            <CheckCircle size={18} style={{color:"#4ADE80"}} /> {t("disc_what_we_are")}
           </h2>
           <ul className="space-y-2 text-sm" style={{color:"var(--text-secondary)"}}>
             {[
@@ -54,7 +57,7 @@ export default function DisclaimerPage() {
         {/* What we are not */}
         <div className="card p-6 space-y-3">
           <h2 className="text-lg font-bold flex items-center gap-2" style={{color:"var(--text-primary)"}}>
-            <AlertTriangle size={18} style={{color:"#F87171"}} /> What RedoClaim is NOT
+            <AlertTriangle size={18} style={{color:"#F87171"}} /> {t("disc_what_we_not")}
           </h2>
           <ul className="space-y-2 text-sm" style={{color:"var(--text-secondary)"}}>
             {[
@@ -72,7 +75,7 @@ export default function DisclaimerPage() {
 
         {/* AI limitations */}
         <div className="card p-6 space-y-3">
-          <h2 className="text-lg font-bold" style={{color:"var(--text-primary)"}}>AI Limitations You Must Understand</h2>
+          <h2 className="text-lg font-bold" style={{color:"var(--text-primary)"}}>{t("disc_ai_limitations")}</h2>
           <div className="space-y-3 text-sm" style={{color:"var(--text-secondary)"}}>
             <p><strong style={{color:"var(--text-primary)"}}>AI models can hallucinate.</strong> The AI models used by RedoClaim
             can generate plausible-sounding but incorrect regulation citations, wrong dates, fabricated
@@ -91,7 +94,7 @@ export default function DisclaimerPage() {
 
         {/* Your responsibilities */}
         <div className="card p-6 space-y-3">
-          <h2 className="text-lg font-bold" style={{color:"var(--text-primary)"}}>Your Responsibilities</h2>
+          <h2 className="text-lg font-bold" style={{color:"var(--text-primary)"}}>{t("disc_your_responsibilities")}</h2>
           <ul className="space-y-2 text-sm" style={{color:"var(--text-secondary)"}}>
             {[
               "Read and verify all AI-generated content before acting on it",
@@ -109,7 +112,7 @@ export default function DisclaimerPage() {
 
         {/* Where to get real help */}
         <div className="card p-6 space-y-3" style={{background:"rgba(74,222,128,0.05)",borderColor:"rgba(74,222,128,0.2)"}}>
-          <h2 className="text-lg font-bold" style={{color:"var(--text-primary)"}}>Where to get real legal help (free)</h2>
+          <h2 className="text-lg font-bold" style={{color:"var(--text-primary)"}}>{t("disc_get_help_title")}</h2>
           <div className="grid md:grid-cols-2 gap-3">
             {[
               { name: "Bima Bharosa Portal", desc: "File grievances with IRDAI", url: "https://bimabharosa.irdai.gov.in/" },
@@ -150,7 +153,7 @@ export default function DisclaimerPage() {
 
         <div className="text-center">
           <Link href="/dashboard" className="btn-primary">
-            I understand — Go to Dashboard
+            {t("disc_go_to_dashboard")}
           </Link>
         </div>
       </div>

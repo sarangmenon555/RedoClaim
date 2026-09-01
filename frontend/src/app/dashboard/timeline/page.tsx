@@ -6,8 +6,10 @@ import { format, isPast, differenceInDays } from "date-fns";
 import type { Claim } from "@/types";
 import Link from "next/link";
 import { DisclaimerBanner } from "@/components/shared/DisclaimerBanner";
+import { useT } from "@/lib/i18n/useT";
 
 export default function TimelinePage() {
+  const t = useT();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,9 +26,9 @@ export default function TimelinePage() {
   return (
     <div className="max-w-4xl space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-2xl font-bold" style={{color:"var(--text-primary)"}}>Timeline Tracker</h2>
+        <h2 className="text-2xl font-bold" style={{color:"var(--text-primary)"}}>{t("tl_title")}</h2>
         <p className="text-sm mt-1" style={{color:"var(--text-secondary)"}}>
-          IRDAI mandated deadlines for your claims. AI estimates — verify with your insurer.
+          {t("tl_subtitle")}
         </p>
       </div>
 
@@ -35,14 +37,14 @@ export default function TimelinePage() {
       {/* IRDAI TAT reference */}
       <div className="card p-5" style={{background:"rgba(139,92,246,0.06)",border:"1px solid rgba(139,92,246,0.15)"}}>
         <p className="text-xs font-semibold mb-3 flex items-center gap-2" style={{color:"#C4B5FD"}}>
-          <Info size={13} /> IRDAI Mandated Timelines (Master Circular 2024)
+          <Info size={13} /> {t("tl_irdai_timelines")}
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: "Cashless approval", value: "1 hour",  color: "#22D3EE" },
-            { label: "GRO resolution",    value: "15 days", color: "#4ADE80" },
-            { label: "Final settlement",  value: "30 days", color: "#FBBF24" },
-            { label: "Ombudsman filing",  value: "1 year",  color: "#A78BFA" },
+            { label: t("tl_cashless"), value: "1 hour",  color: "#22D3EE" },
+            { label: t("tl_gro_resolution"),    value: "15 days", color: "#4ADE80" },
+            { label: t("tl_final_settlement"),  value: "30 days", color: "#FBBF24" },
+            { label: t("tl_ombudsman_filing"),  value: "1 year",  color: "#A78BFA" },
           ].map(({ label, value, color }) => (
             <div key={label} className="rounded-xl p-3 text-center"
               style={{background:"var(--surface-2)",border:"1px solid var(--surface-5)"}}>
@@ -58,7 +60,7 @@ export default function TimelinePage() {
           style={{background:"rgba(248,113,113,0.08)",border:"1px solid rgba(248,113,113,0.2)"}}>
           <Zap size={17} style={{color:"#F87171"}} className="shrink-0" />
           <p className="text-sm font-medium" style={{color:"#FCA5A5"}}>
-            {urgentCount} claim{urgentCount > 1 ? "s have" : " has"} a GRO deadline within 5 days. File immediately!
+            {urgentCount} claim{urgentCount > 1 ? "s have" : " has"} {t("tl_file_immediately")}
           </p>
         </div>
       )}
@@ -73,11 +75,11 @@ export default function TimelinePage() {
             style={{background:"rgba(139,92,246,0.1)",border:"1px solid rgba(139,92,246,0.2)"}}>
             <Clock size={24} style={{color:"#A78BFA"}} />
           </div>
-          <p className="font-semibold" style={{color:"var(--text-primary)"}}>No claims tracked yet</p>
+          <p className="font-semibold" style={{color:"var(--text-primary)"}}>{t("tl_no_claims_title")}</p>
           <p className="text-sm mt-2 mb-4" style={{color:"var(--text-secondary)"}}>
-            Run a rejection audit to start tracking IRDAI deadlines
+            {t("tl_no_claims_desc")}
           </p>
-          <Link href="/dashboard/auditor" className="btn-primary">Audit a Rejection</Link>
+          <Link href="/dashboard/auditor" className="btn-primary">{t("tl_audit_rejection_btn")}</Link>
         </div>
       ) : (
         <div className="space-y-4">
@@ -94,15 +96,15 @@ export default function TimelinePage() {
                   <div>
                     <p className="font-semibold" style={{color:"var(--text-primary)"}}>{claim.insurer_name}</p>
                     <p className="text-xs mt-0.5" style={{color:"var(--text-tertiary)"}}>
-                      {claim.policy_number || "Policy unknown"}
+                      {claim.policy_number || t("tl_policy_unknown")}
                       {claim.claim_amount ? ` • ₹${(claim.claim_amount/100000).toFixed(1)}L` : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {groUrgent && <span className="badge-high" style={{animation:"pulse 2s infinite"}}>URGENT</span>}
+                    {groUrgent && <span className="badge-high" style={{animation:"pulse 2s infinite"}}>{t("tl_urgent")}</span>}
                     {claim.irdai_violation
-                      ? <span className="badge-high">AI: IRDAI Violation</span>
-                      : <span className="badge-low">AI: No violation</span>}
+                      ? <span className="badge-high">{t("tl_ai_violation")}</span>
+                      : <span className="badge-low">{t("tl_ai_no_violation")}</span>}
                   </div>
                 </div>
 
@@ -112,10 +114,10 @@ export default function TimelinePage() {
                       style={{background:"var(--surface-5)"}} />
                     <div className="space-y-5">
                       {[
-                        { label: "Claim rejected", date: claim.rejection_date, color: "#F87171", done: true },
-                        { label: "GRO filing deadline (15 days)", date: claim.gro_deadline, color: groUrgent ? "#F87171" : groPast ? "#6B6880" : "#FBBF24", note: groUrgent ? "⚡ File NOW" : groPast ? "Expired" : "Within 15 days of rejection" },
-                        { label: "Ombudsman filing", date: claim.irdai_deadline, color: "#A78BFA", note: "Within 45 days of rejection" },
-                        { label: "Consumer Court limit", date: claim.rejection_date ? new Date(new Date(claim.rejection_date).getTime() + 2*365*86400000).toISOString() : undefined, color: "#22D3EE", note: "2 years — Consumer Protection Act 2019" },
+                        { label: t("tl_claim_rejected"), date: claim.rejection_date, color: "#F87171", done: true },
+                        { label: t("tl_gro_deadline_lbl"), date: claim.gro_deadline, color: groUrgent ? "#F87171" : groPast ? "#6B6880" : "#FBBF24", note: groUrgent ? t("tl_file_now") : groPast ? t("tl_expired") : t("tl_within_15") },
+                        { label: t("tl_ombudsman_lbl"), date: claim.irdai_deadline, color: "#A78BFA", note: t("tl_within_45") },
+                        { label: t("tl_consumer_court_lbl"), date: claim.rejection_date ? new Date(new Date(claim.rejection_date).getTime() + 2*365*86400000).toISOString() : undefined, color: "#22D3EE", note: t("tl_2yr_note") },
                       ].map(({ label, date, color, note }, i) => (
                         <div key={i} className="flex items-start gap-3">
                           <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 -ml-8 mt-0.5"
@@ -136,7 +138,7 @@ export default function TimelinePage() {
 
                   <div className="flex gap-2 mt-5 pt-4 flex-wrap" style={{borderTop:"1px solid var(--surface-4)"}}>
                     <Link href={`/dashboard/appeals?claim_id=${claim.id}`} className="btn-primary text-xs px-3 py-2">
-                      Generate GRO Letter
+                      {t("tl_generate_gro")}
                     </Link>
                     {[
                       ["IRDAI Portal","https://igms.irda.gov.in"],

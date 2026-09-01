@@ -11,6 +11,7 @@ import Link from "next/link";
 import type { Claim, Document } from "@/types";
 import { format } from "date-fns";
 import { DisclaimerBanner } from "@/components/shared/DisclaimerBanner";
+import { useT } from "@/lib/i18n/useT";
 
 /* ─── Insurance Category Tabs ─────────────────────────────────────── */
 type InsuranceCategory = "health" | "motor" | "life";
@@ -25,7 +26,7 @@ const CATEGORIES: {
 }[] = [
   {
     id: "health",
-    label: "Health",
+    label: "Health",  // fallback label; display uses t(db_health)
     icon: Heart,
     color: "#F87171",
     accent: "rgba(248,113,113,",
@@ -68,6 +69,7 @@ function ComingSoonBadge({ color }: { color: string }) {
 }
 
 function LiveBadge() {
+  const liveLabel = useT()("db_live_badge");
   return (
     <span
       className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest"
@@ -82,7 +84,7 @@ function LiveBadge() {
         className="w-1.5 h-1.5 rounded-full animate-pulse"
         style={{ background: "#4ADE80" }}
       />
-      Live
+      {liveLabel}
     </span>
   );
 }
@@ -175,6 +177,7 @@ function ComingSoonPanel({
 /* ─── Main Dashboard ───────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const t = useT();
   const [claims, setClaims] = useState<Claim[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,7 +201,7 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      label: "Documents",
+      label: t("db_stat_documents"),
       value: loading ? "—" : documents.length,
       icon: FileSearch,
       color: "#22D3EE",
@@ -207,7 +210,7 @@ export default function DashboardPage() {
       href: "/dashboard/documents",
     },
     {
-      label: "Claims analyzed",
+      label: t("db_stat_claims"),
       value: loading ? "—" : claims.length,
       icon: AlertTriangle,
       color: "#F87171",
@@ -216,7 +219,7 @@ export default function DashboardPage() {
       href: "/dashboard/auditor",
     },
     {
-      label: "Violations found",
+      label: t("db_stat_violations"),
       value: loading ? "—" : claims.filter((c) => c.irdai_violation).length,
       icon: ShieldCheck,
       color: "#FBBF24",
@@ -225,7 +228,7 @@ export default function DashboardPage() {
       href: "/dashboard/auditor",
     },
     {
-      label: "Urgent deadlines",
+      label: t("db_stat_deadlines"),
       value: loading ? "—" : urgentClaims.length,
       icon: Clock,
       color: "#4ADE80",
@@ -238,45 +241,45 @@ export default function DashboardPage() {
   const quickActions = [
     {
       href: "/dashboard/analyzer",
-      label: "Analyze Policy",
+      label: t("db_qa_analyze"),
       icon: FileSearch,
       color: "#22D3EE",
-      desc: "Extract clauses",
+      desc: t("db_qa_analyze_desc"),
     },
     {
       href: "/dashboard/auditor",
-      label: "Audit Rejection",
+      label: t("db_qa_audit"),
       icon: AlertTriangle,
       color: "#F87171",
-      desc: "IRDAI check",
+      desc: t("db_qa_audit_desc"),
     },
     {
       href: "/dashboard/cis",
-      label: "Scan CIS",
+      label: t("db_qa_cis"),
       icon: FileText,
       color: "#A78BFA",
-      desc: "Inclusions/exclusions",
+      desc: t("db_qa_cis_desc"),
     },
     {
       href: "/dashboard/appeals",
-      label: "Draft Appeal",
+      label: t("db_qa_appeal"),
       icon: FileText,
       color: "#4ADE80",
-      desc: "GRO / Ombudsman",
+      desc: t("db_qa_appeal_desc"),
     },
     {
       href: "/dashboard/e-jagriti",
-      label: "e-Jagriti Guide",
+      label: t("nav_edaakhil"),
       icon: Clock,
       color: "#FBBF24",
-      desc: "Consumer Court",
+      desc: t("db_qa_edaakhil_desc"),
     },
     {
       href: "/dashboard/settings",
-      label: "Settings",
+      label: t("settings"),
       icon: User,
       color: "#f97dcc",
-      desc: "Account Settings",
+      desc: t("db_qa_settings_desc"),
     },
   ];
 
@@ -294,7 +297,7 @@ export default function DashboardPage() {
             Hey, {user?.full_name?.split(" ")[0]}
           </h2>
           <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            AI-assisted insurance research
+            {t("db_greeting_sub")}
           </p>
         </div>
         <Sparkles
@@ -325,7 +328,7 @@ export default function DashboardPage() {
               className="font-semibold text-sm"
               style={{ color: "#FCA5A5" }}
             >
-              Urgent: Upcoming IRDAI Deadlines
+              {t("db_urgent_title")}
             </p>
             {urgentClaims.map((c) => {
               const days = Math.ceil(
@@ -337,7 +340,7 @@ export default function DashboardPage() {
                   className="text-xs mt-1"
                   style={{ color: "#F87171" }}
                 >
-                  GRO deadline vs <strong>{c.insurer_name}</strong> —{" "}
+                  {t("db_gro_vs")} <strong>{c.insurer_name}</strong> —{" "}
                   <strong>
                     {days} day{days !== 1 ? "s" : ""} left
                   </strong>
@@ -348,14 +351,14 @@ export default function DashboardPage() {
               className="text-xs mt-1.5"
               style={{ color: "rgba(248,113,113,0.6)" }}
             >
-              ⚠️ AI estimate — verify with insurer
+              {t("db_ai_estimate")}
             </p>
             <Link
               href="/dashboard/timeline"
               className="text-xs font-medium mt-1 inline-block"
               style={{ color: "#F87171", textDecoration: "underline" }}
             >
-              View Timeline →
+              {t("db_view_timeline")}
             </Link>
           </div>
         </div>
@@ -405,7 +408,7 @@ export default function DashboardPage() {
                   transition: "color 0.2s",
                 }}
               >
-                {cat.label}
+                {t(`db_${cat.id}`)}
               </span>
               <div className="absolute top-2 right-2">
                 {cat.live ? <LiveBadge /> : <ComingSoonBadge color={cat.color} />}
@@ -458,7 +461,7 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Quick actions */}
+          {/* {t("db_quick_actions")} */}
           <div
             className="card p-5"
             style={{ background: "var(--surface-1)" }}
@@ -467,7 +470,7 @@ export default function DashboardPage() {
               className="text-sm font-semibold mb-4"
               style={{ color: "var(--text-secondary)" }}
             >
-              Quick actions
+              {t("db_quick_actions")}
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {quickActions.map(({ href, label, icon: Icon, color, desc }) => (
@@ -526,7 +529,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Recent claims */}
+          {/* {t("db_recent_claims")} */}
           {claims.length > 0 && (
             <div
               className="card overflow-hidden"
@@ -540,14 +543,14 @@ export default function DashboardPage() {
                   className="text-sm font-semibold"
                   style={{ color: "var(--text-primary)" }}
                 >
-                  Recent claims
+                  {t("db_recent_claims")}
                 </h3>
                 <Link
                   href="/dashboard/auditor"
                   className="text-xs"
                   style={{ color: "#A78BFA" }}
                 >
-                  View all →
+                  {t("view_all")}
                 </Link>
               </div>
               <div
@@ -592,7 +595,7 @@ export default function DashboardPage() {
                                 new Date(claim.rejection_date),
                                 "dd MMM yyyy"
                               )
-                            : "Date unknown"}
+                            : t("db_date_unknown")}
                           {claim.claim_amount
                             ? ` • ₹${(claim.claim_amount / 100000).toFixed(1)}L`
                             : ""}
@@ -601,7 +604,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       {claim.irdai_violation && (
-                        <span className="badge-high">AI: Violation</span>
+                        <span className="badge-high">{t("db_ai_violation_tag")}</span>
                       )}
                       <span
                         className="text-xs px-2 py-0.5 rounded-full font-medium"
@@ -648,16 +651,16 @@ export default function DashboardPage() {
                 className="font-semibold mb-2"
                 style={{ color: "var(--text-primary)" }}
               >
-                Start your research
+                {t("db_empty_title")}
               </h3>
               <p
                 className="text-sm mb-5"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Upload your insurance policy or rejection letter to begin
+                {t("db_empty_desc")}
               </p>
               <Link href="/dashboard/analyzer" className="btn-primary">
-                Upload first document <ArrowRight size={14} />
+                {t("db_upload_first_doc")} <ArrowRight size={14} />
               </Link>
             </div>
           )}

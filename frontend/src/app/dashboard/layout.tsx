@@ -7,31 +7,35 @@ import {
   ArrowRightLeft, Monitor, FileSpreadsheet, ChevronRight, Settings
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { useT } from "@/lib/i18n/useT";
+import { isSupportedLanguage } from "@/lib/i18n/languages";
+import LanguageSwitcher from "@/components/shared/LanguageSwitcher";
 import { useEffect } from "react";
 
 const navGroups = [
   {
-    label: "Analysis",
+    groupKey: "nav_group_analysis",
     items: [
-      { href: "/dashboard",             label: "Overview",           icon: LayoutDashboard },
-      { href: "/dashboard/analyzer",    label: "Policy Analyzer",    icon: FileSearch },
-      { href: "/dashboard/cis",         label: "CIS Scanner",        icon: FileSpreadsheet },
-      { href: "/dashboard/auditor",     label: "Rejection Auditor",  icon: AlertTriangle },
+      { href: "/dashboard",             labelKey: "nav_overview", icon: LayoutDashboard },
+      { href: "/dashboard/analyzer",    labelKey: "nav_analyzer", icon: FileSearch },
+      { href: "/dashboard/cis",         labelKey: "nav_cis",      icon: FileSpreadsheet },
+      { href: "/dashboard/auditor",     labelKey: "nav_auditor",  icon: AlertTriangle },
     ],
   },
   {
-    label: "Action",
+    groupKey: "nav_group_action",
     items: [
-      { href: "/dashboard/appeals",     label: "Appeal Drafter",     icon: FileText },
-      { href: "/dashboard/portability", label: "Portability Advisor",icon: ArrowRightLeft },
-      { href: "/dashboard/e-jagriti",   label: "e-Jagriti Guide",    icon: Monitor },
+      { href: "/dashboard/appeals",     labelKey: "nav_appeals",     icon: FileText },
+      { href: "/dashboard/portability", labelKey: "nav_portability", icon: ArrowRightLeft },
+      { href: "/dashboard/e-jagriti",   labelKey: "nav_edaakhil",    icon: Monitor },
     ],
   },
   {
-    label: "Tracking",
+    groupKey: "nav_group_tracking",
     items: [
-      { href: "/dashboard/timeline",    label: "Timeline Tracker",   icon: Clock },
-      { href: "/dashboard/documents",   label: "My Documents",       icon: Upload },
+      { href: "/dashboard/timeline",    labelKey: "nav_timeline",  icon: Clock },
+      { href: "/dashboard/documents",   labelKey: "nav_documents", icon: Upload },
     ],
   },
 ];
@@ -40,10 +44,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const setLanguage = useLanguageStore((s) => s.setLanguage);
+  const t = useT();
 
   useEffect(() => {
     if (!isAuthenticated) router.push("/auth/login");
   }, [isAuthenticated, router]);
+
+  // Adopt the signed-in user's saved report language on first load, so
+  // it's consistent across devices even if this browser has no local
+  // preference set yet.
+  useEffect(() => {
+    if (user?.preferred_language && isSupportedLanguage(user.preferred_language)) {
+      setLanguage(user.preferred_language);
+    }
+  }, [user?.preferred_language, setLanguage]);
 
   if (!isAuthenticated) return null;
 
@@ -71,13 +86,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Nav groups */}
         <nav className="flex-1 py-4 px-3 space-y-5 overflow-y-auto">
           {navGroups.map((group) => (
-            <div key={group.label}>
+            <div key={group.groupKey}>
               <p className="text-xs font-semibold px-3 mb-1.5 tracking-widest uppercase"
                 style={{color:"var(--text-tertiary)"}}>
-                {group.label}
+                {t(group.groupKey)}
               </p>
               <div className="space-y-0.5">
-                {group.items.map(({ href, label, icon: Icon }) => {
+                {group.items.map(({ href, labelKey, icon: Icon }) => {
                   const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
                   return (
                     <Link key={href} href={href}
@@ -103,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         }
                       }}>
                       <Icon size={15} />
-                      <span>{label}</span>
+                      <span>{t(labelKey)}</span>
                       {active && <ChevronRight size={12} className="ml-auto opacity-60" />}
                     </Link>
                   );
@@ -118,7 +133,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <a href="/disclaimer"
             className="flex items-center gap-2 w-full px-3 py-2 text-xs rounded-lg transition-colors"
             style={{color:"#FCD34D",background:"rgba(251,191,36,0.07)",border:"1px solid rgba(251,191,36,0.15)"}}>
-            ⚠️ AI Disclaimer
+            ⚠️ {t("disclaimer_badge")}
           </a>
 
           {/* User avatar — click to go to settings */}
@@ -150,7 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             style={{color:"var(--text-secondary)"}}
             onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#F87171"; (e.currentTarget as HTMLElement).style.background = "rgba(239,68,68,0.08)"; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; (e.currentTarget as HTMLElement).style.background = "transparent"; }}>
-            <LogOut size={13} /> Sign out
+            <LogOut size={13} /> {t("sign_out")}
           </button>
         </div>
       </aside>
@@ -162,13 +177,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           style={{background:"rgba(10,10,15,0.9)",borderColor:"var(--surface-4)"}}>
           <div>
             <h1 className="text-sm font-semibold" style={{color:"var(--text-primary)"}}>
-              {currentPage?.label || "Dashboard"}
+              {currentPage ? t(currentPage.labelKey) : "Dashboard"}
             </h1>
             <p className="text-xs" style={{color:"var(--text-tertiary)"}}>
               IRDAI Master Circular 2024 • All AI runs locally
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSwitcher compact />
             <button className="relative w-9 h-9 flex items-center justify-center rounded-lg transition"
               style={{border:"1px solid var(--surface-5)"}}
               onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = "var(--surface-2)"}
@@ -177,7 +193,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full" style={{background:"#F87171"}} />
             </button>
             <Link href="/dashboard/auditor" className="btn-primary text-xs px-3 py-2">
-              + Audit Claim
+              {t("audit_claim_cta")}
             </Link>
           </div>
         </header>

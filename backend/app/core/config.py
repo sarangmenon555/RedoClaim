@@ -30,6 +30,14 @@ class Settings(BaseSettings):
     # Can be removed once Jina is confirmed working
     GEMINI_API_KEY: str = ""
 
+    # ── Sarvam AI (regional language translation) ─────────────────
+    # Get your key at: https://dashboard.sarvam.ai/key-management
+    # Powers Malayalam, Tamil, Telugu, Kannada, and Hindi support across
+    # RedoClaim. Optional — regional language endpoints fall back to
+    # returning original English text if unset.
+    SARVAM_API_KEY: str = ""
+    DEFAULT_LANGUAGE: str = "en"
+
     # Model assignments (Groq)
     MODEL_EXTRACTION: str = "gemini-2.5-flash"   # maps to llama-3.3-70b-versatile
     MODEL_LEGAL: str = "gemini-2.5-flash"

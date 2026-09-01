@@ -4,6 +4,7 @@ export interface User {
   email: string;
   full_name: string;
   role: "user" | "admin";
+  preferred_language?: string; // en, hi, ml, ta, te, kn
 }
 
 export interface AuthTokens {
@@ -291,6 +292,8 @@ export interface AuditResponse {
     section_45_applicable?: boolean;
     cause_of_death_relevance?: { undisclosed_condition_related_to_death: boolean | "unknown"; note: string };
   };
+  // Present when output_language was set to a non-English value
+  language?: string;
 }
 
 export interface AppealResponse {

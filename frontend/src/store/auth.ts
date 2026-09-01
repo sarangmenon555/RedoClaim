@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { User } from "@/types";
+import { useLanguageStore } from "@/store/language";
+import { isSupportedLanguage } from "@/lib/i18n/languages";
 
 interface AuthState {
   user: User | null;
@@ -23,6 +25,12 @@ export const useAuthStore = create<AuthState>()(
         if (typeof window !== "undefined") {
           localStorage.setItem("access_token", tokens.access_token);
           localStorage.setItem("refresh_token", tokens.refresh_token);
+        }
+        // Adopt the user's saved report language (set in Settings) so the
+        // UI and audit reports switch to it automatically on login,
+        // even on a browser that's never set a local preference before.
+        if (isSupportedLanguage(user?.preferred_language)) {
+          useLanguageStore.getState().setLanguage(user.preferred_language as string);
         }
         set({
           user,

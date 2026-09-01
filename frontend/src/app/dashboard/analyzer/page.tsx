@@ -10,9 +10,11 @@ import {
 } from "lucide-react";
 import type { Document, PolicyClauses, RiskFlag } from "@/types";
 import { DisclaimerBanner, AIOutputLabel } from "@/components/shared/DisclaimerBanner";
+import { useT } from "@/lib/i18n/useT";
 
 function AnalyzerPageInner() {
   const searchParams = useSearchParams();
+  const t = useT();
   const [uploading, setUploading] = useState(false);
   const [document, setDocument] = useState<Document | null>(null);
   const [polling, setPolling] = useState(false);
@@ -127,9 +129,9 @@ function AnalyzerPageInner() {
   return (
     <div className="max-w-4xl space-y-6 animate-fade-in" style={{color:"var(--text-primary)"}}>
       <div>
-        <h2 className="text-2xl font-bold style-text-primary">Policy Analyzer</h2>
+        <h2 className="text-2xl font-bold style-text-primary">{t("az_title")}</h2>
         <p className="style-text-tertiary text-sm mt-1">
-          AI extracts key clauses from your policy PDF. Results are a starting point — verify against your original document.
+          {t("az_subtitle")}
         </p>
       </div>
 
@@ -139,8 +141,8 @@ function AnalyzerPageInner() {
       {loadingDoc && (
         <div className="card p-8 text-center">
           <Loader2 className="animate-spin text-violet-400 mx-auto mb-3" size={32} />
-          <p className="font-medium style-text-secondary">Loading your policy...</p>
-          <p className="text-xs style-text-tertiary mt-1">Waiting for analysis to complete</p>
+          <p className="font-medium style-text-secondary">{t("az_loading_policy")}</p>
+          <p className="text-xs style-text-tertiary mt-1">{t("az_waiting_analysis")}</p>
         </div>
       )}
 
@@ -157,7 +159,7 @@ function AnalyzerPageInner() {
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="animate-spin text-violet-400" size={36} />
               <p className="font-medium style-text-secondary">
-                {uploading ? "Uploading..." : "Analyzing policy"}
+                {uploading ? t("az_uploading") : t("az_analyzing")}
               </p>
             </div>
           ) : (
@@ -167,9 +169,9 @@ function AnalyzerPageInner() {
               </div>
               <div>
                 <p className="font-semibold style-text-primary">
-                  {isDragActive ? "Drop policy here" : "Drop policy PDF or click to upload"}
+                  {isDragActive ? t("az_drop_here") : t("az_drop_or_click")}
                 </p>
-                <p className="text-sm style-text-tertiary mt-1">PDF, JPG, PNG up to 50MB</p>
+                <p className="text-sm style-text-tertiary mt-1">{t("az_file_size_limit")}</p>
               </div>
             </div>
           )}
@@ -195,16 +197,14 @@ function AnalyzerPageInner() {
               </div>
             </div>
             <button onClick={() => setDocument(null)} className="btn-secondary text-xs px-3 py-1.5">
-              Analyze another
+              {t("az_analyze_another")}
             </button>
           </div>
 
           <div className="card p-4 border-amber-500\/20 bg-surface-2 flex items-start gap-3">
             <AlertTriangle size={15} className="text-amber-600 shrink-0 mt-0.5" />
             <div className="text-xs text-amber-800 leading-relaxed">
-              <strong>Verify this output.</strong> OCR and AI extraction can miss clauses, misread numbers,
-              or misinterpret policy language. Always compare these results against your actual policy document.
-              If a clause is missing here, it may still be in your policy.
+              {t("az_verify_output")}
             </div>
           </div>
 
@@ -212,7 +212,7 @@ function AnalyzerPageInner() {
             <div className="card p-5 border-l-4 border-violet-500">
               <div className="flex items-center gap-2 mb-2">
                 <Info size={16} className="text-violet-400" />
-                <span className="font-semibold style-text-primary">AI Summary</span>
+                <span className="font-semibold style-text-primary">{t("az_ai_summary")}</span>
                 <AIOutputLabel />
               </div>
               <p className="text-sm style-text-secondary leading-relaxed">{clauses.plain_english_summary}</p>
@@ -226,7 +226,7 @@ function AnalyzerPageInner() {
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="text-red-500" size={18} />
                   <span className="font-semibold style-text-primary">
-                    Potentially Risky Clauses ({clauses.risky_clauses.length})
+                    {t("az_risky_clauses")} ({clauses.risky_clauses.length})
                   </span>
                   <AIOutputLabel />
                 </div>
@@ -244,7 +244,7 @@ function AnalyzerPageInner() {
                     </div>
                   ))}
                   <div className="p-3 bg-surface-2 text-xs style-text-tertiary">
-                    These are AI-identified potential risks. A clause flagged here may still be valid under your specific policy terms.
+                    {t("az_risky_note")}
                   </div>
                 </div>
               )}
@@ -252,14 +252,14 @@ function AnalyzerPageInner() {
           )}
 
           {clauses.waiting_periods?.length > 0 && (
-            <ClauseSection title={`Waiting Periods (${clauses.waiting_periods.length})`}
+            <ClauseSection title={`${t("az_waiting_periods")} (${clauses.waiting_periods.length})`}
               icon={<Clock size={18} className="text-amber-500" />}
               isExpanded={expanded["waiting"]} onToggle={() => toggle("waiting")}>
               {clauses.waiting_periods.map((wp, i) => (
                 <div key={i} className="p-4 flex items-start justify-between">
                   <div>
                     <p className="font-medium style-text-primary text-sm">{wp.condition}</p>
-                    <p className="text-sm style-text-tertiary mt-0.5">Duration: {wp.duration}</p>
+                    <p className="text-sm style-text-tertiary mt-0.5">{t("az_duration")} {wp.duration}</p>
                   </div>
                   <span className={`badge-${wp.risk_level}`}>{wp.risk_level}</span>
                 </div>
@@ -268,7 +268,7 @@ function AnalyzerPageInner() {
           )}
 
           {clauses.exclusions?.length > 0 && (
-            <ClauseSection title={`Exclusions (${clauses.exclusions.length})`}
+            <ClauseSection title={`${t("az_exclusions")} (${clauses.exclusions.length})`}
               icon={<Shield size={18} className="text-red-500" />}
               isExpanded={expanded["exclusions"]} onToggle={() => toggle("exclusions")}>
               {clauses.exclusions.map((ex, i) => (
@@ -281,26 +281,26 @@ function AnalyzerPageInner() {
                 </div>
               ))}
               <div className="p-3 bg-surface-2 text-xs style-text-tertiary border-t">
-                AI may not extract all exclusions from poorly formatted documents. Check your original policy for a complete list.
+                {t("az_exclusions_note")}
               </div>
             </ClauseSection>
           )}
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
-              { label: "Room Rent Cap", value: clauses.room_rent_cap?.limit || "No cap detected" },
+              { label: t("az_room_rent"), value: clauses.room_rent_cap?.limit || t("az_no_cap_detected") },
               { 
-                label: "Co-payment", 
+                label: t("az_copayment"), 
                 value: clauses.co_payment?.percentage 
                 ? clauses.co_payment.applies_to 
                 ? `${clauses.co_payment.percentage} (${clauses.co_payment.applies_to})`
                 : clauses.co_payment.percentage
-                : "None detected"
+                : t("az_none_detected")
               },
-              { label: "PED Waiting", value: clauses.pre_existing_disease_waiting || "N/A" },
-              { label: "Moratorium", value: clauses.moratorium_period || "5 years (IRDAI 2024)" },
-              { label: "Network", value: clauses.network_hospitals || "Unknown" },
-              { label: "Portability", value: clauses.portability_allowed ? "Allowed" : "Check policy" },
+              { label: t("az_ped_waiting"), value: clauses.pre_existing_disease_waiting || "N/A" },
+              { label: t("az_moratorium"), value: clauses.moratorium_period || "5 years (IRDAI 2024)" },
+              { label: t("az_network"), value: clauses.network_hospitals || t("az_unknown") },
+              { label: t("az_portability"), value: clauses.portability_allowed ? t("az_allowed") : t("az_check_policy") },
             ].map(({ label, value }) => (
               <div key={label} className="card p-4">
                 <p className="text-xs style-text-tertiary mb-1">{label}</p>
@@ -310,7 +310,7 @@ function AnalyzerPageInner() {
           </div>
 
           <div className="text-xs text-center style-text-tertiary pb-2">
-            All values above are AI-extracted estimates. Verify against your original policy document.
+            {t("az_values_note")}
           </div>
         </div>
       )}
@@ -319,13 +319,12 @@ function AnalyzerPageInner() {
       {document && !clauses && (
         <div className="card p-8 text-center">
           <AlertTriangle className="mx-auto text-amber-500 mb-3" size={32} />
-          <p className="font-semibold style-text-secondary mb-1">No clauses extracted</p>
+          <p className="font-semibold style-text-secondary mb-1">{t("az_no_clauses_title")}</p>
           <p className="text-sm style-text-tertiary">
-            The AI could not extract structured clauses from this document.
-            This can happen with scanned or image-only PDFs.
+            {t("az_no_clauses_desc")}
           </p>
           <button onClick={() => setDocument(null)} className="btn-secondary mt-4 text-sm">
-            Try another file
+            {t("try_another_file")}
           </button>
         </div>
       )}

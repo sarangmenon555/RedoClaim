@@ -6,11 +6,13 @@ import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import toast from "react-hot-toast";
 import { ShieldCheck, Loader2, Eye, EyeOff, AlertTriangle, Zap } from "lucide-react";
+import { useT } from "@/lib/i18n/useT";
 
 const DEMO_EMAIL    = "demo@redoclaim.in";
 const DEMO_PASSWORD = "RedoClaim@demo2024";
 
 export default function LoginPage() {
+  const t = useT();
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const [form, setForm] = useState({ email: "", password: "" });
@@ -66,8 +68,8 @@ export default function LoginPage() {
             </div>
             <span className="font-bold text-xl" style={{color:"var(--text-primary)"}}>RedoClaim</span>
           </div>
-          <h1 className="text-2xl font-bold" style={{color:"var(--text-primary)"}}>Welcome back</h1>
-          <p className="text-sm mt-1" style={{color:"var(--text-secondary)"}}>Sign in to your account</p>
+          <h1 className="text-2xl font-bold" style={{color:"var(--text-primary)"}}>{t("auth_welcome_back")}</h1>
+          <p className="text-sm mt-1" style={{color:"var(--text-secondary)"}}>{t("auth_sign_in_sub")}</p>
         </div>
 
         {/* ── Try Demo banner ── */}
@@ -82,21 +84,21 @@ export default function LoginPage() {
           }}
           suppressHydrationWarning>
           {demoLoading
-            ? <><Loader2 size={14} className="animate-spin" /> Signing in to demo...</>
-            : <>Try Demo — No signup needed</>}
+            ? <><Loader2 size={14} className="animate-spin" /> {t("auth_signing_in_demo")}</>
+            : <>{t("auth_try_demo")}</>}
         </button>
 
         {/* Divider */}
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 h-px" style={{background:"var(--surface-4)"}} />
-          <span className="text-xs" style={{color:"var(--text-tertiary)"}}>or sign in with your account</span>
+          <span className="text-xs" style={{color:"var(--text-tertiary)"}}>{t("auth_or_sign_in")}</span>
           <div className="flex-1 h-px" style={{background:"var(--surface-4)"}} />
         </div>
 
         <form onSubmit={handleSubmit} className="card p-7 space-y-4"
           style={{background:"var(--surface-1)",border:"1px solid var(--surface-5)"}}>
           <div>
-            <label className="label">Email address</label>
+            <label className="label">{t("auth_email")}</label>
             <input
               type="email"
               className="input"
@@ -108,7 +110,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="label">Password</label>
+            <label className="label">{t("auth_password")}</label>
             <div className="relative">
               <input
                 type={showPwd ? "text" : "password"}
@@ -135,16 +137,16 @@ export default function LoginPage() {
             disabled={loading}
             className="btn-primary w-full justify-center mt-2 py-3"
             suppressHydrationWarning>
-            {loading ? <><Loader2 size={15} className="animate-spin" /> Signing in...</> : "Sign in"}
+            {loading ? <><Loader2 size={15} className="animate-spin" /> {t("auth_signing_in")}</> : t("auth_sign_in")}
           </button>
 
           <p className="text-center text-sm" style={{color:"var(--text-tertiary)"}}>
-            Don't have an account?{" "}
+            {t("auth_no_account")}{" "}
             <Link href="/auth/register" className="font-medium transition"
               style={{color:"#A78BFA"}}
               onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.color = "#C4B5FD"}
               onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.color = "#A78BFA"}>
-              Register free
+              {t("auth_register_free")}
             </Link>
           </p>
         </form>
@@ -153,7 +155,7 @@ export default function LoginPage() {
         <div className="mt-4 flex items-start gap-2 text-xs p-3 rounded-xl"
           style={{background:"rgba(251,191,36,0.06)",border:"1px solid rgba(251,191,36,0.12)",color:"#FCD34D"}}>
           <AlertTriangle size={11} className="mt-0.5 shrink-0" />
-          AI research tool — outputs are not legal advice.{" "}
+          {t("auth_ai_tool_note")}{" "}
           <Link href="/disclaimer" className="underline shrink-0">Disclaimer</Link>
         </div>
       </div>

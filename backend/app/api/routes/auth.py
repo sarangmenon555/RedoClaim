@@ -41,6 +41,7 @@ class TokenResponse(BaseModel):
 class UpdateProfileRequest(BaseModel):
     full_name: Optional[str] = None
     phone: Optional[str] = None
+    preferred_language: Optional[str] = None  # en, hi, ml, ta, te, kn
 
 
 class ChangePasswordRequest(BaseModel):
@@ -191,6 +192,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "phone": current_user.phone,
         "role": current_user.role,
         "is_active": current_user.is_active,
+        "preferred_language": current_user.preferred_language,
     }
 
 
@@ -213,6 +215,10 @@ async def update_profile(
     if req.phone is not None:
         current_user.phone = req.phone.strip() or None
 
+    if req.preferred_language is not None:
+        from app.services.language.sarvam_service import normalize_language
+        current_user.preferred_language = normalize_language(req.preferred_language)
+
     await db.flush()
     logger.info(f"Profile updated: {current_user.email}")
 
@@ -223,6 +229,7 @@ async def update_profile(
         "phone": current_user.phone,
         "role": current_user.role,
         "is_active": current_user.is_active,
+        "preferred_language": current_user.preferred_language,
     }
 
 @router.post("/me/password")

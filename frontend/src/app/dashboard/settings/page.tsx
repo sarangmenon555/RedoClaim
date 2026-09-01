@@ -4,9 +4,11 @@ import { authApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import {
   User, Phone, Save, Loader2, CheckCircle, Shield,
-  LogOut, Lock, Trash2, AlertTriangle, Eye, EyeOff
+  LogOut, Lock, Trash2, AlertTriangle, Eye, EyeOff, Languages
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useLanguageStore } from "@/store/language";
+import { SUPPORTED_LANGUAGES, isSupportedLanguage } from "@/lib/i18n/languages";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -17,6 +19,8 @@ export default function SettingsPage() {
 
   // Profile form
   const [profile, setProfile] = useState({ full_name: "", phone: "" });
+  const { language, setLanguage } = useLanguageStore();
+  const [savingLanguage, setSavingLanguage] = useState(false);
 
   // Password form
   const [passwordForm, setPasswordForm] = useState({
@@ -39,10 +43,26 @@ export default function SettingsPage() {
         phone: r.data.phone || "",
       });
       setEmail(r.data.email || "");
+      if (isSupportedLanguage(r.data.preferred_language)) {
+        setLanguage(r.data.preferred_language);
+      }
     }).catch(() => {
       toast.error("Could not load profile");
     }).finally(() => setLoading(false));
   }, []);
+
+  const handleSaveLanguage = async (code: string) => {
+    setLanguage(code);
+    setSavingLanguage(true);
+    try {
+      await authApi.updateProfile({ preferred_language: code });
+      toast.success("Report language updated");
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Could not save language preference");
+    } finally {
+      setSavingLanguage(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     if (!profile.full_name.trim()) {
@@ -182,6 +202,36 @@ export default function SettingsPage() {
             <><Save size={15} /> Save changes</>
           )}
         </button>
+      </div>
+
+      {/* ── Report Language ── */}
+      <div className="card p-6 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Languages size={16} className="text-violet-400" />
+          <h3 className="font-semibold style-text-primary">Report Language</h3>
+        </div>
+        <p className="text-xs style-text-tertiary -mt-2">
+          Choose the language for your audit reports, appeal letters, and guidance.
+          Powered by Sarvam AI.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {SUPPORTED_LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              onClick={() => handleSaveLanguage(l.code)}
+              disabled={savingLanguage}
+              className="flex items-center justify-between px-3 py-2.5 rounded-lg text-sm transition-all"
+              style={
+                l.code === language
+                  ? { background: "rgba(139,92,246,0.15)", color: "#C4B5FD", border: "1px solid rgba(139,92,246,0.3)" }
+                  : { color: "var(--text-secondary)", border: "1px solid var(--surface-5)" }
+              }
+            >
+              <span>{l.label}</span>
+              {l.code === language && <CheckCircle size={14} />}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Change Password ── */}

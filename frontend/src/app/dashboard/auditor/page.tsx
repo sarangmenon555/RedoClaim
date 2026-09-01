@@ -2,7 +2,9 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useDropzone } from "react-dropzone";
 import { useSearchParams } from "next/navigation";
-import { documentsApi, analysisApi } from "@/lib/api";
+import { documentsApi, analysisApi, languageApi } from "@/lib/api";
+import { useLanguageStore } from "@/store/language";
+import { SUPPORTED_LANGUAGES } from "@/lib/i18n/languages";
 import toast from "react-hot-toast";
 import {
   Upload, AlertTriangle, CheckCircle, XCircle, Shield,
@@ -16,12 +18,15 @@ type Step = "upload" | "form" | "analyzing" | "result";
 
 function AuditorPageInner() {
   const searchParams = useSearchParams();
+  const language = useLanguageStore((s) => s.language);
 
   const [step, setStep] = useState<Step>("upload");
   const [rejectionDoc, setRejectionDoc] = useState<Document | null>(null);
   const [policyDocs, setPolicyDocs] = useState<Document[]>([]);
   const [cisDocs, setCisDocs] = useState<Document[]>([]);
   const [auditResult, setAuditResult] = useState<any>(null);
+  const [reportLanguage, setReportLanguage] = useState<string>("en");
+  const [translatingReport, setTranslatingReport] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loadingDoc, setLoadingDoc] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -164,8 +169,10 @@ function AuditorPageInner() {
         survey_report_date: form.insuranceType === "motor" ? (form.surveyReportDate || undefined) : undefined,
         policy_inception_date: form.insuranceType === "life" ? (form.policyInceptionDate || undefined) : undefined,
         documents_complete_date: form.insuranceType === "life" ? (form.documentsCompleteDate || undefined) : undefined,
+        output_language: language,
       });
       setAuditResult(res.data);
+      setReportLanguage(res.data.language || language);
       setStep("result");
     } catch (e: any) {
       const detail = e?.response?.data?.detail;
@@ -179,6 +186,20 @@ function AuditorPageInner() {
   };
 
   const toggle = (k: string) => setExpandedSections(p => ({ ...p, [k]: !p[k] }));
+
+  const viewReportInLanguage = async (code: string) => {
+    if (!auditResult?.claim_id || code === reportLanguage) return;
+    setTranslatingReport(true);
+    try {
+      const res = await languageApi.translateClaimReport(auditResult.claim_id, code);
+      setAuditResult((prev: any) => ({ ...prev, report: res.data.report }));
+      setReportLanguage(code);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Could not translate report");
+    } finally {
+      setTranslatingReport(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl space-y-6 animate-fade-in" style={{ color: "var(--text-primary)" }}>
@@ -418,7 +439,14 @@ function AuditorPageInner() {
       )}
 
       {step === "result" && auditResult && (
-        <AuditResultView result={auditResult} toggle={toggle} expandedSections={expandedSections} />
+        <AuditResultView
+          result={auditResult}
+          toggle={toggle}
+          expandedSections={expandedSections}
+          reportLanguage={reportLanguage}
+          onChangeLanguage={viewReportInLanguage}
+          translating={translatingReport}
+        />
       )}
     </div>
   );
@@ -436,7 +464,7 @@ export default function AuditorPage() {
   );
 }
 
-function AuditResultView({ result, toggle, expandedSections }: any) {
+function AuditResultView({ result, toggle, expandedSections, reportLanguage, onChangeLanguage, translating }: any) {
   const { summary, report } = result;
   const hoe = report?.hierarchy_of_evidence;
   const sla = hoe?.step1_sla;
@@ -451,6 +479,29 @@ function AuditResultView({ result, toggle, expandedSections }: any) {
 
   return (
     <div className="space-y-4 animate-slide-up">
+      {/* Report language selector */}
+      {onChangeLanguage && (
+        <div className="card p-3 flex items-center gap-2 flex-wrap">
+          <span className="text-xs style-text-tertiary shrink-0">View this report in:</span>
+          {SUPPORTED_LANGUAGES.map((l: any) => (
+            <button
+              key={l.code}
+              onClick={() => onChangeLanguage(l.code)}
+              disabled={translating}
+              className="px-2.5 py-1 rounded-md text-xs font-medium transition-all"
+              style={
+                l.code === reportLanguage
+                  ? { background: "rgba(139,92,246,0.15)", color: "#C4B5FD", border: "1px solid rgba(139,92,246,0.3)" }
+                  : { color: "var(--text-secondary)", border: "1px solid var(--surface-5)" }
+              }
+            >
+              {l.label}
+            </button>
+          ))}
+          {translating && <Loader2 size={13} className="animate-spin text-violet-400 ml-1" />}
+        </div>
+      )}
+
       {/* Verdict */}
       <div className={`card p-6 border-l-4 ${!summary.is_valid_rejection ? "border-red-500 bg-surface-2" : "border-green-500 bg-surface-2"}`}>
         <div className="flex items-start justify-between flex-wrap gap-4">

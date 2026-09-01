@@ -9,6 +9,7 @@ import {
 import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import toast from "react-hot-toast";
+import LanguageSwitcher from "@/components/shared/LanguageSwitcher";
 
 const DEMO_EMAIL    = "demo@redoclaim.in";
 const DEMO_PASSWORD = "RedoClaim@demo2024";
@@ -63,6 +64,7 @@ export default function HomePage() {
             </button>
             <Link href="/auth/login" className="btn-ghost text-sm">Login</Link>
             <Link href="/auth/register" className="btn-primary text-sm">Get Started Free</Link>
+            <LanguageSwitcher persistToProfile={false} compact />
           </div>
         </div>
       </nav>

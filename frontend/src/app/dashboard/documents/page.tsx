@@ -8,24 +8,25 @@ import {
 } from "lucide-react";
 import type { Document } from "@/types";
 import { format } from "date-fns";
+import { useT } from "@/lib/i18n/useT";
 
-const DOC_TYPE_LABELS: Record<string, string> = {
-  policy: "Policy",
-  rejection_letter: "Rejection Letter",
-  discharge_summary: "Discharge Summary",
-  hospital_bill: "Hospital Bill",
-  insurer_letter: "Insurer Letter",
+const DOC_TYPE_KEYS: Record<string, string> = {
+  policy: "doc_type_policy",
+  rejection_letter: "doc_type_rejection",
+  discharge_summary: "doc_type_discharge",
+  hospital_bill: "doc_type_bill",
+  insurer_letter: "doc_type_insurer",
   // Motor
-  survey_report: "Survey Report",
-  rc_book: "RC Book",
-  driving_licence: "Driving Licence",
-  fir: "FIR",
-  repair_estimate: "Repair Estimate",
+  survey_report: "doc_type_survey",
+  rc_book: "doc_type_rc",
+  driving_licence: "doc_type_dl",
+  fir: "doc_type_fir",
+  repair_estimate: "doc_type_estimate",
   // Life
-  death_certificate: "Death Certificate",
-  nominee_id: "Nominee ID",
-  medical_report: "Medical Report",
-  other: "Other",
+  death_certificate: "doc_type_death",
+  nominee_id: "doc_type_nominee",
+  medical_report: "doc_type_medical",
+  other: "doc_type_other",
 };
 
 const STATUS_ICON = {
@@ -36,6 +37,7 @@ const STATUS_ICON = {
 };
 
 export default function DocumentsPage() {
+  const t = useT();
   const [docs, setDocs] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,17 +65,17 @@ useEffect(() => {
     <div className="max-w-4xl space-y-6 animate-fade-in" style={{color:"var(--text-primary)"}}>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold style-text-primary">My Documents</h2>
+          <h2 className="text-2xl font-bold style-text-primary">{t("doc_title")}</h2>
           <p className="style-text-tertiary text-sm mt-1">
-            All uploaded insurance documents and their analysis status.
+            {t("doc_subtitle")}
           </p>
         </div>
         <div className="flex gap-2">
           <Link href="/dashboard/analyzer" className="btn-primary text-sm">
-            <Upload size={14} /> Upload Policy
+            <Upload size={14} /> {t("doc_upload_policy")}
           </Link>
           <Link href="/dashboard/auditor" className="btn-secondary text-sm">
-            <AlertTriangle size={14} /> Upload Rejection
+            <AlertTriangle size={14} /> {t("doc_upload_rejection")}
           </Link>
         </div>
       </div>
@@ -85,16 +87,16 @@ useEffect(() => {
       ) : docs.length === 0 ? (
         <div className="card p-12 text-center">
           <FileText className="mx-auto style-text-tertiary mb-4" size={48} />
-          <p className="font-semibold style-text-secondary mb-2">No documents yet</p>
+          <p className="font-semibold style-text-secondary mb-2">{t("doc_empty_title")}</p>
           <p className="text-sm style-text-tertiary mb-4">
-            Upload your insurance policy or rejection letter to get started
+            {t("doc_empty_desc")}
           </p>
           <div className="flex gap-3 justify-center">
             <Link href="/dashboard/analyzer" className="btn-primary">
-              Upload Policy <ArrowRight size={13} />
+              {t("doc_upload_policy")} <ArrowRight size={13} />
             </Link>
             <Link href="/dashboard/auditor" className="btn-secondary">
-              Upload Rejection
+              {t("doc_upload_rejection")}
             </Link>
           </div>
         </div>
@@ -119,7 +121,7 @@ useEffect(() => {
                   <div>
                     <p className="font-medium style-text-primary text-sm truncate max-w-xs">{doc.file_name}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="badge-info text-xs">{DOC_TYPE_LABELS[doc.doc_type] ?? doc.doc_type}</span>
+                      <span className="badge-info text-xs">{doc.doc_type in DOC_TYPE_KEYS ? t(DOC_TYPE_KEYS[doc.doc_type]) : doc.doc_type}</span>
                       {doc.insurance_type && (
                         <span className="text-xs style-text-tertiary capitalize">{doc.insurance_type}</span>
                       )}
@@ -132,14 +134,14 @@ useEffect(() => {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5 text-xs style-text-tertiary">
                     {STATUS_ICON[doc.ocr_status]}
-                    <span>{doc.ocr_status === "done" ? "Analyzed" : doc.ocr_status}</span>
+                    <span>{doc.ocr_status === "done" ? t("doc_analyzed") : doc.ocr_status}</span>
                   </div>
                   {doc.doc_type === "policy" && doc.ocr_status === "done" && (
                     <Link
                       href={`/dashboard/analyzer?doc=${doc.id}`}
                       className="btn-secondary text-xs px-2.5 py-1.5"
                     >
-                      <FileSearch size={12} /> View
+                      <FileSearch size={12} /> {t("doc_view")}
                     </Link>
                   )}
                   {doc.doc_type === "rejection_letter" && doc.ocr_status === "done" && (
@@ -147,7 +149,7 @@ useEffect(() => {
                       href={`/dashboard/auditor?doc=${doc.id}`}
                       className="btn-secondary text-xs px-2.5 py-1.5"
                     >
-                      <AlertTriangle size={12} /> Audit
+                      <AlertTriangle size={12} /> {t("doc_audit")}
                     </Link>
                   )}
                 </div>

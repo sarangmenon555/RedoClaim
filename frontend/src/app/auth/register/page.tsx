@@ -6,8 +6,10 @@ import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import toast from "react-hot-toast";
 import { ShieldCheck, Loader2, Lock, Cpu, AlertTriangle } from "lucide-react";
+import { useT } from "@/lib/i18n/useT";
 
 export default function RegisterPage() {
+  const t = useT();
   const router = useRouter();
   const { setAuth } = useAuthStore();
   const [form, setForm] = useState({ email: "", password: "", full_name: "", phone: "" });
@@ -45,14 +47,14 @@ export default function RegisterPage() {
             </div>
             <span className="font-bold text-xl" style={{color:"var(--text-primary)"}}>RedoClaim</span>
           </div>
-          <h1 className="text-2xl font-bold" style={{color:"var(--text-primary)"}}>Create your account</h1>
-          <p className="text-sm mt-1" style={{color:"var(--text-secondary)"}}>Get started in minutes and explore all features</p>
+          <h1 className="text-2xl font-bold" style={{color:"var(--text-primary)"}}>{t("auth_create_account")}</h1>
+          <p className="text-sm mt-1" style={{color:"var(--text-secondary)"}}>{t("auth_get_started_sub")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="card p-7 space-y-4"
           style={{background:"var(--surface-1)",border:"1px solid var(--surface-5)"}}>
           <div>
-            <label className="label">Full name</label>
+            <label className="label">{t("auth_full_name")}</label>
             <input
               className="input"
               placeholder="Ramesh Kumar"
@@ -63,7 +65,7 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="label">Email address</label>
+            <label className="label">{t("auth_email")}</label>
             <input
               type="email"
               className="input"
@@ -75,7 +77,7 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="label">Phone (optional)</label>
+            <label className="label">{t("auth_phone_optional")}</label>
             <input
               className="input"
               placeholder="+91 98765 43210"
@@ -85,11 +87,11 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="label">Password</label>
+            <label className="label">{t("auth_password")}</label>
             <input
               type="password"
               className="input"
-              placeholder="Minimum 8 characters"
+              placeholder={t("auth_min_8_chars")}
               value={form.password}
               onChange={(e) => setForm({...form, password: e.target.value})}
               required
@@ -103,13 +105,13 @@ export default function RegisterPage() {
             className="btn-primary w-full justify-center py-3"
             suppressHydrationWarning
           >
-            {loading ? <><Loader2 size={15} className="animate-spin" /> Creating account...</> : "Create free account"}
+            {loading ? <><Loader2 size={15} className="animate-spin" /> {t("auth_creating")}</> : t("auth_create_free")}
           </button>
 
           <p className="text-center text-sm" style={{color:"var(--text-tertiary)"}}>
-            Already have an account?{" "}
+            {t("auth_already_account")}{" "}
             <Link href="/auth/login" style={{color:"#A78BFA"}} className="font-medium hover:text-violet-300 transition">
-              Sign in
+              {t("auth_sign_in")}
             </Link>
           </p>
         </form>
@@ -118,9 +120,9 @@ export default function RegisterPage() {
           style={{background:"rgba(251,191,36,0.06)",border:"1px solid rgba(251,191,36,0.12)",color:"#FCD34D"}}>
           <div className="flex items-start gap-1.5">
             <AlertTriangle size={11} className="mt-0.5 shrink-0" />
-            <span>By registering you acknowledge our{" "}
-              <Link href="/disclaimer" className="underline">AI Tool Disclaimer</Link>
-              {" "}— outputs are not legal advice.
+            <span>{t("auth_register_ack")}{" "}
+              <Link href="/disclaimer" className="underline">{t("auth_ai_disclaimer_link")}</Link>
+              {" "}— {t("auth_not_legal_advice")}
             </span>
           </div>
         </div>

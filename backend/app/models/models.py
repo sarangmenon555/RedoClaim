@@ -70,6 +70,8 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    # Preferred output language for reports/UI: en, hi, ml, ta, te, kn
+    preferred_language = Column(String(10), default="en", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -96,6 +98,7 @@ class Claim(Base):
     irdai_violation = Column(Boolean, nullable=True)        # did insurer violate IRDAI rules?
     irdai_violation_details = Column(JSON, nullable=True)
     audit_report = Column(JSON, nullable=True)              # full structured audit
+    translated_reports = Column(JSON, nullable=True)        # {lang_code: translated audit_report}, cached via Sarvam AI
 
     # Timelines (IRDAI mandated)
     claim_date = Column(DateTime(timezone=True), nullable=True)

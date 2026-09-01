@@ -1,4 +1,5 @@
 import axios, { AxiosError } from "axios";
+import { getCurrentLanguage } from "@/store/language";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://redoclaim-backend.onrender.com";
 
@@ -30,6 +31,10 @@ export function clearTokens(): void {
 api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  // Tell the backend which regional language to reply in — read by the
+  // get_request_language dependency (X-Language header). Individual
+  // request bodies can still pass their own output_language to override.
+  config.headers["X-Language"] = getCurrentLanguage();
   return config;
 });
 
@@ -95,8 +100,8 @@ export const authApi = {
 
   me: () => api.get("/auth/me"),
 
-  // Update profile — name and/or phone
-  updateProfile: (data: { full_name?: string; phone?: string | null }) =>
+  // Update profile — name and/or phone and/or preferred report language
+  updateProfile: (data: { full_name?: string; phone?: string | null; preferred_language?: string }) =>
     api.patch("/auth/me", data),
 
   // Change password
@@ -149,6 +154,10 @@ export const analysisApi = {
     survey_report_date?: string;
     policy_inception_date?: string;
     documents_complete_date?: string;
+    // Regional language output: en, hi, ml, ta, te, kn. Defaults to English
+    // when omitted — pass the active UI language to get the audit report
+    // back in Malayalam/Tamil/Telugu/Kannada/Hindi.
+    output_language?: string;
   }) => api.post("/analysis/audit-rejection", data),
 
   scanCIS: (documentId: string) => api.post(`/analysis/scan-cis/${documentId}`),
@@ -180,4 +189,36 @@ export const appealsApi = {
 export const claimsApi = {
   list: () => api.get("/claims/"),
   get: (id: string) => api.get(`/claims/${id}`),
+};
+
+// ── Language API — regional language support (Sarvam AI) ───────────────────────
+
+export const languageApi = {
+  // List of languages RedoClaim supports for translated output.
+  getSupported: () => api.get("/language/supported"),
+
+  // Translate arbitrary text (e.g. a document summary, a custom note).
+  translate: (text: string, targetLanguage: string, sourceLanguage = "auto") =>
+    api.post("/language/translate", {
+      text,
+      target_language: targetLanguage,
+      source_language: sourceLanguage,
+    }),
+
+  // Convert script (e.g. romanized text -> Malayalam script).
+  transliterate: (text: string, targetLanguage: string, sourceLanguage = "auto") =>
+    api.post("/language/transliterate", {
+      text,
+      target_language: targetLanguage,
+      source_language: sourceLanguage,
+    }),
+
+  detect: (text: string) => api.post("/language/detect", { text }),
+
+  // Fetch a saved claim's audit report translated into targetLanguage.
+  // Cached server-side after the first call for that language.
+  translateClaimReport: (claimId: string, targetLanguage: string) =>
+    api.get(`/language/claims/${claimId}/translate`, {
+      params: { target_language: targetLanguage },
+    }),
 };

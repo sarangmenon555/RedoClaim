@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { AlertTriangle, X, ChevronDown, ChevronUp } from "lucide-react";
+import { useT } from "@/lib/i18n/useT";
 
 interface Props {
   variant?: "banner" | "inline" | "footer";
@@ -8,26 +9,28 @@ interface Props {
   className?: string;
 }
 
-const CONTEXT_MESSAGES: Record<string, string> = {
-  general: "RedoClaim is an AI research tool that can make mistakes. Always verify AI-generated content before acting on it. Not legal advice.",
-  audit: "This audit is AI-generated and may contain errors or inaccurate citations. Verify all regulation references at irdai.gov.in before citing them.",
-  appeal: "This letter is an AI-generated draft. Read every line carefully, correct errors, and verify all IRDAI citations before sending. Not legal advice.",
-  cis: "AI extraction may miss clauses or misread text. Always compare output against your original document.",
-  portability: "AI-generated guidance based on general IRDAI regulations. Your specific policy terms may differ — verify with your insurer.",
-  timeline: "Deadline dates are AI-calculated estimates. Verify exact dates with your insurer. Missing a deadline can affect your rights.",
+const CONTEXT_KEYS: Record<string, string> = {
+  general: "disc_ctx_general",
+  audit: "disc_ctx_audit",
+  appeal: "disc_ctx_appeal",
+  cis: "disc_ctx_cis",
+  portability: "disc_ctx_portability",
+  timeline: "disc_ctx_timeline",
 };
 
 export function DisclaimerBanner({ variant = "banner", context = "general", className = "" }: Props) {
   const [dismissed, setDismissed] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const t = useT();
+  const message = t(CONTEXT_KEYS[context]);
 
   if (variant === "footer") {
     return (
       <div className={`text-xs leading-relaxed ${className}`} style={{color:"var(--text-tertiary)"}}>
-        <span style={{color:"#FCD34D"}}>⚠️ AI Tool:</span>{" "}
-        {CONTEXT_MESSAGES[context]}{" "}
+        <span style={{color:"#FCD34D"}}>⚠️ {t("disc_ai_tool_label")}</span>{" "}
+        {message}{" "}
         <a href="https://irdai.gov.in/home" target="_blank" rel="noopener noreferrer"
-          className="underline" style={{color:"#A78BFA"}}>Verify on IRDAI.gov.in</a>
+          className="underline" style={{color:"#A78BFA"}}>{t("disc_verify_irdai")}</a>
       </div>
     );
   }
@@ -38,7 +41,7 @@ export function DisclaimerBanner({ variant = "banner", context = "general", clas
         style={{background:"rgba(251,191,36,0.07)",border:"1px solid rgba(251,191,36,0.15)"}}>
         <AlertTriangle size={13} style={{color:"#FBBF24"}} className="mt-0.5 shrink-0" />
         <p className="text-xs leading-relaxed" style={{color:"#FCD34D"}}>
-          <strong>AI output — verify before use.</strong> {CONTEXT_MESSAGES[context]}
+          <strong>{t("disc_verify_before_use")}</strong> {message}
         </p>
       </div>
     );
@@ -53,14 +56,14 @@ export function DisclaimerBanner({ variant = "banner", context = "general", clas
         <div className="flex items-start gap-3 flex-1">
           <AlertTriangle size={15} style={{color:"#FBBF24"}} className="mt-0.5 shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-semibold" style={{color:"#FCD34D"}}>AI Tool — Not Legal Advice</p>
+            <p className="text-sm font-semibold" style={{color:"#FCD34D"}}>{t("disc_not_legal_advice_title")}</p>
             <p className="text-xs mt-0.5 leading-relaxed" style={{color:"rgba(252,211,77,0.8)"}}>
-              {CONTEXT_MESSAGES[context]}
+              {message}
             </p>
             <button onClick={() => setExpanded(!expanded)}
               className="flex items-center gap-1 text-xs font-medium mt-1.5 transition"
               style={{color:"rgba(252,211,77,0.7)"}}>
-              {expanded ? "Show less" : "Full disclaimer"}
+              {expanded ? t("disc_show_less") : t("disc_full_disclaimer")}
               {expanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
             </button>
             {expanded && (
@@ -87,10 +90,11 @@ export function DisclaimerBanner({ variant = "banner", context = "general", clas
 }
 
 export function AIOutputLabel({ className = "" }: { className?: string }) {
+  const t = useT();
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${className}`}
       style={{background:"rgba(251,191,36,0.1)",color:"#FCD34D",border:"1px solid rgba(251,191,36,0.2)"}}>
-      <AlertTriangle size={9} /> AI-generated
+      <AlertTriangle size={9} /> {t("disc_ai_generated")}
     </span>
   );
 }
