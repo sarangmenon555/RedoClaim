@@ -1,30 +1,34 @@
 import json
 import time
 import logging
-import httpx
 from datetime import datetime
-from groq import AsyncGroq
+from openai import AsyncOpenAI
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 _MODEL_MAP = {
-    "gemini-2.0-flash-lite":         "llama-3.1-8b-instant",
-    "gemini-2.5-flash-lite":         "llama-3.1-8b-instant",
-    "gemini-2.5-flash":              "llama-3.3-70b-versatile",
-    "gemini-2.0-flash":              "llama-3.3-70b-versatile",
-    "llama-3.3-70b-versatile":       "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant":          "llama-3.1-8b-instant",
-    "llama4-scout-17b-16e-instruct": "llama4-scout-17b-16e-instruct",
+    "gemini-2.0-flash-lite":         "gpt-5-nano",
+    "gemini-2.5-flash-lite":         "gpt-5-nano",
+    "gemini-2.5-flash":              "gpt-5-nano",
+    "gemini-2.0-flash":              "gpt-5-nano",
+    "llama-3.3-70b-versatile":       "gpt-5-nano",
+    "llama-3.1-8b-instant":          "gpt-5-nano",
+    "llama4-scout-17b-16e-instruct": "gpt-5-nano",
+    "gpt-5-nano":                    "gpt-5-nano",
 }
 
+EMBEDDING_MODEL = "text-embedding-3-small"
+EMBEDDING_DIMENSIONS = 768  # truncated via OpenAI's `dimensions` param — matches existing Qdrant collections
+
+
 def _resolve_model(model: str) -> str:
-    return _MODEL_MAP.get(model, "llama-3.3-70b-versatile")
+    return _MODEL_MAP.get(model, "gpt-5-nano")
 
 
-class GroqClient:
+class OpenAIClientWrapper:
     def __init__(self):
-        self.client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
     async def generate(
         self,
@@ -33,60 +37,164 @@ class GroqClient:
         system: str = "",
         temperature: float = 0.05,
         max_tokens: int = 4096,
-    ) -> str:
-        groq_model = _resolve_model(model)
+        tools: list | None = None,
+        tool_choice: str | dict | None = None,
+    ):
+        """
+        Chat completion via OpenAI. Returns plain text by default. If `tools`
+        is passed, returns the raw message object instead (so the caller can
+        inspect `.tool_calls`) — used for function-calling flows such as
+        search_regulations() below.
+        """
+        openai_model = _resolve_model(model)
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
+        message = await self.chat_raw(
+            model=model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=tools,
+            tool_choice=tool_choice,
+        )
+        if tools:
+            return message
+        return message.content or ""
+
+    async def chat_raw(
+        self,
+        model: str,
+        messages: list,
+        temperature: float = 0.05,
+        max_tokens: int = 4096,
+        tools: list | None = None,
+        tool_choice: str | dict | None = None,
+    ):
+        """
+        Lower-level chat call that takes a full message list (including
+        prior `assistant` tool-call turns and `tool` result turns) — needed
+        for a multi-step function-calling loop. Returns the raw message
+        object. `generate()` above is a thin convenience wrapper over this
+        for the common single-prompt case.
+        """
+        openai_model = _resolve_model(model)
+        kwargs = {
+            "model": openai_model,
+            "messages": messages,
+            "max_completion_tokens": max_tokens,
+        }
+        if tools:
+            kwargs["tools"] = tools
+            if tool_choice:
+                kwargs["tool_choice"] = tool_choice
+
         try:
-            completion = await self.client.chat.completions.create(
-                model=groq_model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=False,
-            )
-            return completion.choices[0].message.content
+            try:
+                completion = await self.client.chat.completions.create(
+                    temperature=temperature, **kwargs
+                )
+            except Exception as temp_err:
+                # gpt-5-nano (a reasoning model) only accepts the default
+                # temperature — retry without it instead of failing outright.
+                if "temperature" in str(temp_err).lower():
+                    completion = await self.client.chat.completions.create(**kwargs)
+                else:
+                    raise
+
+            return completion.choices[0].message
         except Exception as e:
-            logger.error(f"Groq API error: {e}")
-            raise RuntimeError(f"Groq API error: {e}")
+            logger.error(f"OpenAI API error: {e}")
+            raise RuntimeError(f"OpenAI API error: {e}")
 
     async def embed(self, text: str) -> list[float]:
         """
-        Embeddings via Jina AI (free tier, 1M tokens free, works in India).
-        Falls back gracefully if key unavailable — RAG skipped, hardcoded context used.
-        Model: jina-embeddings-v2-base-en (768-dim, matches Qdrant collection config).
-        Sign up free at jina.ai — set JINA_API_KEY in Render env vars.
+        Embeddings via OpenAI text-embedding-3-small, truncated to 768 dims
+        (via the `dimensions` param) so existing Qdrant collections don't
+        need to be recreated. Falls back gracefully if the key is unset —
+        RAG is skipped and the hardcoded IRDAI context is used as fallback.
         """
-        jina_key = getattr(settings, "JINA_API_KEY", "")
-        if not jina_key:
-            logger.warning("No JINA_API_KEY set — embeddings unavailable, skipping RAG")
+        if not getattr(settings, "OPENAI_API_KEY", ""):
+            logger.warning("No OPENAI_API_KEY set — embeddings unavailable, skipping RAG")
             return []
 
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
-                resp = await client.post(
-                    "https://api.jina.ai/v1/embeddings",
-                    headers={
-                        "Authorization": f"Bearer {jina_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": "jina-embeddings-v2-base-en",
-                        "input": [text],
-                    },
-                )
-                resp.raise_for_status()
-                return resp.json()["data"][0]["embedding"]
+            resp = await self.client.embeddings.create(
+                model=EMBEDDING_MODEL,
+                input=text,
+                dimensions=EMBEDDING_DIMENSIONS,
+            )
+            return resp.data[0].embedding
         except Exception as e:
             logger.warning(f"Embedding failed: {e} — RAG context will be skipped")
             return []
 
 
-# Singleton
-gemini = GroqClient()
+# Singleton — kept as the name `gemini` so every other module (which does
+# `from app.services.llm.gemini_service import ...`) needs no changes.
+gemini = OpenAIClientWrapper()
+
+
+# ── Function calling ────────────────────────────────────────────────
+# Give GPT-5 Nano a tool that lets it pull from RedoClaim's own Qdrant
+# knowledge base instead of relying on built-in web search (disabled for
+# this org). This is the pattern recommended for RedoClaim: your backend
+# stays the source of truth, GPT is the reasoning/orchestration layer.
+REGULATION_SEARCH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "search_regulations",
+        "description": (
+            "Search RedoClaim's own IRDAI regulation and policy-clause knowledge "
+            "base (Qdrant) for passages relevant to a claim issue. Always prefer "
+            "this over general knowledge for anything regulatory."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Natural-language description of the issue, e.g. 'claim rejected for pre-existing disease exclusion'",
+                }
+            },
+            "required": ["query"],
+        },
+    },
+}
+
+
+async def call_with_regulation_search(prompt: str, system: str = "", model: str = "gemini-2.5-flash") -> dict:
+    """
+    Example function-calling loop: GPT-5 Nano decides whether it needs
+    regulatory context, calls search_regulations(query), we run the real
+    Qdrant search via rag_pipeline, then GPT produces its final structured
+    answer using those retrieved passages as grounding.
+    """
+    from app.services.rag.rag_pipeline import search_irdai_regulations as search_irdai_context
+
+    message = await gemini.generate(
+        model=model,
+        prompt=prompt,
+        system=system,
+        tools=[REGULATION_SEARCH_TOOL],
+        tool_choice="auto",
+    )
+
+    if not getattr(message, "tool_calls", None):
+        return _parse_json(message.content or "", "call_with_regulation_search")
+
+    tool_call = message.tool_calls[0]
+    args = json.loads(tool_call.function.arguments or "{}")
+    query = args.get("query", "")
+    context = await search_irdai_context(query)
+
+    follow_up_prompt = (
+        f"{prompt}\n\nRELEVANT REGULATIONS RETRIEVED FROM YOUR KNOWLEDGE BASE:\n{context}"
+    )
+    raw = await gemini.generate(model=model, prompt=follow_up_prompt, system=system)
+    return _parse_json(raw, "call_with_regulation_search")
 
 
 # ── 1. Policy Clause Extractor ────────────────────────────────────

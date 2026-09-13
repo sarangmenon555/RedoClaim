@@ -22,6 +22,9 @@ from app.services.llm.gemini_service import (
     audit_rejection, analyze_cis, generate_portability_guide,
     audit_motor_rejection, audit_life_rejection, extract_motor_life_policy_clauses,
 )
+from app.services.llm.functions import run_agent
+from app.api.deps.language import get_request_language
+from app.services.language.sarvam_service import sarvam_client
 from app.services.rag.rag_pipeline import (
     search_irdai_regulations, search_rejection_patterns, search_policy_chunks
 )
@@ -551,3 +554,49 @@ async def edaakhil_guide():
             "If insurer fails to appear: ex-parte order can be passed",
         ],
     }
+
+# ── 6. Free-form agent (function-calling) ──────────────────────────
+class AgentAskRequest(BaseModel):
+    question: str
+    claim_id: Optional[str] = None
+
+
+@router.post("/ask")
+async def ask_agent(
+    body: AgentAskRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+    lang: str = Depends(get_request_language),
+):
+    """
+    Free-form question answered by GPT-5 Nano with real function-calling
+    against RedoClaim's own data: it can look up a claim's status, pull a
+    document's extracted clauses, search the IRDAI regulation knowledge
+    base, calculate a deadline, work out the right redressal route, or
+    save an appeal draft — instead of guessing from general knowledge.
+
+    Responds in the requested regional language (?lang= / X-Language
+    header, same as the rest of the API) by translating the final answer
+    via Sarvam AI. English requests skip translation entirely.
+    """
+    system = (
+        "You are RedoClaim's assistant, helping an Indian insurance policyholder "
+        "understand and act on a claim rejection. You are NOT a lawyer; nothing "
+        "you say is legal advice. Use the available tools to look up real data "
+        "(claim status, policy clauses, IRDAI regulations, deadlines) instead of "
+        "guessing. Cite specific regulations and dates when you use them. "
+        "Keep answers concise and actionable."
+    )
+    prompt = body.question
+    if body.claim_id:
+        prompt = f"(This question relates to claim_id={body.claim_id})\n\n{body.question}"
+
+    answer = await run_agent(prompt=prompt, system=system, db=db)
+
+    if lang != "en" and sarvam_client.enabled:
+        try:
+            answer = await sarvam_client.translate_long_text(answer, lang)
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Ask-agent translation failed, returning English: {e}")
+
+    return {"answer": answer, "language": lang, "ai_disclaimer": AI_DISCLAIMER}

@@ -132,7 +132,7 @@ async def generate_appeal(
         appeal_type=req.appeal_type,
         letter_content=letter,
         legal_references=all_violations,
-        model_used="groq-llama-3.3-70b",
+        model_used="gpt-5-nano",
         generation_time_ms=elapsed,
     )
     db.add(appeal)

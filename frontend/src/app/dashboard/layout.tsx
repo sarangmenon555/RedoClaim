@@ -4,7 +4,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ShieldCheck, LayoutDashboard, FileSearch, AlertTriangle,
   FileText, Clock, Upload, LogOut, User, Bell,
-  ArrowRightLeft, Monitor, FileSpreadsheet, ChevronRight, Settings
+  ArrowRightLeft, Monitor, FileSpreadsheet, ChevronRight, Settings,
+  MessageSquare
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -21,6 +22,7 @@ const navGroups = [
       { href: "/dashboard/analyzer",    labelKey: "nav_analyzer", icon: FileSearch },
       { href: "/dashboard/cis",         labelKey: "nav_cis",      icon: FileSpreadsheet },
       { href: "/dashboard/auditor",     labelKey: "nav_auditor",  icon: AlertTriangle },
+      { href: "/dashboard/ask",         labelKey: "nav_ask_ai",   icon: MessageSquare },
     ],
   },
   {

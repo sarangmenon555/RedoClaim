@@ -1,20 +1,19 @@
 """
 scripts/seed_irdai.py — Seed Qdrant with IRDAI regulations for RAG.
 
-Run once after setting up Jina AI embeddings:
+Run once after setting up your OpenAI API key:
   cd backend
   python scripts/seed_irdai.py
 
 Requirements:
-  - JINA_API_KEY set in environment or .env file
+  - OPENAI_API_KEY set in environment or .env file
   - QDRANT_URL and QDRANT_API_KEY set in environment or .env file
-  - pip install qdrant-client httpx python-dotenv
+  - pip install qdrant-client openai python-dotenv
 
 This populates the `irdai_regulations` Qdrant collection so that
 rejection audits use real vector search instead of the hardcoded fallback.
 """
 import asyncio
-import httpx
 import uuid
 import os
 import sys
@@ -35,11 +34,12 @@ from qdrant_client import QdrantClient
 from qdrant_client.http.models import VectorParams, Distance, PointStruct
 
 # ── Config ────────────────────────────────────────────────────────
-JINA_API_KEY  = os.environ.get("JINA_API_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 QDRANT_URL    = os.environ.get("QDRANT_URL", "")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "")
 COLLECTION    = os.environ.get("QDRANT_IRDAI_COLLECTION", "irdai_regulations")
-EMBEDDING_DIM = 768  # jina-embeddings-v2-base-en
+EMBEDDING_DIM = 768  # OpenAI text-embedding-3-small, truncated via `dimensions` param
+EMBEDDING_MODEL = "text-embedding-3-small"
 
 
 # ── IRDAI Regulation Chunks ───────────────────────────────────────
@@ -288,28 +288,20 @@ IRDAI_CHUNKS = [
 
 
 # ── Embedding Function ────────────────────────────────────────────
-async def embed_text(text: str, client: httpx.AsyncClient) -> list[float]:
-    resp = await client.post(
-        "https://api.jina.ai/v1/embeddings",
-        headers={
-            "Authorization": f"Bearer {JINA_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json={
-            "model": "jina-embeddings-v2-base-en",
-            "input": [text],
-        },
-        timeout=30,
+async def embed_text(text: str, client: "AsyncOpenAI") -> list[float]:
+    resp = await client.embeddings.create(
+        model=EMBEDDING_MODEL,
+        input=text,
+        dimensions=EMBEDDING_DIM,
     )
-    resp.raise_for_status()
-    return resp.json()["data"][0]["embedding"]
+    return resp.data[0].embedding
 
 
 # ── Main Seeding Function ─────────────────────────────────────────
 async def seed():
     # Validate config
-    if not JINA_API_KEY:
-        logger.error("JINA_API_KEY not set. Get your free key at jina.ai")
+    if not OPENAI_API_KEY:
+        logger.error("OPENAI_API_KEY not set.")
         sys.exit(1)
     if not QDRANT_URL:
         logger.error("QDRANT_URL not set.")
@@ -337,12 +329,13 @@ async def seed():
         logger.info(f"Collection already exists: {COLLECTION}")
 
     # Embed and upsert each chunk
+    from openai import AsyncOpenAI
     points = []
-    async with httpx.AsyncClient() as http:
-        for i, chunk in enumerate(IRDAI_CHUNKS):
+    openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    for i, chunk in enumerate(IRDAI_CHUNKS):
             try:
                 logger.info(f"Embedding chunk {i+1}/{len(IRDAI_CHUNKS)}: {chunk['title']}")
-                vector = await embed_text(chunk["text"], http)
+                vector = await embed_text(chunk["text"], openai_client)
 
                 if not vector:
                     logger.warning(f"Empty vector for chunk {i+1}, skipping")
@@ -363,7 +356,7 @@ async def seed():
                 logger.error(f"Failed to embed chunk {i+1} ({chunk['title']}): {e}")
 
     if not points:
-        logger.error("No points to upsert — check your Jina API key")
+        logger.error("No points to upsert — check your OpenAI API key")
         sys.exit(1)
 
     # Upsert all points in one batch

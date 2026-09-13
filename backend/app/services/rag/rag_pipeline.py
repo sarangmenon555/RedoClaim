@@ -1,7 +1,7 @@
 """
 RAG Pipeline — RedoClaim
 Qdrant vector DB for IRDAI regulations, policy chunks, CIS documents.
-Embeddings via Gemini text-embedding-004 (768-dim).
+Embeddings via OpenAI text-embedding-3-small (truncated to 768-dim).
 If embeddings are unavailable (e.g. invalid API key), RAG is gracefully skipped
 and the hardcoded IRDAI context is used as fallback.
 
@@ -23,7 +23,7 @@ from app.core.config import settings
 from app.services.llm.gemini_service import generate_embeddings
 
 logger = logging.getLogger(__name__)
-EMBEDDING_DIM = 768  # Gemini text-embedding-004
+EMBEDDING_DIM = 768  # OpenAI text-embedding-3-small, truncated
 
 client = QdrantClient(
     url=settings.QDRANT_URL,
@@ -96,7 +96,7 @@ async def upsert_document_chunks(
         logger.warning(
             f"Skipped {skipped}/{len(chunks)} chunks due to missing embeddings. "
             "RAG search for this document will use hardcoded fallback context. "
-            "To enable full RAG, set a valid GEMINI_API_KEY in Render env vars."
+            "To enable full RAG, set a valid OPENAI_API_KEY in Render env vars."
         )
 
     if points:

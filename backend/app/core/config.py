@@ -16,19 +16,9 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # ── Groq API (primary LLM) ────────────────────────────────────
-    # Required — set in Render env vars
-    GROQ_API_KEY: str
-
-    # ── Jina AI (embeddings) ──────────────────────────────────────
-    # Free tier: 1M tokens, no credit card, works in India
-    # Sign up at jina.ai → Dashboard → API Keys → starts with jina_
-    # Optional — RAG gracefully skips if not set
-    JINA_API_KEY: str = ""
-
-    # ── Gemini API (legacy — no longer used) ─────────────────────
-    # Can be removed once Jina is confirmed working
-    GEMINI_API_KEY: str = ""
+    # ── OpenAI API (LLM + embeddings) ──────────────────────────────
+    # Required — set in Render env vars. Get one at platform.openai.com
+    OPENAI_API_KEY: str
 
     # ── Sarvam AI (regional language translation) ─────────────────
     # Get your key at: https://dashboard.sarvam.ai/key-management
@@ -38,11 +28,12 @@ class Settings(BaseSettings):
     SARVAM_API_KEY: str = ""
     DEFAULT_LANGUAGE: str = "en"
 
-    # Model assignments (Groq)
-    MODEL_EXTRACTION: str = "gemini-2.5-flash"   # maps to llama-3.3-70b-versatile
-    MODEL_LEGAL: str = "gemini-2.5-flash"
-    MODEL_DRAFTING: str = "gemini-2.5-flash"
-    MODEL_SUMMARIZE: str = "gemini-2.5-flash"
+    # Model assignments (OpenAI) — internal names kept for compatibility,
+    # all resolve to gpt-5-nano via _MODEL_MAP in gemini_service.py
+    MODEL_EXTRACTION: str = "gpt-5-nano"
+    MODEL_LEGAL: str = "gpt-5-nano"
+    MODEL_DRAFTING: str = "gpt-5-nano"
+    MODEL_SUMMARIZE: str = "gpt-5-nano"
 
     # Qdrant — required, set in Render env vars
     QDRANT_URL: str

@@ -169,6 +169,13 @@ export const analysisApi = {
   }) => api.post("/analysis/portability-guide", data),
 
   edaakhilGuide: () => api.get("/analysis/edaakhil-guide"),
+
+  // Free-form question answered by the backend's function-calling agent
+  // (GPT-5 Nano + tools: claim lookup, policy clauses, IRDAI search,
+  // deadline calc, redressal routing, appeal-draft saving). See
+  // POST /analysis/ask on the backend.
+  ask: (question: string, claimId?: string) =>
+    api.post("/analysis/ask", { question, claim_id: claimId }),
 };
 
 // ── Appeals API ───────────────────────────────────────────────────────────────
