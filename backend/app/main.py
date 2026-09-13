@@ -1,6 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 import logging
 
@@ -44,6 +47,36 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Request-ID"],
 )
+
+# ─── GLOBAL EXCEPTION HANDLER ───────────────────────────────────────
+# Without this, an unhandled exception (anything not raised as
+# HTTPException) is caught by Starlette's default ServerErrorMiddleware,
+# which sits OUTSIDE the CORSMiddleware above — so the resulting 500
+# response goes out with no Access-Control-Allow-Origin header at all.
+# Browsers then report that as a CORS failure (net::ERR_FAILED, "no
+# Access-Control-Allow-Origin header"), which is misleading: the real
+# problem is the 500, not CORS config. Registering a handler for the
+# base Exception class makes FastAPI handle it inside ExceptionMiddleware
+# instead — which DOES sit inside CORSMiddleware — so the response comes
+# back out through CORS normally, and the browser/console shows the
+# actual JSON error instead of an opaque CORS block.
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled error on {request.method} {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error. Please try again or contact support."},
+    )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 # ─── ROUTES ───────────────────────────────────────────────────────
 app.include_router(auth.router,      prefix="/api/v1/auth",      tags=["Auth"])
