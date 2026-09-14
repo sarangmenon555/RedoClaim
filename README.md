@@ -46,7 +46,10 @@ Generates ready-to-send legal drafts:
 - E-Daakhil portal drafts
 - All citations pulled directly from IRDAI regulations
 
-### timeline Tracker
+### Ask AI
+A free-form assistant backed by real function-calling — it looks up your actual claim status, a document's extracted clauses, and RedoClaim's own IRDAI regulation database instead of guessing, calculates statutory deadlines, and can save an appeal draft directly to your account.
+
+### Timeline Tracker
 Never miss a deadline again. Tracks and alerts you on:
 - 15-day GRO response window
 - 30-day insurer TAT
@@ -56,12 +59,24 @@ Never miss a deadline again. Tracks and alerts you on:
 ### Portability Advisor
 Know your portability rights under **IRDAI Health Insurance Regulation 17** — waiting period credits, moratorium transfers, and a step-by-step switching guide.
 
+### Multilingual Support
+Every AI-generated report, audit, and appeal letter — plus the Ask AI assistant — can be delivered in Hindi, Malayalam, Tamil, Telugu, or Kannada, powered by Sarvam AI. Static UI text is localized separately; regional-language users aren't limited to English legal drafts.
+
 ---
 
 ## Tech Stack
 
-Frontend: Next.js
-Backend: FastAPI
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js |
+| Backend | FastAPI (async, Python 3.11) |
+| LLM (reasoning, extraction, drafting) | OpenAI GPT-5 Nano, via function calling |
+| Embeddings | OpenAI `text-embedding-3-small` (truncated to 768-dim) |
+| Vector DB (regulation retrieval / RAG) | Qdrant |
+| Primary database | PostgreSQL (Neon), via SQLAlchemy (async) + Alembic migrations |
+| Object storage (uploaded documents) | MinIO (S3-compatible) |
+| Multilingual translation | Sarvam AI |
+| Background jobs | Celery |
 
 ---
 
