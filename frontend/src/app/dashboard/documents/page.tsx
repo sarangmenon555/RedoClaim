@@ -129,6 +129,15 @@ useEffect(() => {
                         {doc.created_at ? format(new Date(doc.created_at), "dd MMM yyyy") : ""}
                       </span>
                     </div>
+                    {doc.quality_ok === false && doc.quality_issues && doc.quality_issues.length > 0 && (
+                      <div
+                        className="flex items-start gap-1.5 mt-1.5 text-xs rounded-md px-2 py-1"
+                        style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B" }}
+                      >
+                        <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                        <span>{doc.quality_issues[0]}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-4">

@@ -124,7 +124,11 @@ function AuditorPageInner() {
       try {
         const res = await documentsApi.upload(file, "rejection_letter", form.insuranceType);
         const docId = res.data.document_id;
-        toast.success("Rejection letter uploaded. OCR processing...");
+        if (res.data.quality_ok === false && res.data.quality_issues?.length) {
+          toast(res.data.quality_issues[0], { icon: "⚠️", duration: 6000 });
+        } else {
+          toast.success("Rejection letter uploaded. OCR processing...");
+        }
         const interval = setInterval(async () => {
           try {
             const docRes = await documentsApi.get(docId);
@@ -826,6 +830,26 @@ function AuditResultView({ result, toggle, expandedSections, reportLanguage, onC
           <Link href="/dashboard/portability" className="text-xs text-violet-400 font-medium mt-3 inline-block hover:underline">
             Get full portability guide →
           </Link>
+        </div>
+      )}
+
+      {/* Estimator CTA — only meaningful for health claims with a linked, analyzed policy */}
+      {insuranceType === "health" && form.policyDocumentId && (
+        <div className="card p-5 bg-surface-2" style={{ borderColor: "rgba(34,197,94,0.2)" }}>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <p className="font-semibold style-text-primary">See what you're actually owed</p>
+              <p className="text-sm style-text-secondary">
+                Estimate your payout from your policy&apos;s sum insured, co-pay, and sub-limits
+              </p>
+            </div>
+            <Link
+              href={`/dashboard/estimator?doc=${form.policyDocumentId}${form.claimAmount ? `&amount=${form.claimAmount}` : ""}${result.claim_id ? `&claim=${result.claim_id}` : ""}`}
+              className="btn-secondary"
+            >
+              Estimate Payout <ArrowRight size={15} />
+            </Link>
+          </div>
         </div>
       )}
 

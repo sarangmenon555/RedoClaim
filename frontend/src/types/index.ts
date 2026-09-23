@@ -46,7 +46,24 @@ export interface Document {
   extracted_clauses?: PolicyClauses;
   risk_flags?: RiskFlag[];
   summary?: string;
+  quality_ok?: boolean | null;
+  quality_issues?: string[] | null;
   created_at: string;
+}
+
+export interface PayoutDeduction {
+  reason: string;
+  amount: number;
+}
+
+export interface PayoutEstimate {
+  claim_amount: number;
+  estimated_payout: number;
+  estimated_payout_range: [number, number];
+  total_deductions: number;
+  deductions: PayoutDeduction[];
+  assumptions: string[];
+  disclaimer: string;
 }
 
 export interface PolicyClauses {

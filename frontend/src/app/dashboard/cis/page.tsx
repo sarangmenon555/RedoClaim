@@ -19,7 +19,11 @@ export default function CISPage() {
     try {
       const res = await documentsApi.upload(file, "other");
       const id = res.data.document_id;
-      toast.success("CIS uploaded. Processing...");
+      if (res.data.quality_ok === false && res.data.quality_issues?.length) {
+        toast(res.data.quality_issues[0], { icon: "⚠️", duration: 6000 });
+      } else {
+        toast.success("CIS uploaded. Processing...");
+      }
       const interval = setInterval(async () => {
         const docRes = await documentsApi.get(id);
         if (docRes.data.ocr_status === "done") {

@@ -176,6 +176,17 @@ export const analysisApi = {
   // POST /analysis/ask on the backend.
   ask: (question: string, claimId?: string) =>
     api.post("/analysis/ask", { question, claim_id: claimId }),
+
+  // Deterministic (no LLM) itemized payout estimate computed from a
+  // document's already-extracted policy clauses. See
+  // POST /analysis/estimate-payout on the backend.
+  estimatePayout: (documentId: string, claimAmount: number, claimId?: string, patientAge?: number) =>
+    api.post("/analysis/estimate-payout", {
+      document_id: documentId,
+      claim_amount: claimAmount,
+      claim_id: claimId,
+      patient_age: patientAge,
+    }),
 };
 
 // ── Appeals API ───────────────────────────────────────────────────────────────

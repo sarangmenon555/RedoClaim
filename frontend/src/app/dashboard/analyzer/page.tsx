@@ -89,7 +89,11 @@ function AnalyzerPageInner() {
     try {
       const res = await documentsApi.upload(file, "policy", "health");
       const docId = res.data.document_id;
-      toast.success("Policy uploaded! AI analysis starting...");
+      if (res.data.quality_ok === false && res.data.quality_issues?.length) {
+        toast(res.data.quality_issues[0], { icon: "⚠️", duration: 6000 });
+      } else {
+        toast.success("Policy uploaded! AI analysis starting...");
+      }
       setPolling(true);
       const interval = setInterval(async () => {
         try {
