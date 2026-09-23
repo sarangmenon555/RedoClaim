@@ -450,6 +450,8 @@ function AuditorPageInner() {
           reportLanguage={reportLanguage}
           onChangeLanguage={viewReportInLanguage}
           translating={translatingReport}
+          policyDocumentId={form.policyDocumentId}
+          claimAmount={form.claimAmount}
         />
       )}
     </div>
@@ -468,7 +470,10 @@ export default function AuditorPage() {
   );
 }
 
-function AuditResultView({ result, toggle, expandedSections, reportLanguage, onChangeLanguage, translating }: any) {
+function AuditResultView({
+  result, toggle, expandedSections, reportLanguage, onChangeLanguage, translating,
+  policyDocumentId, claimAmount,
+}: any) {
   const { summary, report } = result;
   const hoe = report?.hierarchy_of_evidence;
   const sla = hoe?.step1_sla;
@@ -834,7 +839,7 @@ function AuditResultView({ result, toggle, expandedSections, reportLanguage, onC
       )}
 
       {/* Estimator CTA — only meaningful for health claims with a linked, analyzed policy */}
-      {insuranceType === "health" && form.policyDocumentId && (
+      {insuranceType === "health" && policyDocumentId && (
         <div className="card p-5 bg-surface-2" style={{ borderColor: "rgba(34,197,94,0.2)" }}>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
@@ -844,7 +849,7 @@ function AuditResultView({ result, toggle, expandedSections, reportLanguage, onC
               </p>
             </div>
             <Link
-              href={`/dashboard/estimator?doc=${form.policyDocumentId}${form.claimAmount ? `&amount=${form.claimAmount}` : ""}${result.claim_id ? `&claim=${result.claim_id}` : ""}`}
+              href={`/dashboard/estimator?doc=${policyDocumentId}${claimAmount ? `&amount=${claimAmount}` : ""}${result.claim_id ? `&claim=${result.claim_id}` : ""}`}
               className="btn-secondary"
             >
               Estimate Payout <ArrowRight size={15} />
