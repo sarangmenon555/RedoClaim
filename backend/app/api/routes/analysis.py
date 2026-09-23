@@ -30,6 +30,7 @@ from app.services.rag.rag_pipeline import (
 )
 from app.services.irdai.rules_engine import irdai_engine
 from app.services.irdai.motor_life_rules_engine import motor_engine, life_engine
+from app.services.irdai.payout_estimator import estimate_payout
 from app.api.deps.auth import get_current_user
 from app.services.language.sarvam_service import normalize_language
 from app.services.language.localization import localize_audit_response
@@ -600,3 +601,52 @@ async def ask_agent(
             logging.getLogger(__name__).error(f"Ask-agent translation failed, returning English: {e}")
 
     return {"answer": answer, "language": lang, "ai_disclaimer": AI_DISCLAIMER}
+
+
+# ── 7. Expected payout estimator ────────────────────────────────────
+class PayoutEstimateRequest(BaseModel):
+    claim_amount: float
+    document_id: str
+    claim_id: Optional[str] = None
+    patient_age: Optional[int] = None
+
+
+@router.post("/estimate-payout")
+async def estimate_payout_route(
+    body: PayoutEstimateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Deterministic, itemized estimate of what a claim is actually likely to
+    be worth, computed from the policy clauses already extracted for
+    `document_id` (sum insured, co-payment, sub-limits, room rent cap).
+
+    No LLM call — pure arithmetic, so every deduction is traceable to a
+    specific clause. Helps a user judge whether escalating a rejection is
+    worth pursuing, not a legal or final figure (see disclaimer in the
+    response).
+    """
+    doc = await db.get(Document, body.document_id)
+    if not doc or str(doc.owner_id) != str(current_user.id):
+        raise HTTPException(404, "Document not found")
+    if not doc.extracted_clauses:
+        raise HTTPException(
+            400,
+            "This document hasn't finished clause extraction yet (or extraction failed) — "
+            "check its ocr_status before requesting an estimate.",
+        )
+
+    estimate = estimate_payout(
+        claim_amount=body.claim_amount,
+        extracted_clauses=doc.extracted_clauses,
+        patient_age=body.patient_age,
+    )
+
+    if body.claim_id:
+        claim = await db.get(Claim, body.claim_id)
+        if claim and str(claim.owner_id) == str(current_user.id):
+            claim.payout_estimate = estimate
+            await db.commit()
+
+    return estimate

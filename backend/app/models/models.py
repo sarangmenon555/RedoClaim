@@ -99,6 +99,7 @@ class Claim(Base):
     irdai_violation_details = Column(JSON, nullable=True)
     audit_report = Column(JSON, nullable=True)              # full structured audit
     translated_reports = Column(JSON, nullable=True)        # {lang_code: translated audit_report}, cached via Sarvam AI
+    payout_estimate = Column(JSON, nullable=True)            # last computed estimate, see payout_estimator.py
 
     # Timelines (IRDAI mandated)
     claim_date = Column(DateTime(timezone=True), nullable=True)
@@ -141,6 +142,10 @@ class Document(Base):
     extracted_clauses = Column(JSON, nullable=True)   # structured clause data
     risk_flags = Column(JSON, nullable=True)          # list of risky conditions
     summary = Column(Text, nullable=True)
+
+    # Upload quality check — see app/services/documents/quality_check.py
+    quality_ok = Column(Boolean, nullable=True)
+    quality_issues = Column(JSON, nullable=True)      # list of human-readable warnings
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

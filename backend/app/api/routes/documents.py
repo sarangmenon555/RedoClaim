@@ -15,6 +15,9 @@ from app.services.ocr.ocr_pipeline import (
 from app.services.rag.rag_pipeline import upsert_document_chunks
 from app.services.llm.gemini_service import extract_policy_clauses
 from app.services.storage.minio_service import upload_file, get_file_url
+from app.services.documents.quality_check import (
+    check_image_quality, check_pdf_quality, check_extracted_text,
+)
 from app.api.deps.auth import get_current_user
 
 router = APIRouter()
@@ -44,6 +47,18 @@ async def upload_document(
     file_id = str(uuid.uuid4())
     minio_path = f"users/{current_user.id}/documents/{file_id}/{file.filename}"
 
+    # Pre-OCR quality check — local, instant, no API cost. Catches a bad
+    # upload (blurry photo, unreadable PDF) before it wastes an LLM pass
+    # and before the user acts on a confidently-wrong analysis.
+    page_count = 1
+    if file.content_type == "application/pdf":
+        quality = check_pdf_quality(file_bytes)
+        page_count = quality.get("page_count", 1) or 1
+    else:
+        quality = check_image_quality(file_bytes)
+    quality_ok = quality["ok"]
+    quality_issues = quality["issues"]
+
     # Upload to MinIO
     try:
         await upload_file(
@@ -67,6 +82,8 @@ async def upload_document(
         doc_type=doc_type,
         insurance_type=insurance_type,
         ocr_status="pending",
+        quality_ok=quality_ok,
+        quality_issues=quality_issues,
     )
     db.add(doc)
     await db.flush()
@@ -78,6 +95,7 @@ async def upload_document(
         file_bytes,
         file.content_type,
         doc_type,
+        page_count,
     )
 
     return {
@@ -85,6 +103,8 @@ async def upload_document(
         "file_name": file.filename,
         "status": "uploaded",
         "message": "Document uploaded. OCR processing started in background.",
+        "quality_ok": quality_ok,
+        "quality_issues": quality_issues,
     }
 
 
@@ -93,6 +113,7 @@ async def process_document_async(
     file_bytes: bytes,
     mime_type: str,
     doc_type: DocumentType,
+    page_count: int = 1,
 ):
     """Background task: OCR → chunk → embed → (for policies) extract clauses."""
     async with AsyncSessionLocal() as db:
@@ -119,6 +140,16 @@ async def process_document_async(
 
             doc.ocr_text = text
             doc.ocr_status = "done"
+
+            # Post-OCR quality check: catches the case where the file looked
+            # fine but OCR still came back nearly empty (blank scan, engine
+            # failure that didn't raise). Merge with the pre-upload check
+            # rather than overwrite it.
+            post_ocr_quality = check_extracted_text(text, page_count=page_count)
+            if not post_ocr_quality["ok"]:
+                existing_issues = doc.quality_issues or []
+                doc.quality_issues = existing_issues + post_ocr_quality["issues"]
+                doc.quality_ok = False
 
             # Step 2: Chunk + embed
             chunks = chunk_text(text)
@@ -172,6 +203,8 @@ async def get_document(
         "extracted_clauses": doc.extracted_clauses,
         "risk_flags": doc.risk_flags,
         "summary": doc.summary,
+        "quality_ok": doc.quality_ok,
+        "quality_issues": doc.quality_issues,
         "created_at": doc.created_at.isoformat() if doc.created_at else None,
     }
 
@@ -197,6 +230,8 @@ async def list_documents(
             "ocr_status": d.ocr_status,
             "embedding_status": d.embedding_status,
             "summary": d.summary,
+            "quality_ok": d.quality_ok,
+            "quality_issues": d.quality_issues,
             "created_at": d.created_at.isoformat() if d.created_at else None,
         }
         for d in docs
