@@ -93,6 +93,8 @@ export interface PolicyClauses {
   plain_english_inclusions?: string;
   plain_english_exclusions?: string;
   inception_date?: string;
+  renewal_date?: string;
+  policy_number?: string;
 }
 
 export interface WaitingPeriod {

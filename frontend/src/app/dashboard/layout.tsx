@@ -27,6 +27,11 @@ const navGroups = [
       { href: "/dashboard/waiting-period", labelKey: "nav_waiting_period", icon: Hourglass },
       { href: "/dashboard/compare-policies", labelKey: "nav_compare_policies", icon: GitCompare },
       { href: "/dashboard/explain",     labelKey: "nav_explain_term", icon: HelpCircle },
+      { href: "/dashboard/copay-breakdown", labelKey: "nav_copay_breakdown", icon: Calculator },
+      { href: "/dashboard/renewal-check", labelKey: "nav_renewal_check", icon: AlertTriangle },
+      { href: "/dashboard/settlement-audit", labelKey: "nav_settlement_audit", icon: FileSearch },
+      { href: "/dashboard/hospital-verify", labelKey: "nav_hospital_verify", icon: Monitor },
+      { href: "/dashboard/portfolio",   labelKey: "nav_portfolio", icon: LayoutDashboard },
     ],
   },
   {

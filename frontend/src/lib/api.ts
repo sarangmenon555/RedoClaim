@@ -222,6 +222,39 @@ export const analysisApi = {
   // Plain-language explanation of any insurance term or clause.
   explainTerm: (termOrClause: string, outputLanguage: string = "en") =>
     api.post("/analysis/explain-term", { term_or_clause: termOrClause, output_language: outputLanguage }),
+
+  // Pre-claim planning: precise proportionate room-rent + co-pay deduction
+  // from your actual bill figures. No LLM call.
+  copayBreakdown: (data: {
+    document_id: string;
+    total_bill_amount: number;
+    actual_room_rent_per_day: number;
+    days_admitted?: number;
+    bill_items?: { item: string; amount: number }[];
+    patient_age?: number;
+  }) => api.post("/analysis/copay-breakdown", data),
+
+  // Diffs last year's policy against this year's renewal, flags adverse changes.
+  renewalCheck: (oldPolicyDocumentId: string, newPolicyDocumentId: string) =>
+    api.post("/analysis/renewal-check", {
+      old_policy_document_id: oldPolicyDocumentId,
+      new_policy_document_id: newPolicyDocumentId,
+    }),
+
+  // Second opinion on a PARTIAL settlement — checks deductions against policy terms.
+  auditSettlement: (data: {
+    settlement_document_id: string;
+    policy_document_id?: string;
+    claim_amount: number;
+    settled_amount: number;
+  }) => api.post("/analysis/audit-settlement", data),
+};
+
+export const networkHospitalsApi = {
+  report: (data: { insurer_name: string; hospital_name: string; city?: string; status: string; note?: string }) =>
+    api.post("/network-hospitals/report", data),
+  check: (insurerName: string, hospitalName: string) =>
+    api.get("/network-hospitals/check", { params: { insurer_name: insurerName, hospital_name: hospitalName } }),
 };
 
 // ── Appeals API ───────────────────────────────────────────────────────────────
