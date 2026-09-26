@@ -1,4 +1,15 @@
-"""Celery async task workers."""
+"""
+Celery async task workers.
+
+STATUS: currently dormant on this deployment. There's no Celery worker or
+beat service running on Render (Background Workers there start at $7/mo —
+no free tier), so nothing consumes these tasks or fires the beat schedule
+below. Document processing runs via FastAPI BackgroundTasks instead (see
+app/api/routes/documents.py). This file is kept as a ready-to-use upgrade
+path: deploy a Render Background Worker (+ a beat service if you want the
+scheduled job below to actually fire) and point it at this app, and these
+tasks become live with no code changes needed.
+"""
 from celery import Celery
 from celery.schedules import crontab
 import logging

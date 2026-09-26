@@ -1,5 +1,5 @@
 """Documents API - upload, OCR processing, clause extraction."""
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
@@ -8,11 +8,19 @@ import re
 import uuid
 import logging
 
-from app.core.database import get_db
+from app.core.database import get_db, AsyncSessionLocal
 from app.core.config import settings
 from app.models.models import Document, DocumentType, InsuranceType
+from app.services.ocr.ocr_pipeline import (
+    extract_text_from_pdf, extract_text_from_image, chunk_text
+)
+from app.services.rag.rag_pipeline import upsert_document_chunks
+from app.services.llm.gemini_service import extract_policy_clauses
 from app.services.storage.minio_service import upload_file, get_file_url
-from app.services.documents.quality_check import check_image_quality, check_pdf_quality
+from app.services.documents.quality_check import (
+    check_image_quality, check_pdf_quality, check_extracted_text,
+)
+from app.core.middleware import sanitize_user_input, check_prompt_injection
 from app.api.deps.auth import get_current_user
 
 router = APIRouter()
@@ -65,6 +73,7 @@ def _sanitize_filename(filename: str) -> str:
 
 @router.post("/upload")
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     doc_type: DocumentType = DocumentType.POLICY,
     insurance_type: Optional[InsuranceType] = None,
@@ -73,7 +82,15 @@ async def upload_document(
 ):
     """
     Upload an insurance document (policy PDF, rejection letter, etc.).
-    Triggers async OCR + embedding pipeline via Celery.
+    Triggers async OCR + embedding pipeline via FastAPI BackgroundTasks.
+
+    NOTE: this runs in-process on the web service, not on a separate queue —
+    there's no Celery worker deployed (Render doesn't have a free tier for
+    Background Workers; the cheapest is $7/mo). Trade-off: if the web
+    service restarts mid-processing, that one in-flight upload's job is
+    lost and the user needs to re-upload. Low-frequency risk on Render's
+    free/starter tiers, not a constant problem — revisit if a paid worker
+    ever becomes worthwhile.
     """
     if file.size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
         raise HTTPException(400, f"File too large. Max {settings.MAX_UPLOAD_SIZE_MB}MB")
@@ -136,16 +153,15 @@ async def upload_document(
     db.add(doc)
     await db.flush()
 
-    # Queue async processing on Celery — a worker crash or redeploy no
-    # longer silently drops in-flight uploads the way FastAPI's
-    # BackgroundTasks did (those ran in-process and had no retry/persistence).
-    from app.workers.tasks import process_document
-    process_document.delay(
-        document_id=str(doc.id),
-        file_path=minio_path,
-        mime_type=content_type,
-        doc_type=doc_type.value,
-        page_count=page_count,
+    # Queue async processing on the web service's own event loop via
+    # BackgroundTasks (see docstring above for why this isn't Celery).
+    background_tasks.add_task(
+        process_document_async,
+        str(doc.id),
+        file_bytes,
+        content_type,
+        doc_type,
+        page_count,
     )
 
     return {
@@ -156,6 +172,95 @@ async def upload_document(
         "quality_ok": quality_ok,
         "quality_issues": quality_issues,
     }
+
+
+async def process_document_async(
+    doc_id: str,
+    file_bytes: bytes,
+    mime_type: str,
+    doc_type: DocumentType,
+    page_count: int = 1,
+):
+    """
+    Background task: OCR -> sanitize -> chunk -> embed -> (for policies)
+    extract clauses. Runs in-process on the web service (see the /upload
+    docstring for the Celery-vs-BackgroundTasks trade-off).
+    """
+    async with AsyncSessionLocal() as db:
+        doc = None
+        try:
+            doc = await db.get(Document, doc_id)
+            if not doc:
+                logger.error(f"Background task: document {doc_id} not found in DB")
+                return
+
+            # Step 1: OCR
+            doc.ocr_status = "processing"
+            await db.commit()
+
+            if mime_type == "application/pdf":
+                text = extract_text_from_pdf(file_bytes)
+            else:
+                text = extract_text_from_image(file_bytes, mime_type)
+
+            logger.info(f"OCR complete for {doc_id}: {len(text or '')} chars extracted")
+
+            if not text or len(text.strip()) < 20:
+                logger.warning(f"OCR returned very little text for {doc_id} — possible scanned/image PDF")
+
+            # Documents are user-uploaded content that gets fed straight into
+            # LLM prompts downstream (clause extraction, audits, appeal
+            # letters). Sanitize it and flag — but don't block on — anything
+            # that looks like a prompt-injection attempt, since we still
+            # want to process the user's own real document.
+            text = sanitize_user_input(text or "", max_length=200_000)
+            injection_detected = check_prompt_injection(text) if text else False
+            if injection_detected:
+                logger.warning(f"Possible prompt-injection pattern detected in document {doc_id}")
+
+            doc.ocr_text = text
+            doc.ocr_status = "done"
+
+            # Post-OCR quality check: catches the case where the file looked
+            # fine but OCR still came back nearly empty (blank scan, engine
+            # failure that didn't raise). Merge with the pre-upload check
+            # rather than overwrite it.
+            post_ocr_quality = check_extracted_text(text, page_count=page_count)
+            issues = list(doc.quality_issues or [])
+            if not post_ocr_quality["ok"]:
+                issues += post_ocr_quality["issues"]
+                doc.quality_ok = False
+            if injection_detected:
+                issues.append("Unusual instruction-like text detected in document — reviewed with extra caution.")
+            doc.quality_issues = issues
+
+            # Step 2: Chunk + embed
+            chunks = chunk_text(text)
+            await upsert_document_chunks(
+                document_id=doc_id,
+                user_id=str(doc.owner_id),
+                chunks=chunks,
+            )
+            doc.embedding_status = "done"
+
+            # Step 3: For policies, extract clauses
+            if doc_type == DocumentType.POLICY and text:
+                clauses = await extract_policy_clauses(text)
+                doc.extracted_clauses = clauses
+                doc.summary = clauses.get("plain_english_summary", "")
+                doc.risk_flags = clauses.get("risky_clauses", [])
+
+            await db.commit()
+            logger.info(f"Document {doc_id} processing complete")
+
+        except Exception as e:
+            logger.error(f"Document processing failed for {doc_id}: {e}", exc_info=True)
+            try:
+                if doc:
+                    doc.ocr_status = "failed"
+                    await db.commit()
+            except Exception as commit_err:
+                logger.error(f"Failed to mark {doc_id} as failed: {commit_err}")
 
 
 @router.get("/{document_id}")
