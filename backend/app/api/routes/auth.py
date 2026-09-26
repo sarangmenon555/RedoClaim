@@ -304,7 +304,10 @@ async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends
             algorithm=settings.JWT_ALGORITHM,
         )
         reset_url = f"/auth/reset-password?token={reset_token}"
-        # TODO: send via email provider instead of logging once one is configured.
+        # No email provider wired up (dropped by request) — reset link is
+        # logged server-side. Whoever needs to complete a reset for a user
+        # right now has to pull this from the logs and send it manually,
+        # or you can wire a provider back in later.
         logger.info(f"Password reset requested for {user.email}: {reset_url}")
 
     return {"message": "If that email is registered, a reset link has been sent."}

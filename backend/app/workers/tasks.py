@@ -125,38 +125,49 @@ def process_document(
 @celery_app.task
 def send_deadline_reminders():
     """
-    Daily job: check IRDAI grievance deadlines and flag urgent cases.
-    Runs at 9 AM IST every day.
+    Daily job: check IRDAI grievance deadlines (GRO + Ombudsman) and flag
+    urgent cases. Runs at 9 AM IST every day (see celery_app.py beat_schedule).
+    No email/SMS wired up — this logs urgent claims server-side and flips
+    the reminder flag so the same claim isn't logged twice. Surface these
+    in-app (e.g. a banner on the dashboard reading the reminder flags) if
+    you want users to actually see them without adding an email provider.
     """
     async def _run():
         from app.core.database import AsyncSessionLocal
-        from app.models.models import Claim
+        from app.models.models import Claim, ClaimStatus
         from sqlalchemy import select
-        from datetime import timedelta
 
         now = datetime.now()
-        warning_window = now + timedelta(days=3)  # Warn 3 days before deadline
+        warning_window = now + timedelta(days=3)
+        flagged_count = 0
 
         async with AsyncSessionLocal() as db:
-            result = await db.execute(
-                select(Claim).where(
-                    Claim.gro_deadline.isnot(None),
-                    Claim.gro_deadline <= warning_window,
-                    Claim.gro_reminder_sent == False,
+            for deadline_field, reminder_flag, label in [
+                ("gro_deadline", "gro_reminder_sent", "GRO response"),
+                ("irdai_deadline", "irdai_reminder_sent", "IRDAI Ombudsman filing"),
+            ]:
+                result = await db.execute(
+                    select(Claim).where(
+                        getattr(Claim, deadline_field).isnot(None),
+                        getattr(Claim, deadline_field) <= warning_window,
+                        getattr(Claim, reminder_flag) == False,
+                        Claim.status != ClaimStatus.RESOLVED,
+                    )
                 )
-            )
-            urgent_claims = result.scalars().all()
+                urgent_claims = result.scalars().all()
 
-            for claim in urgent_claims:
-                days_left = (claim.gro_deadline - now).days
-                logger.warning(
-                    f"URGENT: Claim {claim.id} GRO deadline in {days_left} days! "
-                    f"User: {claim.owner_id}"
-                )
-                claim.gro_reminder_sent = True
+                for claim in urgent_claims:
+                    deadline_dt = getattr(claim, deadline_field)
+                    days_left = (deadline_dt - now).days
+                    logger.warning(
+                        f"URGENT: Claim {claim.id} {label} deadline in {days_left} days! "
+                        f"User: {claim.owner_id}"
+                    )
+                    setattr(claim, reminder_flag, True)
+                    flagged_count += 1
 
             await db.commit()
-            logger.info(f"Deadline check: {len(urgent_claims)} urgent claims flagged")
+            logger.info(f"Deadline check complete: {flagged_count} urgent claims flagged")
 
     run_async(_run())
 

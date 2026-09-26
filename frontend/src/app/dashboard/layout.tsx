@@ -5,7 +5,7 @@ import {
   ShieldCheck, LayoutDashboard, FileSearch, AlertTriangle,
   FileText, Clock, Upload, LogOut, User, Bell,
   ArrowRightLeft, Monitor, FileSpreadsheet, ChevronRight, Settings,
-  MessageSquare, Calculator
+  MessageSquare, Calculator, Hourglass, GitCompare, BookOpen, HelpCircle
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -24,6 +24,9 @@ const navGroups = [
       { href: "/dashboard/auditor",     labelKey: "nav_auditor",  icon: AlertTriangle },
       { href: "/dashboard/ask",         labelKey: "nav_ask_ai",   icon: MessageSquare },
       { href: "/dashboard/estimator",   labelKey: "nav_estimator", icon: Calculator },
+      { href: "/dashboard/waiting-period", labelKey: "nav_waiting_period", icon: Hourglass },
+      { href: "/dashboard/compare-policies", labelKey: "nav_compare_policies", icon: GitCompare },
+      { href: "/dashboard/explain",     labelKey: "nav_explain_term", icon: HelpCircle },
     ],
   },
   {
@@ -32,6 +35,7 @@ const navGroups = [
       { href: "/dashboard/appeals",     labelKey: "nav_appeals",     icon: FileText },
       { href: "/dashboard/portability", labelKey: "nav_portability", icon: ArrowRightLeft },
       { href: "/dashboard/e-jagriti",   labelKey: "nav_edaakhil",    icon: Monitor },
+      { href: "/dashboard/faq",         labelKey: "nav_faq",         icon: BookOpen },
     ],
   },
   {

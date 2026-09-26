@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from typing import Optional
 import logging
 import time
-
 from app.core.database import get_db
 from app.models.models import Claim, Appeal, AppealType
 from app.services.llm.gemini_service import generate_appeal_letter
@@ -192,4 +191,52 @@ async def get_appeal(
         "letter_content": appeal.letter_content,
         "legal_references": appeal.legal_references,
         "created_at": appeal.created_at.isoformat() if appeal.created_at else None,
+    }
+
+VALID_OUTCOMES = {"pending", "approved", "rejected", "partial"}
+
+
+class AppealOutcomeUpdate(BaseModel):
+    outcome: str  # pending|approved|rejected|partial
+    submitted_at: Optional[str] = None  # ISO date, set when marking as filed/submitted
+
+
+@router.patch("/{appeal_id}/outcome")
+async def update_appeal_outcome(
+    appeal_id: str,
+    req: AppealOutcomeUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Track what happened after an appeal letter was actually sent — won,
+    lost, partially settled, or still pending. This closes the loop that
+    letter-generation alone doesn't: knowing outcomes is what lets us
+    later analyze which arguments/insurers/appeal types actually work.
+    """
+    from datetime import datetime as _dt
+
+    if req.outcome not in VALID_OUTCOMES:
+        raise HTTPException(400, f"outcome must be one of {sorted(VALID_OUTCOMES)}")
+
+    appeal = await db.get(Appeal, appeal_id)
+    if not appeal or str(appeal.owner_id) != str(current_user.id):
+        raise HTTPException(404, "Appeal not found")
+
+    appeal.outcome = req.outcome
+    appeal.response_received = req.outcome != "pending"
+    if req.submitted_at:
+        try:
+            appeal.submitted_at = _dt.fromisoformat(req.submitted_at)
+        except ValueError:
+            raise HTTPException(400, "submitted_at must be an ISO date/datetime string")
+    elif appeal.submitted_at is None:
+        appeal.submitted_at = _dt.utcnow()
+
+    await db.commit()
+    return {
+        "id": str(appeal.id),
+        "outcome": appeal.outcome,
+        "response_received": appeal.response_received,
+        "submitted_at": appeal.submitted_at.isoformat() if appeal.submitted_at else None,
     }

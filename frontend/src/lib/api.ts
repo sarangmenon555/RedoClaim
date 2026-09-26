@@ -172,6 +172,10 @@ export const analysisApi = {
     survey_report_date?: string;
     policy_inception_date?: string;
     documents_complete_date?: string;
+    // Family/dependent linking — who this claim is for, if not the
+    // account holder (spouse/parent/child under a family floater policy).
+    patient_name?: string;
+    patient_relationship?: string;
     // Regional language output: en, hi, ml, ta, te, kn. Defaults to English
     // when omitted — pass the active UI language to get the audit report
     // back in Malayalam/Tamil/Telugu/Kannada/Hindi.
@@ -205,6 +209,19 @@ export const analysisApi = {
       claim_id: claimId,
       patient_age: patientAge,
     }),
+
+  // Deterministic (no LLM) waiting-period lapse check computed from a
+  // policy's already-extracted waiting_periods clauses + inception date.
+  checkWaitingPeriods: (documentId: string, asOfDate?: string) =>
+    api.post("/analysis/waiting-period-check", { document_id: documentId, as_of_date: asOfDate }),
+
+  // Side-by-side comparison of 2-3 already-analyzed policies. No new LLM call.
+  comparePolicies: (documentIds: string[]) =>
+    api.post("/analysis/compare-policies", { document_ids: documentIds }),
+
+  // Plain-language explanation of any insurance term or clause.
+  explainTerm: (termOrClause: string, outputLanguage: string = "en") =>
+    api.post("/analysis/explain-term", { term_or_clause: termOrClause, output_language: outputLanguage }),
 };
 
 // ── Appeals API ───────────────────────────────────────────────────────────────
@@ -218,13 +235,22 @@ export const appealsApi = {
     }),
   listForClaim: (claimId: string) => api.get(`/appeals/claim/${claimId}`),
   get: (id: string) => api.get(`/appeals/${id}`),
+  updateOutcome: (id: string, outcome: "pending" | "approved" | "rejected" | "partial", submittedAt?: string) =>
+    api.patch(`/appeals/${id}/outcome`, { outcome, submitted_at: submittedAt }),
 };
 
 // ── Claims API ────────────────────────────────────────────────────────────────
 
 export const claimsApi = {
-  list: () => api.get("/claims/"),
+  list: (patientName?: string) =>
+    api.get("/claims/", { params: patientName !== undefined ? { patient_name: patientName } : {} }),
   get: (id: string) => api.get(`/claims/${id}`),
+  getTimeline: (id: string) => api.get(`/claims/${id}/timeline`),
+  updatePatient: (id: string, data: { patient_name: string | null; patient_relationship: string | null }) =>
+    api.put(`/claims/${id}/patient`, data),
+  listPatients: () => api.get("/claims/patients"),
+  getUrgentDeadlines: () => api.get("/claims/deadlines/urgent"),
+  exportPdf: (id: string) => api.get(`/claims/${id}/export-pdf`, { responseType: "blob" }),
 };
 
 // ── Language API — regional language support (Sarvam AI) ───────────────────────

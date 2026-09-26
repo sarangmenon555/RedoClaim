@@ -98,6 +98,7 @@ export default function TimelinePage() {
                     <p className="text-xs mt-0.5" style={{color:"var(--text-tertiary)"}}>
                       {claim.policy_number || t("tl_policy_unknown")}
                       {claim.claim_amount ? ` • ₹${(claim.claim_amount/100000).toFixed(1)}L` : ""}
+                      {claim.patient_name ? ` • For ${claim.patient_name}` : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -139,6 +140,9 @@ export default function TimelinePage() {
                   <div className="flex gap-2 mt-5 pt-4 flex-wrap" style={{borderTop:"1px solid var(--surface-4)"}}>
                     <Link href={`/dashboard/appeals?claim_id=${claim.id}`} className="btn-primary text-xs px-3 py-2">
                       {t("tl_generate_gro")}
+                    </Link>
+                    <Link href={`/dashboard/claims/${claim.id}`} className="btn-secondary text-xs px-3 py-2">
+                      Full timeline & export PDF
                     </Link>
                     {[
                       ["IRDAI Portal","https://igms.irda.gov.in"],

@@ -143,6 +143,8 @@ export interface Claim {
   rejection_date?: string;
   gro_deadline?: string;
   irdai_deadline?: string;
+  patient_name?: string | null;
+  patient_relationship?: string | null;
   created_at: string;
 }
 

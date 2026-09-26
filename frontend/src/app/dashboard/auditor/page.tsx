@@ -39,6 +39,7 @@ function AuditorPageInner() {
     claimDate: "", rejectionDate: "", groFiled: false, groFiledDate: "",
     surveyAppointmentDate: "", surveyReportDate: "",
     policyInceptionDate: "", documentsCompleteDate: "",
+    patientRelationship: "self", patientName: "",
   });
 
   // Load all processed documents
@@ -173,6 +174,8 @@ function AuditorPageInner() {
         survey_report_date: form.insuranceType === "motor" ? (form.surveyReportDate || undefined) : undefined,
         policy_inception_date: form.insuranceType === "life" ? (form.policyInceptionDate || undefined) : undefined,
         documents_complete_date: form.insuranceType === "life" ? (form.documentsCompleteDate || undefined) : undefined,
+        patient_name: form.patientRelationship !== "self" ? (form.patientName.trim() || undefined) : undefined,
+        patient_relationship: form.patientRelationship,
         output_language: language,
       });
       setAuditResult(res.data);
@@ -277,6 +280,35 @@ function AuditorPageInner() {
 
           <div className="card p-6 space-y-4">
             <h3 className="font-semibold style-text-primary">Claim details</h3>
+
+            <div>
+              <label className="label">Who is this claim for?</label>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="input py-2 w-auto"
+                  value={form.patientRelationship}
+                  onChange={(e) => setForm({ ...form, patientRelationship: e.target.value })}
+                  suppressHydrationWarning>
+                  <option value="self">Myself</option>
+                  <option value="spouse">Spouse</option>
+                  <option value="child">Child</option>
+                  <option value="parent">Parent</option>
+                  <option value="other">Other family member</option>
+                </select>
+                {form.patientRelationship !== "self" && (
+                  <input
+                    className="input py-2 w-auto"
+                    placeholder="Their name"
+                    value={form.patientName}
+                    onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+                    suppressHydrationWarning
+                  />
+                )}
+              </div>
+              <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
+                Filing under a family floater policy on behalf of someone else? Set that here so it shows up correctly in your claims list.
+              </p>
+            </div>
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>

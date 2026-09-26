@@ -107,6 +107,12 @@ class Claim(Base):
     gro_deadline = Column(DateTime(timezone=True), nullable=True)   # +15 days from rejection
     irdai_deadline = Column(DateTime(timezone=True), nullable=True) # +30 days from GRO
 
+    # Family/dependent linking — lets one account manage claims filed on
+    # behalf of a spouse, parent, or child under a family floater policy.
+    # NULL means "the account holder themselves".
+    patient_name = Column(String(255), nullable=True)
+    patient_relationship = Column(String(50), nullable=True)  # self|spouse|child|parent|other
+
     # Notification flags
     gro_reminder_sent = Column(Boolean, default=False)
     irdai_reminder_sent = Column(Boolean, default=False)

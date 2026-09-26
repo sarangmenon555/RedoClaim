@@ -964,3 +964,42 @@ def _parse_json(raw: str, context: str) -> dict:
     except json.JSONDecodeError as e:
         logger.warning(f"JSON parse failed in {context}: {e}")
         return {"raw_analysis": raw, "parse_error": True, "context": context}
+
+# ── Health Insurance Literacy Explainer ─────────────────────────────
+async def explain_insurance_term(term_or_clause: str, target_language: str = "en") -> dict:
+    """
+    Plain-language explanation of any insurance term/clause the user pastes
+    in. Reuses the same OpenAI call you already pay for elsewhere — this
+    isn't a new external cost, just a new prompt/endpoint over it.
+    Regional-language output is handled by the caller via Sarvam (existing
+    /language endpoints), same as the rest of the app — this always
+    generates in English first for consistent quality, then the route
+    layer can translate.
+    """
+    system = (
+        "You are an insurance-literacy explainer for Indian consumers. Explain insurance "
+        "terms and policy clauses in plain, simple language a non-expert can understand. "
+        "Use a short real-world example where helpful. Never give legal advice — just explain "
+        "what the term/clause commonly means in Indian health/motor/life insurance."
+    )
+    prompt = f"""Explain this insurance term or clause in plain English, for someone with no insurance background:
+
+"{term_or_clause}"
+
+Respond as JSON:
+{{
+  "term": "...",
+  "plain_explanation": "2-4 simple sentences",
+  "example": "one short real-world example",
+  "why_it_matters": "one sentence on why a policyholder should care about this"
+}}
+Return ONLY the JSON object."""
+
+    raw = await gemini.generate(
+        model=settings.MODEL_DRAFTING if hasattr(settings, "MODEL_DRAFTING") else "gpt-5-nano",
+        prompt=prompt,
+        system=system,
+        temperature=0.3,
+        max_tokens=500,
+    )
+    return _parse_json(raw, context="explain_insurance_term")

@@ -31,6 +31,9 @@ from app.services.rag.rag_pipeline import (
 from app.services.irdai.rules_engine import irdai_engine
 from app.services.irdai.motor_life_rules_engine import motor_engine, life_engine
 from app.services.irdai.payout_estimator import estimate_payout
+from app.services.irdai.waiting_period_calculator import calculate_waiting_periods
+from app.services.irdai.policy_comparator import compare_policies
+from app.services.llm.gemini_service import explain_insurance_term
 from app.api.deps.auth import get_current_user
 from app.services.language.sarvam_service import normalize_language
 from app.services.language.localization import localize_audit_response
@@ -92,6 +95,11 @@ class AuditRequest(BaseModel):
     documents_complete_date: Optional[datetime] = None
     # Regional language output: en, hi, ml, ta, te, kn. Defaults to English.
     output_language: str = "en"
+    # Family/dependent linking — who this claim is for, if not the account
+    # holder (e.g. filing on behalf of a spouse or parent under a family
+    # floater policy). patient_name is a display label, not a separate account.
+    patient_name: Optional[str] = None
+    patient_relationship: Optional[str] = None  # self|spouse|child|parent|other
 
 
 @router.post("/audit-rejection")
@@ -331,6 +339,8 @@ async def audit_claim_rejection(
         rejection_date=req.rejection_date,
         gro_deadline=gro_deadline,
         irdai_deadline=irdai_deadline,
+        patient_name=(req.patient_name or "").strip() or None,
+        patient_relationship=req.patient_relationship,
     )
     db.add(claim)
     await db.flush()
@@ -650,3 +660,101 @@ async def estimate_payout_route(
             await db.commit()
 
     return estimate
+
+
+# ── 8. Waiting Period Calculator ────────────────────────────────────
+class WaitingPeriodRequest(BaseModel):
+    document_id: str
+    as_of_date: Optional[str] = None  # ISO date; defaults to today. Use the
+    # treatment date to check whether a period had lapsed AT THAT TIME.
+
+
+@router.post("/waiting-period-check")
+async def waiting_period_check(
+    body: WaitingPeriodRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Deterministic check of every waiting-period clause on a policy against
+    its inception date — tells you which conditions are still excluded and
+    which have lapsed. No LLM call; pure date arithmetic over already-
+    extracted clauses.
+    """
+    from datetime import date as _date
+
+    doc = await db.get(Document, body.document_id)
+    if not doc or str(doc.owner_id) != str(current_user.id):
+        raise HTTPException(404, "Document not found")
+    if not doc.extracted_clauses:
+        raise HTTPException(400, "This document hasn't finished clause extraction yet.")
+
+    as_of = None
+    if body.as_of_date:
+        try:
+            as_of = _date.fromisoformat(body.as_of_date)
+        except ValueError:
+            raise HTTPException(400, "as_of_date must be YYYY-MM-DD")
+
+    return calculate_waiting_periods(doc.extracted_clauses, as_of=as_of)
+
+
+# ── 9. Policy Comparison Tool ───────────────────────────────────────
+class PolicyCompareRequest(BaseModel):
+    document_ids: list[str]  # 2-3 policy documents to compare
+
+
+@router.post("/compare-policies")
+async def compare_policies_route(
+    body: PolicyCompareRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Side-by-side comparison of 2-3 already-analyzed policies. No new LLM call."""
+    if not (2 <= len(body.document_ids) <= 3):
+        raise HTTPException(400, "Provide 2 or 3 document_ids to compare.")
+
+    docs_data = []
+    for doc_id in body.document_ids:
+        doc = await db.get(Document, doc_id)
+        if not doc or str(doc.owner_id) != str(current_user.id):
+            raise HTTPException(404, f"Document {doc_id} not found")
+        if not doc.extracted_clauses:
+            raise HTTPException(400, f"Document {doc_id} hasn't finished clause extraction yet.")
+        docs_data.append({
+            "document_id": str(doc.id),
+            "file_name": doc.file_name,
+            "extracted_clauses": doc.extracted_clauses,
+        })
+
+    return compare_policies(docs_data)
+
+
+# ── 10. Health Insurance Literacy Explainer ─────────────────────────
+class ExplainTermRequest(BaseModel):
+    term_or_clause: str
+    output_language: str = "en"
+
+
+@router.post("/explain-term")
+async def explain_term_route(
+    body: ExplainTermRequest,
+    current_user=Depends(get_current_user),
+):
+    """Plain-language explanation of any insurance term/clause the user pastes in."""
+    if not body.term_or_clause.strip():
+        raise HTTPException(400, "term_or_clause cannot be empty")
+
+    result = await explain_insurance_term(body.term_or_clause.strip())
+
+    if body.output_language != "en" and sarvam_client.enabled and isinstance(result.get("plain_explanation"), str):
+        try:
+            result["plain_explanation"] = await sarvam_client.translate_long_text(
+                result["plain_explanation"], body.output_language
+            )
+            if result.get("example"):
+                result["example"] = await sarvam_client.translate_long_text(result["example"], body.output_language)
+        except Exception as e:
+            logging.getLogger(__name__).error(f"explain-term translation failed, returning English: {e}")
+
+    return result
