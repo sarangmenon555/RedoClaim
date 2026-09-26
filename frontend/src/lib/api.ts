@@ -7,22 +7,31 @@ export const api = axios.create({
   baseURL: `${API_URL}/api/v1`,
   timeout: 180000,
   headers: { "Content-Type": "application/json" },
+  // Required so the browser sends/receives the httpOnly refresh-token
+  // cookie (see backend auth.py) on cross-origin requests to the API.
+  withCredentials: true,
 });
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
+// Only the short-lived access token lives in JS-reachable storage now. The
+// refresh token is an httpOnly cookie the backend sets on login/register/
+// refresh — it is never exposed to JavaScript, so an XSS bug can no longer
+// steal it and mint itself new sessions indefinitely the way it could
+// before. An XSS can still steal the access token in memory/localStorage
+// for its (short) lifetime, but that's a much smaller blast radius.
 
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("access_token");
 }
 
-export function setTokens(access_token: string, refresh_token: string): void {
+export function setAccessToken(access_token: string): void {
   localStorage.setItem("access_token", access_token);
-  localStorage.setItem("refresh_token", refresh_token);
 }
 
 export function clearTokens(): void {
   localStorage.removeItem("access_token");
+  // Old key, in case a still-logged-in browser has it from before this change.
   localStorage.removeItem("refresh_token");
 }
 
@@ -47,24 +56,23 @@ api.interceptors.response.use(
     const isRefreshEndpoint = error.config?.url?.includes("/auth/refresh");
 
     if (isUnauthorized && !isRefreshEndpoint && typeof window !== "undefined") {
-      const refreshToken = localStorage.getItem("refresh_token");
-      if (refreshToken) {
-        try {
-          const res = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
-            refresh_token: refreshToken,
-          });
-          const { access_token, refresh_token: new_refresh } = res.data;
-          setTokens(access_token, new_refresh ?? refreshToken);
+      try {
+        // No token passed in the body anymore — the refresh token rides
+        // along automatically as the httpOnly cookie (withCredentials above).
+        const res = await axios.post(
+          `${API_URL}/api/v1/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+        const { access_token } = res.data;
+        setAccessToken(access_token);
 
-          if (error.config) {
-            error.config.headers.Authorization = `Bearer ${access_token}`;
-            return api.request(error.config);
-          }
-        } catch {
-          clearTokens();
-          window.location.href = "/auth/login";
+        if (error.config) {
+          error.config.headers.Authorization = `Bearer ${access_token}`;
+          return api.request(error.config);
         }
-      } else {
+      } catch {
+        clearTokens();
         window.location.href = "/auth/login";
       }
     }
@@ -83,7 +91,7 @@ export const authApi = {
     phone?: string;
   }) => {
     const res = await api.post("/auth/register", data);
-    setTokens(res.data.access_token, res.data.refresh_token);
+    setAccessToken(res.data.access_token);
     return res;
   },
 
@@ -94,7 +102,7 @@ export const authApi = {
     const res = await api.post("/auth/login", form, {
       headers: { "Content-Type": "multipart/form-data" },
     });
-    setTokens(res.data.access_token, res.data.refresh_token);
+    setAccessToken(res.data.access_token);
     return res;
   },
 
@@ -111,7 +119,17 @@ export const authApi = {
   // Delete account — permanently removes all user data
   deleteAccount: () => api.delete("/auth/me"),
 
+  // Request a password-reset email/link (see backend /auth/forgot-password).
+  forgotPassword: (email: string) => api.post("/auth/forgot-password", { email }),
+
+  // Complete a password reset with the token from the reset link.
+  resetPassword: (token: string, newPassword: string) =>
+    api.post("/auth/reset-password", { token, new_password: newPassword }),
+
   logout: () => {
+    // Best-effort: clears the httpOnly refresh cookie server-side. Client
+    // state is cleared either way even if this call fails (e.g. offline).
+    api.post("/auth/logout").catch(() => {});
     clearTokens();
     window.location.href = "/auth/login";
   },

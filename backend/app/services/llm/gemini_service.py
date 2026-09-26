@@ -1,3 +1,17 @@
+"""
+LLM service — despite the filename (kept for backward compatibility with
+existing imports across the codebase; renaming it is a larger refactor than
+this pass covers), this module talks to OpenAI, not Gemini. It used to
+route between Gemini/Groq/Llama depending on task; that routing is gone —
+everything now resolves to a single OpenAI model via _LEGACY_MODEL_ALIASES
+below, kept only so old caller code that still passes a "gemini-..." or
+"llama-..." string as `model` keeps working unchanged.
+
+TODO(cleanup): rename this file to app/services/llm/openai_service.py (or
+similar) and update the ~handful of `from app.services.llm.gemini_service
+import ...` call sites accordingly, once there's a moment to do the
+search-and-replace + test pass safely.
+"""
 import json
 import time
 import logging
@@ -7,7 +21,10 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_MODEL_MAP = {
+# Old task-specific model names from the pre-OpenAI-migration codebase.
+# All of them now resolve to the same underlying model; this map exists
+# purely so callers passing a legacy name don't need to change.
+_LEGACY_MODEL_ALIASES = {
     "gemini-2.0-flash-lite":         "gpt-5-nano",
     "gemini-2.5-flash-lite":         "gpt-5-nano",
     "gemini-2.5-flash":              "gpt-5-nano",
@@ -17,6 +34,8 @@ _MODEL_MAP = {
     "llama4-scout-17b-16e-instruct": "gpt-5-nano",
     "gpt-5-nano":                    "gpt-5-nano",
 }
+# Backward-compatible alias for the old name, in case anything imports it directly.
+_MODEL_MAP = _LEGACY_MODEL_ALIASES
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 768  # truncated via OpenAI's `dimensions` param — matches existing Qdrant collections

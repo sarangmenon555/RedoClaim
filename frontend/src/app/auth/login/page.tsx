@@ -110,7 +110,13 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label className="label">{t("auth_password")}</label>
+            <div className="flex items-center justify-between">
+              <label className="label">{t("auth_password")}</label>
+              <Link href="/auth/forgot-password" className="text-xs font-medium transition"
+                style={{color:"#A78BFA"}}>
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <input
                 type={showPwd ? "text" : "password"}

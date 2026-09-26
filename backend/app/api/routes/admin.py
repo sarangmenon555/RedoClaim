@@ -1,5 +1,5 @@
 """Admin API routes — expanded stats for internal dashboard."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, cast, Date
 from datetime import datetime, timedelta, timezone
@@ -13,6 +13,8 @@ router = APIRouter()
 
 @router.get("/stats")
 async def admin_stats(
+    recent_users_limit: int = Query(10, ge=1, le=100),
+    recent_users_offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_admin_user),
 ):
@@ -68,11 +70,12 @@ async def admin_stats(
         for row in daily_signups_rows.all()
     ]
 
-    # ── Recent 10 registered users ──────────────────────────────────────────
+    # ── Recent registered users (paginated) ───────────────────────────────
     recent_users_rows = await db.execute(
         select(User.id, User.full_name, User.email, User.created_at, User.is_active, User.is_verified)
         .order_by(User.created_at.desc())
-        .limit(10)
+        .limit(recent_users_limit)
+        .offset(recent_users_offset)
     )
     recent_users = [
         {
@@ -102,6 +105,7 @@ async def admin_stats(
         "claim_by_status": claim_by_status,
         # Time series
         "daily_signups": daily_signups,
-        # Recent activity
+        # Recent activity (paginated — see recent_users_limit/offset query params)
         "recent_users": recent_users,
+        "recent_users_total": user_count,
     }

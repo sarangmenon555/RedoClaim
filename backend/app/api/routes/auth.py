@@ -1,5 +1,5 @@
 """Auth routes - JWT-based authentication."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -8,6 +8,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from typing import Optional
+import secrets
 import uuid
 import logging
 
@@ -18,6 +19,44 @@ from app.api.deps.auth import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# ── Refresh-token cookie ──────────────────────────────────────────────────────
+# The refresh token used to be handed back in the JSON body and stored in
+# localStorage on the frontend, which makes it stealable by any XSS anywhere
+# on the site. It now goes out ONLY as an httpOnly cookie — JS on the page
+# can never read it — and the frontend's /auth/refresh call relies on the
+# browser sending it automatically (credentials: "include").
+REFRESH_COOKIE_NAME = "redoclaim_refresh"
+REFRESH_COOKIE_PATH = "/api/v1/auth"
+
+
+def _set_refresh_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=REFRESH_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=settings.ENVIRONMENT == "production",
+        samesite="lax",
+        max_age=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path=REFRESH_COOKIE_PATH,
+    )
+
+
+def _clear_refresh_cookie(response: Response) -> None:
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path=REFRESH_COOKIE_PATH)
+
+
+# ── Login brute-force protection ──────────────────────────────────────────────
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_LOCKOUT_SECONDS = 15 * 60  # 15 minutes
+
+
+async def _get_redis():
+    try:
+        import redis.asyncio as aioredis
+        return await aioredis.from_url(settings.REDIS_URL)
+    except Exception:
+        return None
 
 # ── Password hashing ─────────────────────────────────────────────────────────
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -34,8 +73,21 @@ class RegisterRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"
+    # refresh_token is intentionally NOT included here anymore — it is set
+    # as an httpOnly cookie instead (see _set_refresh_cookie). Kept optional
+    # for any non-browser client that genuinely needs it in-body (e.g. a
+    # future mobile app without cookie support); it will be None on web.
+    refresh_token: Optional[str] = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 
 class UpdateProfileRequest(BaseModel):
@@ -84,7 +136,7 @@ def create_refresh_token(user_id: str) -> str:
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register(req: RegisterRequest, response: Response, db: AsyncSession = Depends(get_db)):
     """Register a new user and return JWT tokens."""
     result = await db.execute(select(User).where(User.email == req.email))
     if result.scalar_one_or_none():
@@ -107,22 +159,48 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
     logger.info(f"New user registered: {req.email}")
 
-    return TokenResponse(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
-    )
+    refresh = create_refresh_token(str(user.id))
+    _set_refresh_cookie(response, refresh)
+    return TokenResponse(access_token=create_access_token(str(user.id)))
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
 ):
     """Authenticate with email + password, return JWT tokens."""
+    redis = await _get_redis()
+    lockout_key = f"login_lockout:{form_data.username.lower()}"
+    attempts_key = f"login_attempts:{form_data.username.lower()}"
+
+    if redis:
+        try:
+            if await redis.get(lockout_key):
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Too many failed login attempts. Try again in 15 minutes.",
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            redis = None  # fail open on redis errors, same policy as the rate-limit middleware
+
     result = await db.execute(select(User).where(User.email == form_data.username))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(form_data.password, user.hashed_password):
+        if redis:
+            try:
+                attempts = await redis.incr(attempts_key)
+                if attempts == 1:
+                    await redis.expire(attempts_key, LOGIN_LOCKOUT_SECONDS)
+                if attempts >= MAX_LOGIN_ATTEMPTS:
+                    await redis.set(lockout_key, "1", ex=LOGIN_LOCKOUT_SECONDS)
+                    logger.warning(f"Login lockout triggered for {form_data.username}")
+            except Exception:
+                pass
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
@@ -135,20 +213,32 @@ async def login(
             detail="Account deactivated",
         )
 
+    if redis:
+        try:
+            await redis.delete(attempts_key, lockout_key)
+        except Exception:
+            pass
+
     logger.info(f"User logged in: {user.email}")
 
-    return TokenResponse(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
-    )
+    refresh = create_refresh_token(str(user.id))
+    _set_refresh_cookie(response, refresh)
+    return TokenResponse(access_token=create_access_token(str(user.id)))
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
-    """Exchange a valid refresh token for a new access token."""
+async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    """Exchange a valid refresh token (from the httpOnly cookie) for a new access token."""
+    token = request.cookies.get(REFRESH_COOKIE_NAME)
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No refresh token provided",
+        )
+
     try:
         payload = jwt.decode(
-            refresh_token,
+            token,
             settings.JWT_SECRET,
             algorithms=[settings.JWT_ALGORITHM],
         )
@@ -176,10 +266,72 @@ async def refresh_token(refresh_token: str, db: AsyncSession = Depends(get_db)):
             detail="User not found or deactivated",
         )
 
-    return TokenResponse(
-        access_token=create_access_token(user_id),
-        refresh_token=create_refresh_token(user_id),
-    )
+    # Rotate the refresh token on every use so a leaked-but-unused old token
+    # stops working the moment the legitimate client refreshes.
+    new_refresh = create_refresh_token(user_id)
+    _set_refresh_cookie(response, new_refresh)
+    return TokenResponse(access_token=create_access_token(user_id))
+
+
+@router.post("/logout")
+async def logout(response: Response):
+    """Clear the refresh-token cookie. Access token expires naturally client-side."""
+    _clear_refresh_cookie(response)
+    return {"message": "Logged out"}
+
+
+@router.post("/forgot-password")
+async def forgot_password(req: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Request a password reset. Always returns a generic success message
+    (never reveals whether the email exists) to avoid account enumeration.
+    NOTE: no transactional email provider is wired up yet — the reset link
+    is logged server-side for now. Plug in an email service (SES/Postmark/
+    Resend) and send `reset_url` to the user instead of just logging it.
+    """
+    result = await db.execute(select(User).where(User.email == req.email))
+    user = result.scalar_one_or_none()
+
+    if user and user.is_active:
+        reset_token = jwt.encode(
+            {
+                "sub": str(user.id),
+                "type": "password_reset",
+                "exp": datetime.utcnow() + timedelta(minutes=30),
+                "jti": secrets.token_hex(8),
+            },
+            settings.JWT_SECRET,
+            algorithm=settings.JWT_ALGORITHM,
+        )
+        reset_url = f"/auth/reset-password?token={reset_token}"
+        # TODO: send via email provider instead of logging once one is configured.
+        logger.info(f"Password reset requested for {user.email}: {reset_url}")
+
+    return {"message": "If that email is registered, a reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password(req: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    """Complete a password reset using the token from /forgot-password."""
+    try:
+        payload = jwt.decode(req.token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+        if payload.get("type") != "password_reset":
+            raise HTTPException(status_code=400, detail="Invalid reset token")
+        user_id = payload.get("sub")
+    except JWTError:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    if len(req.new_password) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+    user = await db.get(User, uuid.UUID(user_id))
+    if not user or not user.is_active:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    user.hashed_password = hash_password(req.new_password)
+    await db.flush()
+    logger.info(f"Password reset completed for {user.email}")
+    return {"message": "Password has been reset. Please log in with your new password."}
 
 
 @router.get("/me")

@@ -9,7 +9,8 @@ export interface User {
 
 export interface AuthTokens {
   access_token: string;
-  refresh_token: string;
+  // refresh_token is no longer returned in the response body — it's set
+  // as an httpOnly cookie by the backend. Field removed.
   token_type: string;
 }
 

@@ -7,9 +7,8 @@ import { isSupportedLanguage } from "@/lib/i18n/languages";
 interface AuthState {
   user: User | null;
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
-  setAuth: (user: User, tokens: { access_token: string; refresh_token: string }) => void;
+  setAuth: (user: User, tokens: { access_token: string }) => void;
   logout: () => void;
 }
 
@@ -18,13 +17,15 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
 
       setAuth: (user, tokens) => {
         if (typeof window !== "undefined") {
           localStorage.setItem("access_token", tokens.access_token);
-          localStorage.setItem("refresh_token", tokens.refresh_token);
+          // The refresh token is no longer handled here at all — the
+          // backend sets it as an httpOnly cookie, so it's never visible
+          // to this (or any other) JS running on the page.
+          localStorage.removeItem("refresh_token"); // clean up any old value
         }
         // Adopt the user's saved report language (set in Settings) so the
         // UI and audit reports switch to it automatically on login,
@@ -35,7 +36,6 @@ export const useAuthStore = create<AuthState>()(
         set({
           user,
           accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
           isAuthenticated: true,
         });
       },
@@ -45,7 +45,7 @@ export const useAuthStore = create<AuthState>()(
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
         }
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+        set({ user: null, accessToken: null, isAuthenticated: false });
       },
     }),
     {
