@@ -1003,3 +1003,117 @@ Return ONLY the JSON object."""
         max_tokens=500,
     )
     return _parse_json(raw, context="explain_insurance_term")
+
+
+# ── Renewal Red-Flag Checker ─────────────────────────────────────────
+async def check_renewal_red_flags(old_clauses: dict, new_clauses: dict) -> dict:
+    """
+    Diffs last year's extracted policy clauses against this year's renewal
+    clauses and flags changes that quietly disadvantage the policyholder —
+    reduced sum insured, new exclusions, a shrunk room-rent cap, a
+    disproportionate premium hike relative to sum-insured changes.
+    Unlike the Policy Comparison Tool (pure local diff, no LLM), this needs
+    judgment about which changes are actually adverse vs neutral, so it's
+    one LLM call over already-extracted clauses — not raw documents.
+    """
+    system = (
+        "You audit Indian health/motor/life insurance policy renewals for changes that quietly "
+        "disadvantage the policyholder. Compare last year's clauses to this year's. Flag only "
+        "genuinely adverse changes — a clarified wording or a truly neutral change is not a red flag."
+    )
+    prompt = f"""Last year's policy clauses (JSON):
+{json.dumps(old_clauses, indent=2)}
+
+This year's renewal clauses (JSON):
+{json.dumps(new_clauses, indent=2)}
+
+Compare them and respond as JSON:
+{{
+  "red_flags": [
+    {{"field": "sum_insured|room_rent_cap|co_payment|exclusions|sub_limits|premium|other",
+      "old_value": "...", "new_value": "...",
+      "severity": "high|medium|low",
+      "explanation": "why this specifically disadvantages the policyholder"}}
+  ],
+  "neutral_changes": ["short description of any changes that are NOT adverse"],
+  "overall_verdict": "one paragraph plain-English summary of whether this renewal is worth accepting as-is, negotiating, or porting away from"
+}}
+If there genuinely are no adverse changes, return an empty red_flags array — do not invent flags.
+Return ONLY the JSON object."""
+
+    raw = await gemini.generate(
+        model=settings.MODEL_DRAFTING,
+        prompt=prompt,
+        system=system,
+        temperature=0.2,
+        max_tokens=1200,
+    )
+    return _parse_json(raw, context="check_renewal_red_flags")
+
+
+# ── Second Opinion on Settlement Amount ──────────────────────────────
+async def audit_settlement(
+    settlement_text: str,
+    policy_clauses: dict,
+    claim_amount: float,
+    settled_amount: float,
+    irdai_context: str = "",
+) -> dict:
+    """
+    For PARTIAL settlements (not outright rejections) — audits whether the
+    amount an insurer actually paid matches what the policy terms justify,
+    the same "hierarchy of evidence" way audit_rejection checks a denial.
+    Reuses the same regulatory grounding, applied to under-payment instead
+    of non-payment.
+    """
+    system = (
+        "You are an AI legal research assistant helping Indian insurance policyholders "
+        "check whether a PARTIAL settlement amount matches what their policy actually entitles "
+        "them to. You are NOT a lawyer. Your output is NOT legal advice. "
+        "Reference IRDAI Master Circular 2024, IRDAI Health Regs 2024, Insurance Ombudsman Rules 2017. "
+        "CRITICAL: Return ONLY a valid JSON object. Output MUST start with { and end with }. "
+        "No markdown fences, no preamble, no text before { or after }."
+    )
+
+    shortfall = claim_amount - settled_amount
+
+    prompt = f"""SETTLEMENT AMOUNT AUDIT
+
+CLAIM AMOUNT: ₹{claim_amount:,.0f}
+AMOUNT ACTUALLY SETTLED: ₹{settled_amount:,.0f}
+SHORTFALL: ₹{shortfall:,.0f}
+
+INSURER'S SETTLEMENT LETTER / DEDUCTION EXPLANATION:
+{settlement_text[:3500]}
+
+POLICY CLAUSES ON RECORD:
+{json.dumps(policy_clauses, indent=2)[:2000] if policy_clauses else "Not provided"}
+
+IRDAI REGULATIONS (from RAG knowledge base):
+{irdai_context[:2000] if irdai_context else "Not available"}
+
+Check whether each deduction the insurer made is actually justified by the policy clauses on
+record. Return ONLY this JSON object:
+{{
+  "deductions_reviewed": [
+    {{"stated_reason": "...", "amount_deducted": 0, "justified_by_policy": true,
+      "explanation": "why this deduction does or doesn't match the policy clauses",
+      "regulation_reference": "citation if a regulation is relevant, else null"}}
+  ],
+  "total_questionable_deduction": 0,
+  "is_settlement_likely_correct": true,
+  "confidence": "high|medium|low",
+  "key_arguments": ["argument to use if disputing the shortfall"],
+  "recommended_action": "accept|gro_appeal|ombudsman|consumer_court",
+  "reasoning": "one paragraph summary"
+}}
+Return ONLY the JSON object."""
+
+    raw = await gemini.generate(
+        model=settings.MODEL_LEGAL,
+        prompt=prompt,
+        system=system,
+        temperature=0.05,
+        max_tokens=2500,
+    )
+    return _parse_json(raw, context="audit_settlement")

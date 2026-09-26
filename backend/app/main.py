@@ -9,7 +9,7 @@ import logging
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api.routes import documents, analysis, appeals, auth, claims, admin, timeline, language
+from app.api.routes import documents, analysis, appeals, auth, claims, admin, timeline, language, network_hospitals
 from app.core.middleware import RateLimitMiddleware, AuditLogMiddleware
 
 logger = logging.getLogger(__name__)
@@ -87,6 +87,7 @@ app.include_router(claims.router,    prefix="/api/v1/claims",     tags=["Claims"
 app.include_router(timeline.router,  prefix="/api/v1/timeline",   tags=["Timeline"])
 app.include_router(admin.router,     prefix="/api/v1/admin",      tags=["Admin"])
 app.include_router(language.router,  prefix="/api/v1/language",   tags=["Language"])
+app.include_router(network_hospitals.router, prefix="/api/v1/network-hospitals", tags=["Network Hospitals"])
 
 
 @app.get("/api/health")

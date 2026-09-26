@@ -202,3 +202,30 @@ class AuditLog(Base):
     user_agent = Column(String(500), nullable=True)
     extra = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class HospitalNetworkStatus(str, enum.Enum):
+    IN_NETWORK = "in_network"
+    DELISTED = "delisted"
+    UNKNOWN = "unknown"
+
+
+class NetworkHospital(Base):
+    """
+    Crowdsourced hospital-network status — insurers change cashless
+    networks and "hospital was delisted" is a common cashless-denial
+    reason. No paid hospital-network API is wired up, so this is a
+    user-contributed record: anyone can report a hospital's status for a
+    given insurer, and later reports for the same insurer+hospital pair
+    supersede older ones (most recent report wins, shown with its date so
+    the user can judge how current it is).
+    """
+    __tablename__ = "network_hospitals"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    insurer_name = Column(String(255), nullable=False, index=True)
+    hospital_name = Column(String(255), nullable=False, index=True)
+    city = Column(String(100), nullable=True)
+    status = Column(Enum(HospitalNetworkStatus), default=HospitalNetworkStatus.UNKNOWN, nullable=False)
+    reported_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    note = Column(Text, nullable=True)  # e.g. "delisted as of March 2026, per hospital billing desk"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
