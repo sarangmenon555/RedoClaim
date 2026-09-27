@@ -34,7 +34,8 @@ from app.services.irdai.payout_estimator import estimate_payout
 from app.services.irdai.waiting_period_calculator import calculate_waiting_periods
 from app.services.irdai.policy_comparator import compare_policies
 from app.services.irdai.copay_breakdown import calculate_copay_breakdown
-from app.services.llm.gemini_service import explain_insurance_term, check_renewal_red_flags, audit_settlement
+from app.services.irdai.cost_benefit_advisor import advise_cost_benefit
+from app.services.llm.gemini_service import explain_insurance_term, check_renewal_red_flags, audit_settlement, audit_preauth_denial
 from app.api.deps.auth import get_current_user
 from app.services.language.sarvam_service import normalize_language
 from app.services.language.localization import localize_audit_response
@@ -887,3 +888,81 @@ async def audit_settlement_route(
         "and citations independently before relying on them."
     )
     return result
+
+
+# ── 14. Pre-Authorization Denial Checker ────────────────────────────
+class PreAuthCheckRequest(BaseModel):
+    denial_document_id: str
+    policy_document_id: Optional[str] = None
+    treatment_amount: Optional[float] = None
+
+
+@router.post("/preauth-check")
+async def preauth_check_route(
+    body: PreAuthCheckRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    For a CASHLESS pre-authorization denial at hospital admission — distinct
+    from a post-discharge claim rejection, with its own IRDAI cashless-TAT
+    rules and its own practical remedy (pay and reimburse).
+    """
+    denial_doc = await db.get(Document, body.denial_document_id)
+    if not denial_doc or str(denial_doc.owner_id) != str(current_user.id):
+        raise HTTPException(404, "Denial document not found")
+    if not denial_doc.ocr_text:
+        raise HTTPException(400, "This document hasn't finished OCR yet.")
+
+    policy_clauses = {}
+    if body.policy_document_id:
+        policy_doc = await db.get(Document, body.policy_document_id)
+        if policy_doc and str(policy_doc.owner_id) == str(current_user.id):
+            policy_clauses = policy_doc.extracted_clauses or {}
+
+    rag_query = f"cashless pre-authorization denial TAT {denial_doc.ocr_text[:300]}"
+    irdai_context = await search_irdai_regulations(rag_query)
+
+    result = await audit_preauth_denial(
+        denial_text=denial_doc.ocr_text,
+        policy_clauses=policy_clauses,
+        irdai_context=irdai_context,
+        treatment_amount=body.treatment_amount,
+    )
+    result["disclaimer"] = (
+        "AI-generated analysis for informational purposes only — not legal advice. Verify all figures "
+        "and citations independently before relying on them."
+    )
+    return result
+
+
+# ── 15. Claim Cost-Benefit Advisor ──────────────────────────────────
+class CostBenefitRequest(BaseModel):
+    claim_id: str
+    hourly_value: Optional[float] = 500.0
+
+
+@router.post("/cost-benefit")
+async def cost_benefit_route(
+    body: CostBenefitRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Deterministic "is this worth fighting" verdict, reusing the claim's
+    already-computed audit_report (strength_of_case, violations found,
+    recommended route) rather than making a new LLM call.
+    """
+    claim = await db.get(Claim, body.claim_id)
+    if not claim or str(claim.owner_id) != str(current_user.id):
+        raise HTTPException(404, "Claim not found")
+    if not claim.audit_report:
+        raise HTTPException(400, "This claim hasn't been audited yet — run the Auditor first.")
+    if not claim.claim_amount:
+        raise HTTPException(400, "This claim has no claim amount on file.")
+
+    return advise_cost_benefit(
+        claim_amount=claim.claim_amount,
+        audit_report=claim.audit_report,
+        hourly_value=body.hourly_value or 500.0,
+    )

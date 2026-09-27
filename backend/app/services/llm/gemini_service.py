@@ -1117,3 +1117,73 @@ Return ONLY the JSON object."""
         max_tokens=2500,
     )
     return _parse_json(raw, context="audit_settlement")
+
+
+# ── Pre-Authorization Denial Checker ─────────────────────────────────
+async def audit_preauth_denial(
+    denial_text: str,
+    policy_clauses: dict,
+    irdai_context: str,
+    treatment_amount: float | None = None,
+) -> dict:
+    """
+    Separate from a post-discharge claim rejection: a cashless PRE-AUTH
+    denial at hospital admission has its own IRDAI timeline (cashless
+    request TAT — 1 hour for initial authorization, 3 hours for discharge
+    authorization, per the IRDAI Master Circular 2024) and a different
+    practical remedy (pay and claim reimbursement, not GRO/Ombudsman as
+    the first step) — so this gets its own prompt rather than reusing
+    audit_rejection's claim-TAT framing.
+    """
+    system = (
+        "You are an AI legal research assistant helping Indian insurance policyholders "
+        "understand a CASHLESS PRE-AUTHORIZATION denial at hospital admission — this is "
+        "distinct from a post-discharge claim rejection. You are NOT a lawyer. Your output "
+        "is NOT legal advice. Reference IRDAI Master Circular on cashless facility TAT "
+        "(1 hour for initial pre-auth, 3 hours for final discharge authorization), IRDAI "
+        "Health Insurance Regulations 2024. "
+        "CRITICAL: Return ONLY a valid JSON object. Output MUST start with { and end with }. "
+        "No markdown fences, no preamble, no text before { or after }."
+    )
+
+    prompt = f"""CASHLESS PRE-AUTHORIZATION DENIAL AUDIT
+
+INSURER'S PRE-AUTH DENIAL / QUERY LETTER:
+{denial_text[:3500]}
+
+POLICY CLAUSES ON RECORD:
+{json.dumps(policy_clauses, indent=2)[:2000] if policy_clauses else "Not provided"}
+
+IRDAI REGULATIONS (from RAG knowledge base):
+{irdai_context[:2500] if irdai_context else "Not available"}
+
+ESTIMATED TREATMENT COST: {f"₹{treatment_amount:,.0f}" if treatment_amount else "Not provided"}
+
+A pre-auth denial is NOT a final claim rejection — the patient can still pay out of pocket and
+file for reimbursement under the same policy. Analyze whether the denial reason itself is valid,
+and whether the insurer met the cashless TAT (1 hour initial response, 3 hours for discharge
+authorization once complete documents were submitted).
+
+Return ONLY this JSON object:
+{{
+  "denial_reason_category": "insufficient_info|policy_exclusion|network_hospital_dispute|sub_limit|waiting_period|treatment_not_covered|other",
+  "denial_reason_summary": "1-2 sentence summary of what the insurer says",
+  "is_valid_denial": false,
+  "confidence": "high|medium|low",
+  "tat_violated": false,
+  "tat_violation_detail": "specific TAT breach if any, else null",
+  "immediate_recommendation": "pay_and_reimburse|escalate_to_gro_first|challenge_before_admission",
+  "reimbursement_path_note": "brief note on the fact that paying out-of-pocket and claiming reimbursement afterward is still available regardless of this denial",
+  "key_arguments": ["argument 1", "argument 2"],
+  "reasoning": "one paragraph summary"
+}}
+Return ONLY the JSON object."""
+
+    raw = await gemini.generate(
+        model=settings.MODEL_LEGAL,
+        prompt=prompt,
+        system=system,
+        temperature=0.05,
+        max_tokens=2000,
+    )
+    return _parse_json(raw, context="audit_preauth_denial")

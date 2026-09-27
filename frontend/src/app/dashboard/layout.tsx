@@ -5,7 +5,8 @@ import {
   ShieldCheck, LayoutDashboard, FileSearch, AlertTriangle,
   FileText, Clock, Upload, LogOut, User, Bell,
   ArrowRightLeft, Monitor, FileSpreadsheet, ChevronRight, Settings,
-  MessageSquare, Calculator, Hourglass, GitCompare, BookOpen, HelpCircle
+  MessageSquare, Calculator, Hourglass, GitCompare, BookOpen, HelpCircle, ShieldAlert,
+  ClipboardCheck, MapPin, Scale
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -30,6 +31,7 @@ const navGroups = [
       { href: "/dashboard/copay-breakdown", labelKey: "nav_copay_breakdown", icon: Calculator },
       { href: "/dashboard/renewal-check", labelKey: "nav_renewal_check", icon: AlertTriangle },
       { href: "/dashboard/settlement-audit", labelKey: "nav_settlement_audit", icon: FileSearch },
+      { href: "/dashboard/preauth-check", labelKey: "nav_preauth_check", icon: ShieldAlert },
       { href: "/dashboard/hospital-verify", labelKey: "nav_hospital_verify", icon: Monitor },
       { href: "/dashboard/portfolio",   labelKey: "nav_portfolio", icon: LayoutDashboard },
     ],
@@ -41,6 +43,9 @@ const navGroups = [
       { href: "/dashboard/portability", labelKey: "nav_portability", icon: ArrowRightLeft },
       { href: "/dashboard/e-jagriti",   labelKey: "nav_edaakhil",    icon: Monitor },
       { href: "/dashboard/faq",         labelKey: "nav_faq",         icon: BookOpen },
+      { href: "/dashboard/checklist",   labelKey: "nav_checklist",   icon: ClipboardCheck },
+      { href: "/dashboard/ombudsman-finder", labelKey: "nav_ombudsman_finder", icon: MapPin },
+      { href: "/dashboard/citations",   labelKey: "nav_citations",   icon: Scale },
     ],
   },
   {

@@ -5,7 +5,7 @@ import { appealsApi, claimsApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import {
   FileText, Loader2, Download, Copy, CheckCircle,
-  Building2, Scale, Shield, Monitor, ArrowRight, AlertTriangle, Info
+  Building2, Scale, Shield, Monitor, ArrowRight, AlertTriangle, Info, History, Star
 } from "lucide-react";
 import type { AppealType, Claim } from "@/types";
 import { DisclaimerBanner, LetterDisclaimer, AIOutputLabel } from "@/components/shared/DisclaimerBanner";
@@ -76,6 +76,10 @@ export default function AppealsPage() {
   const [letter, setLetter] = useState("");
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [lastAppealId, setLastAppealId] = useState<string | null>(null);
+  const [versions, setVersions] = useState<any[]>([]);
+  const [showVersions, setShowVersions] = useState(false);
+  const [preferringId, setPreferringId] = useState<string | null>(null);
 
   useEffect(() => {
     claimsApi.list().then((r) => {
@@ -96,6 +100,7 @@ export default function AppealsPage() {
     try {
       const res = await appealsApi.generate(selectedClaimId, selectedType, additionalContext);
       setLetter(res.data.letter);
+      setLastAppealId(res.data.appeal_id || null);
       toast.success("Draft generated. Please review carefully before sending.");
     } catch (e: any) {
       const detail = e?.response?.data?.detail || "Generation failed";
@@ -103,6 +108,31 @@ export default function AppealsPage() {
       if (detail.includes("audit")) toast("Run a rejection audit first", { icon: "ℹ️" });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const loadVersions = async () => {
+    if (!selectedClaimId) return;
+    try {
+      const res = await appealsApi.getVersions(selectedClaimId);
+      const group = res.data.find((g: any) => g.appeal_type === selectedType);
+      setVersions(group?.versions || []);
+      setShowVersions(true);
+    } catch {
+      toast.error("Couldn't load previous drafts.");
+    }
+  };
+
+  const preferVersion = async (appealId: string) => {
+    setPreferringId(appealId);
+    try {
+      await appealsApi.setPreferred(appealId);
+      toast.success("Marked as your preferred draft.");
+      loadVersions();
+    } catch {
+      toast.error("Couldn't update preference.");
+    } finally {
+      setPreferringId(null);
     }
   };
 
@@ -297,6 +327,9 @@ export default function AppealsPage() {
                   <button onClick={downloadLetter} className="btn-secondary text-xs px-3 py-1.5">
                     <Download size={12} /> {t("download")}
                   </button>
+                  <button onClick={loadVersions} className="btn-secondary text-xs px-3 py-1.5">
+                    <History size={12} /> Previous drafts
+                  </button>
                 </div>
               </div>
 
@@ -331,6 +364,55 @@ export default function AppealsPage() {
               </div>
 
               <LetterDisclaimer />
+            </div>
+          )}
+
+          {showVersions && (
+            <div className="card p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold flex items-center gap-1.5 style-text-primary">
+                  <History size={14} /> Previous drafts of this appeal type ({versions.length})
+                </h3>
+                <button onClick={() => setShowVersions(false)} className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                  Close
+                </button>
+              </div>
+              {versions.length === 0 ? (
+                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>No drafts found yet for this appeal type.</p>
+              ) : (
+                <div className="space-y-2">
+                  {versions.map((v: any, i: number) => (
+                    <div key={v.id} className="rounded-lg p-3" style={{ background: "var(--surface-2)", border: `1px solid ${v.is_preferred ? "rgba(251,191,36,0.4)" : "var(--surface-5)"}` }}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+                          Draft {versions.length - i} · {new Date(v.created_at).toLocaleString()}
+                        </span>
+                        <button
+                          onClick={() => preferVersion(v.id)}
+                          disabled={preferringId === v.id}
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded-full transition"
+                          style={{
+                            background: v.is_preferred ? "rgba(251,191,36,0.15)" : "var(--surface-1)",
+                            color: v.is_preferred ? "#FBBF24" : "var(--text-tertiary)",
+                            border: "1px solid var(--surface-5)",
+                          }}
+                          suppressHydrationWarning>
+                          <Star size={11} fill={v.is_preferred ? "#FBBF24" : "none"} />
+                          {v.is_preferred ? "Preferred" : "Prefer this"}
+                        </button>
+                      </div>
+                      <p className="text-xs mt-2" style={{ color: "var(--text-tertiary)" }}>{v.letter_preview}...</p>
+                      <button
+                        onClick={() => setLetter(v.letter_content)}
+                        className="text-xs mt-1.5 font-medium"
+                        style={{ color: "#A78BFA" }}
+                        suppressHydrationWarning>
+                        View full draft above →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

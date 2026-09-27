@@ -171,9 +171,80 @@ async def list_appeals_for_claim(
             "submitted_at": a.submitted_at.isoformat() if a.submitted_at else None,
             "response_received": a.response_received,
             "outcome": a.outcome,
+            "is_preferred": a.is_preferred,
         }
         for a in appeals
     ]
+
+
+@router.get("/claim/{claim_id}/versions")
+async def list_appeal_versions(
+    claim_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Groups this claim's appeals by appeal_type — every /generate call for
+    the same type creates a new row rather than overwriting, so these
+    groups ARE the version history for that appeal type. Ordered newest
+    first within each group; is_preferred marks the user's chosen draft.
+    """
+    from sqlalchemy import select
+
+    claim = await db.get(Claim, claim_id)
+    if not claim or str(claim.owner_id) != str(current_user.id):
+        raise HTTPException(404, "Claim not found")
+
+    result = await db.execute(
+        select(Appeal).where(Appeal.claim_id == claim_id).order_by(Appeal.created_at.desc())
+    )
+    appeals = result.scalars().all()
+
+    grouped: dict = {}
+    for a in appeals:
+        key = a.appeal_type.value if hasattr(a.appeal_type, "value") else a.appeal_type
+        grouped.setdefault(key, []).append({
+            "id": str(a.id),
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+            "letter_preview": (a.letter_content or "")[:220],
+            "letter_content": a.letter_content,
+            "is_preferred": a.is_preferred,
+            "outcome": a.outcome,
+        })
+
+    return [
+        {"appeal_type": appeal_type, "version_count": len(versions), "versions": versions}
+        for appeal_type, versions in grouped.items()
+    ]
+
+
+@router.patch("/{appeal_id}/prefer")
+async def set_preferred_appeal_version(
+    appeal_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Marks this appeal draft as the preferred version among all drafts of
+    the same (claim_id, appeal_type) — unsetting is_preferred on the
+    others in that group. Used to pick the strongest draft after
+    regenerating a few times with different context/angles.
+    """
+    from sqlalchemy import select
+
+    appeal = await db.get(Appeal, appeal_id)
+    if not appeal or str(appeal.owner_id) != str(current_user.id):
+        raise HTTPException(404, "Appeal not found")
+
+    result = await db.execute(
+        select(Appeal).where(Appeal.claim_id == appeal.claim_id, Appeal.appeal_type == appeal.appeal_type)
+    )
+    siblings = result.scalars().all()
+    for s in siblings:
+        s.is_preferred = (s.id == appeal.id)
+
+    await db.commit()
+    return {"status": "updated", "preferred_appeal_id": str(appeal.id)}
 
 
 @router.get("/{appeal_id}")

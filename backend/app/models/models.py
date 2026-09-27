@@ -179,6 +179,12 @@ class Appeal(Base):
     response_received = Column(Boolean, default=False)
     outcome = Column(String(100), nullable=True)  # approved|rejected|partial|pending
 
+    # Version history — every /generate call inserts a new row rather than
+    # overwriting, so multiple Appeal rows sharing (claim_id, appeal_type)
+    # ARE the version history. This flags which one the user has chosen as
+    # their preferred draft (for PDF export, submission, etc.).
+    is_preferred = Column(Boolean, default=False, nullable=False)
+
     # Generation metadata
     model_used = Column(String(100), nullable=True)
     generation_time_ms = Column(Integer, nullable=True)

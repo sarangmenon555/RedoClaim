@@ -248,6 +248,15 @@ export const analysisApi = {
     claim_amount: number;
     settled_amount: number;
   }) => api.post("/analysis/audit-settlement", data),
+
+  // Cashless pre-authorization denial at hospital admission — distinct
+  // from a post-discharge claim rejection.
+  preauthCheck: (data: { denial_document_id: string; policy_document_id?: string; treatment_amount?: number }) =>
+    api.post("/analysis/preauth-check", data),
+
+  // Deterministic "worth fighting?" verdict, reusing the claim's existing audit_report.
+  costBenefit: (claimId: string, hourlyValue?: number) =>
+    api.post("/analysis/cost-benefit", { claim_id: claimId, hourly_value: hourlyValue }),
 };
 
 export const networkHospitalsApi = {
@@ -270,6 +279,8 @@ export const appealsApi = {
   get: (id: string) => api.get(`/appeals/${id}`),
   updateOutcome: (id: string, outcome: "pending" | "approved" | "rejected" | "partial", submittedAt?: string) =>
     api.patch(`/appeals/${id}/outcome`, { outcome, submitted_at: submittedAt }),
+  getVersions: (claimId: string) => api.get(`/appeals/claim/${claimId}/versions`),
+  setPreferred: (appealId: string) => api.patch(`/appeals/${appealId}/prefer`),
 };
 
 // ── Claims API ────────────────────────────────────────────────────────────────

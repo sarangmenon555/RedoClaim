@@ -2,12 +2,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { claimsApi, appealsApi } from "@/lib/api";
+import { claimsApi, appealsApi, analysisApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import {
   Loader2, Download, CheckCircle2, XCircle, Clock, FileText,
-  ArrowLeft, Users, ChevronDown, AlertTriangle,
+  ArrowLeft, Users, ChevronDown, AlertTriangle, Scale,
 } from "lucide-react";
 
 interface TimelineEvent {
@@ -48,6 +48,8 @@ export default function ClaimDetailPage() {
   const [patientRelationship, setPatientRelationship] = useState("self");
   const [savingPatient, setSavingPatient] = useState(false);
   const [outcomeSaving, setOutcomeSaving] = useState<string | null>(null);
+  const [costBenefit, setCostBenefit] = useState<any>(null);
+  const [loadingCostBenefit, setLoadingCostBenefit] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -107,6 +109,18 @@ export default function ClaimDetailPage() {
       toast.error("Couldn't generate the PDF. Please try again.");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const runCostBenefit = async () => {
+    setLoadingCostBenefit(true);
+    try {
+      const res = await analysisApi.costBenefit(claimId);
+      setCostBenefit(res.data);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Couldn't run the cost-benefit check.");
+    } finally {
+      setLoadingCostBenefit(false);
     }
   };
 
@@ -223,6 +237,44 @@ export default function ClaimDetailPage() {
               </p>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Cost-benefit advisor */}
+      {claim.audit_report && claim.status !== "resolved" && (
+        <div className="card p-6" style={{ background: "var(--surface-1)", border: "1px solid var(--surface-5)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
+              <Scale size={15} /> Is this worth fighting?
+            </h2>
+            {!costBenefit && (
+              <button onClick={runCostBenefit} disabled={loadingCostBenefit} className="btn-secondary text-xs px-3 py-1.5" suppressHydrationWarning>
+                {loadingCostBenefit ? <Loader2 size={12} className="animate-spin" /> : "Check"}
+              </button>
+            )}
+          </div>
+          {costBenefit && (
+            <div className="space-y-3">
+              <p className="text-sm font-medium" style={{
+                color: costBenefit.verdict === "strongly_worth_fighting" ? "#4ADE80"
+                  : costBenefit.verdict === "not_worth_fighting" ? "#F87171" : "#FBBF24",
+              }}>
+                {costBenefit.headline}
+              </p>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
+                  <p style={{ color: "var(--text-tertiary)" }}>Recommended route</p>
+                  <p className="font-medium mt-0.5" style={{ color: "var(--text-primary)" }}>{costBenefit.recommended_route_label}</p>
+                </div>
+                <div className="rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
+                  <p style={{ color: "var(--text-tertiary)" }}>Estimated effort</p>
+                  <p className="font-medium mt-0.5" style={{ color: "var(--text-primary)" }}>~{costBenefit.estimated_effort_hours}h (₹{costBenefit.estimated_effort_value.toLocaleString("en-IN")} of your time)</p>
+                </div>
+              </div>
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{costBenefit.reasoning}</p>
+              <p className="text-xs pt-2" style={{ color: "var(--text-tertiary)", borderTop: "1px solid var(--surface-5)" }}>{costBenefit.disclaimer}</p>
+            </div>
+          )}
         </div>
       )}
 
