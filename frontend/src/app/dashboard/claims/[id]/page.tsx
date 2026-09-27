@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { claimsApi, appealsApi, analysisApi } from "@/lib/api";
+import { ResultActionBar } from "@/components/shared/ResultActionBar";
 import toast from "react-hot-toast";
 import { format } from "date-fns";
 import {
@@ -50,6 +51,10 @@ export default function ClaimDetailPage() {
   const [outcomeSaving, setOutcomeSaving] = useState<string | null>(null);
   const [costBenefit, setCostBenefit] = useState<any>(null);
   const [loadingCostBenefit, setLoadingCostBenefit] = useState(false);
+  const [followupLetter, setFollowupLetter] = useState<any>(null);
+  const [loadingFollowup, setLoadingFollowup] = useState<string | null>(null);
+  const [precedents, setPrecedents] = useState<any>(null);
+  const [loadingPrecedents, setLoadingPrecedents] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -121,6 +126,30 @@ export default function ClaimDetailPage() {
       toast.error(e?.response?.data?.detail || "Couldn't run the cost-benefit check.");
     } finally {
       setLoadingCostBenefit(false);
+    }
+  };
+
+  const runFollowup = async (deadlineType: "gro" | "irdai") => {
+    setLoadingFollowup(deadlineType);
+    try {
+      const res = await analysisApi.generateFollowup(claimId, deadlineType);
+      setFollowupLetter(res.data);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.detail || "Couldn't generate a follow-up letter.");
+    } finally {
+      setLoadingFollowup(null);
+    }
+  };
+
+  const runPrecedentMatch = async () => {
+    setLoadingPrecedents(true);
+    try {
+      const res = await analysisApi.matchPrecedents({ claim_id: claimId });
+      setPrecedents(res.data);
+    } catch {
+      toast.error("Couldn't find precedents.");
+    } finally {
+      setLoadingPrecedents(false);
     }
   };
 
@@ -230,13 +259,33 @@ export default function ClaimDetailPage() {
                 border: `1px solid ${d.is_overdue ? "rgba(248,113,113,0.2)" : "rgba(251,191,36,0.2)"}`,
               }}>
               <AlertTriangle size={16} style={{ color: d.is_overdue ? "#F87171" : "#FBBF24" }} />
-              <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+              <p className="text-sm flex-1" style={{ color: "var(--text-primary)" }}>
                 <strong>{d.title}</strong> — {d.is_overdue
                   ? `overdue since ${format(new Date(d.date), "d MMM yyyy")}`
                   : `${d.days_remaining} day(s) left, due ${format(new Date(d.date), "d MMM yyyy")}`}
               </p>
+              {d.is_overdue && (
+                <button
+                  onClick={() => runFollowup(d.type === "gro_deadline" ? "gro" : "irdai")}
+                  disabled={loadingFollowup !== null}
+                  className="btn-secondary text-xs px-2.5 py-1.5 shrink-0"
+                  suppressHydrationWarning>
+                  {loadingFollowup === (d.type === "gro_deadline" ? "gro" : "irdai") ? <Loader2 size={12} className="animate-spin" /> : "Draft follow-up"}
+                </button>
+              )}
             </div>
           ))}
+        </div>
+      )}
+
+      {followupLetter && (
+        <div id="followup-letter-result" className="card p-6 space-y-3" style={{ background: "var(--surface-1)", border: "1px solid var(--surface-5)" }}>
+          <h3 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{followupLetter.subject}</h3>
+          <pre className="whitespace-pre-wrap text-xs font-mono p-3 rounded-lg" style={{ background: "var(--surface-2)", color: "var(--text-secondary)" }}>
+            {followupLetter.letter_content}
+          </pre>
+          <ResultActionBar emailBody={followupLetter.letter_content} subject={followupLetter.subject} printTargetId="followup-letter-result" />
+          <p className="text-xs pt-2" style={{ color: "var(--text-tertiary)", borderTop: "1px solid var(--surface-5)" }}>{followupLetter.disclaimer}</p>
         </div>
       )}
 
@@ -273,6 +322,39 @@ export default function ClaimDetailPage() {
               </div>
               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{costBenefit.reasoning}</p>
               <p className="text-xs pt-2" style={{ color: "var(--text-tertiary)", borderTop: "1px solid var(--surface-5)" }}>{costBenefit.disclaimer}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Legal precedent matcher */}
+      {claim.audit_report && (
+        <div className="card p-6" style={{ background: "var(--surface-1)", border: "1px solid var(--surface-5)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
+              <Scale size={15} /> Similar cases others have won
+            </h2>
+            {!precedents && (
+              <button onClick={runPrecedentMatch} disabled={loadingPrecedents} className="btn-secondary text-xs px-3 py-1.5" suppressHydrationWarning>
+                {loadingPrecedents ? <Loader2 size={12} className="animate-spin" /> : "Find precedents"}
+              </button>
+            )}
+          </div>
+          {precedents && (
+            <div className="space-y-3">
+              {precedents.precedents.length === 0 ? (
+                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>No closely matching precedents found in our library for this case type.</p>
+              ) : (
+                precedents.precedents.map((p: any) => (
+                  <div key={p.id} className="rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
+                    <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{p.case_name}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>{p.court}</p>
+                    <p className="text-xs mt-1.5" style={{ color: "var(--text-secondary)" }}>{p.summary}</p>
+                    <p className="text-xs mt-1.5 font-medium" style={{ color: "#A78BFA" }}>How to use: {p.how_to_use}</p>
+                  </div>
+                ))
+              )}
+              <p className="text-xs pt-2" style={{ color: "var(--text-tertiary)", borderTop: "1px solid var(--surface-5)" }}>{precedents.disclaimer}</p>
             </div>
           )}
         </div>

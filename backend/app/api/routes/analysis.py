@@ -35,6 +35,10 @@ from app.services.irdai.waiting_period_calculator import calculate_waiting_perio
 from app.services.irdai.policy_comparator import compare_policies
 from app.services.irdai.copay_breakdown import calculate_copay_breakdown
 from app.services.irdai.cost_benefit_advisor import advise_cost_benefit
+from app.services.irdai.ncb_calculator import calculate_ncb
+from app.services.irdai.sum_insured_checker import check_sum_insured_adequacy
+from app.services.irdai.grievance_followup import generate_followup_letter
+from app.services.irdai.precedent_matcher import match_precedents
 from app.services.llm.gemini_service import explain_insurance_term, check_renewal_red_flags, audit_settlement, audit_preauth_denial
 from app.api.deps.auth import get_current_user
 from app.services.language.sarvam_service import normalize_language
@@ -966,3 +970,149 @@ async def cost_benefit_route(
         audit_report=claim.audit_report,
         hourly_value=body.hourly_value or 500.0,
     )
+
+
+# ── 16. No-Claim Bonus (NCB) Calculator ─────────────────────────────
+class NCBCheckRequest(BaseModel):
+    claim_free_years: int
+    od_premium_before_ncb: float
+    ncb_applied_by_insurer: float
+    had_claim_this_year: bool = False
+
+
+@router.post("/ncb-check")
+async def ncb_check_route(body: NCBCheckRequest, current_user=Depends(get_current_user)):
+    """Deterministic check of whether a motor renewal quote applies the NCB you're actually entitled to."""
+    return calculate_ncb(
+        claim_free_years=body.claim_free_years,
+        od_premium_before_ncb=body.od_premium_before_ncb,
+        ncb_applied_by_insurer=body.ncb_applied_by_insurer,
+        had_claim_this_year=body.had_claim_this_year,
+    )
+
+
+# ── 17. Sum Insured Adequacy Checker ────────────────────────────────
+class FamilyMember(BaseModel):
+    age: int
+
+
+class SumInsuredCheckRequest(BaseModel):
+    sum_insured: float
+    city_tier: str  # metro | tier1 | tier2
+    family_members: list[FamilyMember]
+
+
+@router.post("/sum-insured-check")
+async def sum_insured_check_route(body: SumInsuredCheckRequest, current_user=Depends(get_current_user)):
+    """Deterministic check of whether a policy's sum insured looks adequate for the family's profile and city tier."""
+    if not body.family_members:
+        raise HTTPException(400, "Provide at least one family member.")
+    return check_sum_insured_adequacy(
+        sum_insured=body.sum_insured,
+        city_tier=body.city_tier,
+        family_members=[m.dict() for m in body.family_members],
+    )
+
+
+# ── 18. Grievance Follow-Up Letter Generator ────────────────────────
+class FollowUpRequest(BaseModel):
+    claim_id: str
+    deadline_type: str  # "gro" | "irdai"
+
+
+@router.post("/generate-followup")
+async def generate_followup_route(
+    body: FollowUpRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Template-based follow-up letter for a GRO/Ombudsman deadline that has
+    passed with no logged response. No LLM call — this is a fill-in-the-
+    blanks reminder, not case argumentation (use /appeals/generate for that).
+    """
+    from datetime import date as _date
+
+    claim = await db.get(Claim, body.claim_id)
+    if not claim or str(claim.owner_id) != str(current_user.id):
+        raise HTTPException(404, "Claim not found")
+
+    if body.deadline_type == "gro":
+        deadline_date = claim.gro_deadline
+        deadline_label = "GRO response"
+        escalation_target = "the Insurance Ombudsman"
+    elif body.deadline_type == "irdai":
+        deadline_date = claim.irdai_deadline
+        deadline_label = "IRDAI Ombudsman filing"
+        escalation_target = "a Consumer Disputes Redressal Commission"
+    else:
+        raise HTTPException(400, "deadline_type must be 'gro' or 'irdai'")
+
+    if not deadline_date:
+        raise HTTPException(400, f"No {deadline_label} deadline is on file for this claim.")
+
+    today = _date.today()
+    deadline_as_date = deadline_date.date() if hasattr(deadline_date, "date") else deadline_date
+    if deadline_as_date >= today:
+        raise HTTPException(400, f"The {deadline_label} deadline hasn't passed yet — no follow-up needed.")
+
+    filed_date = (claim.rejection_date or claim.claim_date)
+    if not filed_date:
+        raise HTTPException(400, "No original filing date on record for this claim.")
+
+    return generate_followup_letter(
+        user_name=current_user.full_name,
+        insurer_name=claim.insurer_name,
+        policy_number=claim.policy_number or "N/A",
+        claim_amount=claim.claim_amount or 0,
+        original_filed_date=filed_date.date() if hasattr(filed_date, "date") else filed_date,
+        deadline_type=deadline_label,
+        deadline_date=deadline_as_date,
+        escalation_target=escalation_target,
+        as_of=today,
+    )
+
+
+# ── 19. Legal Precedent Matcher ─────────────────────────────────────
+class PrecedentMatchRequest(BaseModel):
+    claim_id: Optional[str] = None
+    rejection_category: Optional[str] = None  # health|motor|life|general — inferred from claim if not given
+    fact_pattern: Optional[str] = None  # free text description, or omit to match by category alone
+
+
+@router.post("/match-precedents")
+async def match_precedents_route(
+    body: PrecedentMatchRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Matches a fact pattern against a curated library of real Ombudsman/
+    consumer-forum judgment summaries — "N policyholders won near-identical
+    cases" is more persuasive than a bare regulation citation. No LLM call:
+    matching is by category + keyword overlap over static, compiled content.
+    """
+    category = body.rejection_category
+    fact_text = body.fact_pattern or ""
+
+    if body.claim_id:
+        claim = await db.get(Claim, body.claim_id)
+        if claim and str(claim.owner_id) == str(current_user.id):
+            if not category:
+                category = claim.insurance_type.value if hasattr(claim.insurance_type, "value") else claim.insurance_type
+            if not fact_text:
+                fact_text = claim.rejection_reason_raw or ""
+
+    if not category:
+        raise HTTPException(400, "Provide either a claim_id or a rejection_category.")
+
+    matches = match_precedents(rejection_category=category, free_text=fact_text)
+    return {
+        "matched_count": len(matches),
+        "precedents": matches,
+        "disclaimer": (
+            "Illustrative summaries of well-known precedent patterns, not verbatim judgment text. Always verify "
+            "the current citation and specific case details against primary sources (Ombudsman award archives, "
+            "NCDRC/SCDRC judgment databases) before relying on one in an actual filing."
+        ),
+    }

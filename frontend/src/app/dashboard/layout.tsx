@@ -6,7 +6,7 @@ import {
   FileText, Clock, Upload, LogOut, User, Bell,
   ArrowRightLeft, Monitor, FileSpreadsheet, ChevronRight, Settings,
   MessageSquare, Calculator, Hourglass, GitCompare, BookOpen, HelpCircle, ShieldAlert,
-  ClipboardCheck, MapPin, Scale
+  ClipboardCheck, MapPin, Scale, Percent, Gauge, EyeOff
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth";
 import { useLanguageStore } from "@/store/language";
@@ -46,6 +46,9 @@ const navGroups = [
       { href: "/dashboard/checklist",   labelKey: "nav_checklist",   icon: ClipboardCheck },
       { href: "/dashboard/ombudsman-finder", labelKey: "nav_ombudsman_finder", icon: MapPin },
       { href: "/dashboard/citations",   labelKey: "nav_citations",   icon: Scale },
+      { href: "/dashboard/ncb-check",   labelKey: "nav_ncb_check",   icon: Percent },
+      { href: "/dashboard/sum-insured-check", labelKey: "nav_sum_insured", icon: Gauge },
+      { href: "/dashboard/redaction-helper", labelKey: "nav_redaction", icon: EyeOff },
     ],
   },
   {

@@ -257,6 +257,22 @@ export const analysisApi = {
   // Deterministic "worth fighting?" verdict, reusing the claim's existing audit_report.
   costBenefit: (claimId: string, hourlyValue?: number) =>
     api.post("/analysis/cost-benefit", { claim_id: claimId, hourly_value: hourlyValue }),
+
+  // Deterministic motor NCB check against IRDAI standard slabs.
+  ncbCheck: (data: { claim_free_years: number; od_premium_before_ncb: number; ncb_applied_by_insurer: number; had_claim_this_year?: boolean }) =>
+    api.post("/analysis/ncb-check", data),
+
+  // Deterministic sum-insured adequacy check against static benchmark tables.
+  sumInsuredCheck: (data: { sum_insured: number; city_tier: string; family_members: { age: number }[] }) =>
+    api.post("/analysis/sum-insured-check", data),
+
+  // Template-based follow-up letter for an overdue GRO/IRDAI deadline. No LLM call.
+  generateFollowup: (claimId: string, deadlineType: "gro" | "irdai") =>
+    api.post("/analysis/generate-followup", { claim_id: claimId, deadline_type: deadlineType }),
+
+  // Curated precedent library matched by category/keywords. No LLM call.
+  matchPrecedents: (data: { claim_id?: string; rejection_category?: string; fact_pattern?: string }) =>
+    api.post("/analysis/match-precedents", data),
 };
 
 export const networkHospitalsApi = {

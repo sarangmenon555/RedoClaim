@@ -233,3 +233,7 @@
   outline: 2px solid rgba(139,92,246,0.6);
   outline-offset: 2px;
 }
+
+/* (No print-specific CSS needed — ResultActionBar's "Export as PDF" opens
+   the result content in a new window and prints that directly, which is
+   more reliable across browsers than a dynamic CSS id-selector approach.) */
