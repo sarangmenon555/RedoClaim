@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { ShieldCheck, Lock, Database, Share2, Clock, UserCheck } from "lucide-react";
 
+const PRIVACY_CONTACT_EMAIL = process.env.NEXT_PUBLIC_PRIVACY_CONTACT_EMAIL;
+
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen" style={{background:"var(--surface)"}}>
@@ -24,9 +26,10 @@ export default function PrivacyPolicyPage() {
             <div>
               <h1 className="text-xl font-bold mb-2" style={{color:"var(--text-primary)"}}>Privacy Policy</h1>
               <p className="text-sm leading-relaxed" style={{color:"var(--text-secondary)"}}>
-                Last updated: September 23, 2026. RedoClaim (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) provides a
-                platform to help users understand, translate, and appeal insurance claim rejections. This policy
-                explains what information we collect, how we use it, and the choices you have.
+                Last updated: September 30, 2026. RedoClaim (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) provides an
+                AI-assisted platform to help users understand, translate, and prepare appeals against insurance claim
+                rejections. RedoClaim is currently focused on Indian health insurance. This policy explains what
+                information we collect, how we use it, and the choices you have.
               </p>
             </div>
           </div>
@@ -50,6 +53,10 @@ export default function PrivacyPolicyPage() {
               </li>
             ))}
           </ul>
+          <p className="text-sm" style={{color:"var(--text-tertiary)"}}>
+            Users should upload only documents necessary for the requested analysis and should avoid uploading
+            unrelated personal or sensitive information.
+          </p>
         </div>
 
         {/* How we use it */}
@@ -57,10 +64,10 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-lg font-bold" style={{color:"var(--text-primary)"}}>How We Use Your Information</h2>
           <ul className="space-y-2 text-sm" style={{color:"var(--text-secondary)"}}>
             {[
-              "To analyze your claim, extract details via OCR, and generate an audit report of your rejection",
-              "To assess potential violations of IRDAI regulations and estimate possible payouts",
+              "To analyze your claim, extract relevant information via OCR, and generate an AI-assisted analysis of your rejection",
+              "To identify potential inconsistencies with applicable insurance regulations and policy terms, provide supporting references, and assist users in reviewing their claim",
               "To translate reports into your preferred language",
-              "To generate appeal drafts and track applicable GRO/IRDAI deadlines",
+              "To generate editable grievance and appeal drafts and help track applicable grievance and claim-related timelines",
               "To maintain, secure, and improve the platform",
               "To communicate with you about your account or claims",
             ].map((item) => (
@@ -106,6 +113,13 @@ export default function PrivacyPolicyPage() {
           <div className="space-y-3 text-sm" style={{color:"var(--text-secondary)"}}>
             <p>We retain your account and claim information for as long as your account is active or as needed to
             provide our services. You may request deletion of your account and associated data at any time.</p>
+            {PRIVACY_CONTACT_EMAIL && (
+              <p>To request deletion or exercise your privacy rights, contact:{" "}
+                <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} className="underline" style={{color:"#A78BFA"}}>
+                  {PRIVACY_CONTACT_EMAIL}
+                </a>.
+              </p>
+            )}
             <p>We use industry-standard measures, including encryption in transit (TLS), to protect your
             information. However, no method of transmission or storage is completely secure, and we cannot
             guarantee absolute security.</p>

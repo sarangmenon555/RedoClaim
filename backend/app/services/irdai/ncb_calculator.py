@@ -70,7 +70,7 @@ def calculate_ncb(
             f"You're eligible for {expected_pct}% NCB but the quote applies only {ncb_applied_by_insurer}%. "
             f"This under-application is worth ₹{shortfall:,.0f} on this renewal — worth raising with the insurer."
             if is_shortchanged else
-            f"The {ncb_applied_by_insurer}% NCB applied matches what you're entitled to after {claim_free_years} claim-free year(s)."
+            f"The {ncb_applied_by_insurer}% NCB applied matches the calculated NCB after {claim_free_years} claim-free year(s)."
         ),
         "ncb_is_portable": "NCB is tied to you, not the insurer — a valid NCB retention/transfer certificate from your outgoing insurer lets you carry it to a new insurer without losing it.",
         "disclaimer": (

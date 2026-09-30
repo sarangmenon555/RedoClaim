@@ -51,10 +51,10 @@ export default function EJagritiPage() {
           <div>
             <p className="font-semibold style-text-primary">{t("ej_legal_basis")}</p>
             <p className="text-sm style-text-secondary mt-1">
-              <strong>Section 2(11) — Deficiency in Service:</strong> An insurance company that unreasonably rejects a
-              legitimate claim, delays settlement beyond 30 days, or fails to respond to your complaint within 15 days
-              has committed a "Deficiency in Service." This entitles you to relief from the Consumer Court including
-              the full claim amount, interest, and compensation for mental harassment.
+              <strong>Section 2(11) — Deficiency in Service:</strong> A complaint may allege Deficiency in Service where, for example,
+              a claim is alleged to have been rejected without a valid basis, or settlement or grievance response is alleged
+              to have been delayed beyond the applicable timeline. Whether a Deficiency in Service is established is decided by the
+              Consumer Commission. Relief that may be sought includes the claim amount, interest, and compensation, as the forum may decide.
             </p>
           </div>
         </div>

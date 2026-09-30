@@ -230,12 +230,16 @@ def _get_hardcoded_irdai_context() -> str:
     """
     return """
 ════════════════════════════════════════════════════════
-IRDAI MASTER CIRCULAR ON PROTECTION OF POLICYHOLDERS
-INTERESTS (2024) — KEY PROVISIONS FOR AI AUDIT
+IRDAI MASTER CIRCULAR REFERENCES (2024) — KEY PROVISIONS
+FOR AI-ASSISTED ANALYSIS. VERIFY AGAINST PRIMARY SOURCES.
 ════════════════════════════════════════════════════════
 
 [SECTION A — TURNAROUND TIMES (TATs)]
-The following TATs are MANDATORY. Violation = automatic grounds for appeal.
+The following timelines are references used for analysis. The applicable timeline depends on the
+type of claim or event, and must be stated together with its basis. If the basis cannot be
+identified from the material, say so and do not present a single universal deadline.
+Documented dates that appear inconsistent with a timeline are potential inconsistencies for the
+user to review, not official determinations.
 
 Health Insurance:
 • Cashless pre-authorisation: WITHIN 1 HOUR of receiving complete documents
@@ -255,9 +259,9 @@ Internal Grievance (GRO):
 • If unresolved in 15 days → insurer must auto-escalate to senior officer
 
 Interest on Delayed Claims (Para 7.4):
-If insurer delays settlement beyond 30 days due to their own fault:
-→ Interest = Bank Rate + 2% per annum on the pending amount (MANDATORY)
-→ Policyholder can claim this interest in any appeal or court filing
+If the insurer's delay in settlement beyond the applicable timeline is attributable to the insurer:
+→ Interest at Bank Rate + 2% per annum on the pending amount may apply (verify the provision)
+→ The policyholder may request this interest in an appeal or court filing
 
 [SECTION B — CASHLESS TREATMENT RIGHTS]
 • Insurer CANNOT refuse cashless and ask for reimbursement if network hospital exists
@@ -267,7 +271,7 @@ If insurer delays settlement beyond 30 days due to their own fault:
 • Rejection cannot cite "insufficient documents" without specifying EXACTLY which documents
   are missing and WHY they are required
 • All cashless decisions must be communicated in writing
-• Verbal denials of cashless are INVALID and violate the Master Circular
+• Verbal denials of cashless appear inconsistent with the Master Circular's requirement of written communication
 
 [SECTION C — CUSTOMER INFORMATION SHEET (CIS)]
 • Every insurer MUST provide a CIS at policy issuance (Para 4.2)
@@ -277,7 +281,7 @@ If insurer delays settlement beyond 30 days due to their own fault:
   - Waiting periods (type, duration)
   - Sub-limits and co-payments
   - Key conditions for claim settlement
-• If insurer failed to provide CIS → this is itself a regulatory violation
+• If the insurer did not provide a CIS → this may be a potential regulatory inconsistency
 • AI should scan uploaded CIS to extract inclusions/exclusions automatically
 • Insurer CANNOT enforce exclusions that are NOT mentioned in the CIS
 
@@ -285,7 +289,7 @@ If insurer delays settlement beyond 30 days due to their own fault:
 • Insurer cannot repeatedly ask for documents already submitted
 • Each document request must specify the document, reason needed, and deadline
 • If insurer cites a document-related rejection after documents were already submitted:
-  → This is a violation of Para 8.3 of the Master Circular
+  → This may be a potential inconsistency with Para 8.3 of the Master Circular (verify)
 • Insurer bears the burden of specifying which documents are missing
 
 ════════════════════════════════════════════════════════
@@ -354,7 +358,7 @@ CONSUMER PROTECTION ACT, 2019 — INSURANCE CLAIMS
 [DEFICIENCY IN SERVICE — Section 2(11)]
 Insurance claim rejection constitutes "Deficiency in Service" when:
 • Claim is rejected unreasonably or arbitrarily without valid policy ground
-• Settlement is delayed beyond IRDAI mandated 30-day period
+• Settlement is delayed beyond the applicable timeline
 • Insurer provides false or misleading information to reject claim
 • Insurer fails to process documents within TAT
 • Policy was mis-sold (features misrepresented at time of sale)
@@ -393,16 +397,16 @@ Relief available from Consumer Courts:
 • Punitive/exemplary damages in cases of gross misconduct
 
 ════════════════════════════════════════════════════════
-HIERARCHY OF EVIDENCE (AI MUST FOLLOW THIS ORDER)
+STRUCTURED EVIDENCE-BASED ANALYSIS (FOLLOW THIS ORDER)
 ════════════════════════════════════════════════════════
 
-Step 1 — SLA VIOLATION CHECK (highest priority)
-  Did insurer miss 15-day GRO deadline? → AUTOMATIC violation
-  Did insurer miss 30-day settlement TAT? → AUTOMATIC violation + interest applicable
-  Did cashless take more than 1 hour? → AUTOMATIC violation
-  → If YES to any: cite Para 7.3 of IRDAI Master Circular 2024
+Step 1 — TIMELINE & TAT ANALYSIS (highest priority)
+  Do the documented dates appear consistent with the applicable grievance timeline?
+  Do the documented dates appear consistent with the applicable claim settlement timeline?
+  Do the documented times appear consistent with the applicable cashless timeline?
+  → For each concern: state the applicable timeline, its basis, and the documented dates
 
-Step 2 — REGULATORY VIOLATION CHECK (via RAG)
+Step 2 — POTENTIAL REGULATORY INCONSISTENCIES (via RAG)
   Does the rejection cite PED after 5-year moratorium? → Cite Regulation 8(6) Health Regs 2024
   Did insurer demand hospital documents from patient? → Cite Master Circular Para 8.3
   Did insurer reject for undisclosed exclusion (not in CIS)? → Cite Master Circular Para 4.2

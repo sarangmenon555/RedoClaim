@@ -22,7 +22,7 @@ def calculate_copay_breakdown(
     """
     bill_items (optional): [{"item": "Surgeon fees", "amount": 50000}, ...]
     Without itemized bill_items, the proportionate deduction is applied to
-    the whole bill (the standard IRDAI-compliant method); with bill_items,
+    the whole bill (the method commonly used by insurers); with bill_items,
     each line is broken out individually so the user can see exactly where
     the cut lands.
     """
@@ -115,7 +115,7 @@ def calculate_copay_breakdown(
         "notes": notes,
         "disclaimer": (
             "Computed from your policy's extracted clauses and the bill figures you entered. The proportionate "
-            "room-rent formula shown here is the standard IRDAI-compliant method most insurers use, but exact "
+            "room-rent formula shown here is the method most insurers commonly use, but exact "
             "insurer practice can vary — treat this as a close estimate for planning, not a guaranteed final amount."
         ),
     }

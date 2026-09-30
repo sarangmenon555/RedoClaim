@@ -1,6 +1,8 @@
 """
 IRDAI Rules Engine — RedoClaim
-Strict legal logic implementing the Hierarchy of Evidence.
+Structured evidence-based analysis: timeline and TAT analysis, potential regulatory
+inconsistencies, and redressal route. Outputs are AI-assisted references for user
+review and are not official legal or regulatory determinations.
 
 Sources:
   - IRDAI Master Circular on Protection of Policyholders Interests (2024)
@@ -19,7 +21,7 @@ class IRDAIRulesEngine:
 
     # ── TATs from IRDAI Master Circular 2024 ──────────────────────
     TAT_CASHLESS_HOURS          = 1     # cashless pre-auth within 1 hour
-    TAT_CLAIM_DAYS              = 30    # final settlement within 30 days
+    TAT_CLAIM_DAYS              = 30    # reference timeline used only with its stated basis; not a universal deadline
     TAT_GRO_DAYS                = 15    # GRO must resolve within 15 days
     TAT_GRO_ACK_DAYS            = 3     # GRO acknowledgement within 3 working days
     TAT_SURVEY_DAYS             = 3     # survey for claims >50k within 3 days
@@ -28,7 +30,7 @@ class IRDAIRulesEngine:
     INTEREST_RATE_BUFFER        = 2     # Bank Rate + 2% for delayed claims
     EJAGRITI_TRIGGER_DAYS       = 15    # if insurer silent for 15 days → e-Jagriti
 
-    # ── Step 1: SLA Violation Check ───────────────────────────────
+    # ── Step 1: Timeline & TAT Analysis ───────────────────────────
     def check_sla_violations(
         self,
         claim_date: Optional[datetime],
@@ -38,32 +40,35 @@ class IRDAIRulesEngine:
         cashless_decision_time: Optional[datetime] = None,
     ) -> dict:
         """
-        Step 1 of Hierarchy of Evidence.
-        Checks every IRDAI-mandated TAT. Violations = automatic appeal grounds.
+        Step 1: Timeline & TAT analysis.
+        Compares documented dates with the applicable timeline for each event and
+        reports where the documented dates appear inconsistent with it. The applicable
+        timeline and its basis are returned with every finding.
         """
         violations = []
         now = datetime.now()
 
-        # 30-day settlement TAT
         if claim_date and rejection_date:
             days_to_settle = (rejection_date - claim_date).days
             if days_to_settle > self.TAT_CLAIM_DAYS:
                 excess = days_to_settle - self.TAT_CLAIM_DAYS
                 violations.append({
-                    "type": "delayed_settlement",
-                    "regulation": "IRDAI Master Circular 2024, Para 7.3",
+                    "type": "settlement_timeline_inconsistency",
+                    "regulation": "IRDAI Master Circular on Health Insurance, 2024 (settlement timeline)",
+                    "applicable_timeline": f"{self.TAT_CLAIM_DAYS} days",
+                    "basis": "Claim settlement timeline referenced in the IRDAI Master Circular on Health Insurance, 2024; the period runs from the applicable event, such as receipt of the last necessary document. Verify against the primary source.",
                     "detail": (
-                        f"Claim took {days_to_settle} days to process "
-                        f"(IRDAI limit: {self.TAT_CLAIM_DAYS} days). "
-                        f"Excess: {excess} days."
+                        f"The documented dates show {days_to_settle} days between the claim date and the decision. "
+                        f"Applicable timeline: {self.TAT_CLAIM_DAYS} days, subject to the start event stated in the basis. "
+                        f"This appears to be {excess} days longer than that timeline and should be checked against the actual start event."
                     ),
-                    "severity": "high",
+                    "severity": "medium",
                     "interest_applicable": True,
                     "interest_note": (
-                        f"Insurer liable to pay interest at Bank Rate + {self.INTEREST_RATE_BUFFER}% "
-                        f"per annum on the claim amount for {excess} excess days."
+                        f"If the delay is confirmed against the applicable provision, interest may be claimable at Bank Rate + {self.INTEREST_RATE_BUFFER}% "
+                        f"per annum for the excess period. Verify the current provision before relying on this."
                     ),
-                    "legal_citation": "IRDAI Master Circular 2024, Para 7.4 — Interest on Delayed Claims",
+                    "legal_citation": "IRDAI Master Circular on Health Insurance, 2024 — provisions on interest for delayed claim settlement (verify paragraph in primary source)",
                 })
 
         # GRO 15-day TAT
@@ -71,15 +76,18 @@ class IRDAIRulesEngine:
             days_since_grievance = (now - grievance_date).days
             if days_since_grievance > self.TAT_GRO_DAYS:
                 violations.append({
-                    "type": "gro_resolution_overdue",
-                    "regulation": "IRDAI Master Circular 2024, Para 10.2",
+                    "type": "gro_timeline_inconsistency",
+                    "regulation": "IRDAI grievance redressal provisions (verify paragraph in primary source)",
+                    "applicable_timeline": f"{self.TAT_GRO_DAYS} days",
+                    "basis": "Grievance resolution timeline referenced in IRDAI grievance redressal provisions; verify the current period for your insurer and complaint channel.",
                     "detail": (
-                        f"GRO complaint filed {days_since_grievance} days ago. "
-                        f"Resolution mandated within {self.TAT_GRO_DAYS} days."
+                        f"The grievance was filed {days_since_grievance} days ago. "
+                        f"Applicable timeline: {self.TAT_GRO_DAYS} days. "
+                        f"No resolution is documented within that timeline."
                     ),
-                    "severity": "high",
+                    "severity": "medium",
                     "ejagriti_trigger": days_since_grievance >= self.EJAGRITI_TRIGGER_DAYS,
-                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti applicable",
+                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti may be an available forum",
                 })
 
         # Cashless 1-hour TAT
@@ -87,14 +95,16 @@ class IRDAIRulesEngine:
             hours_taken = (cashless_decision_time - cashless_request_time).seconds / 3600
             if hours_taken > self.TAT_CASHLESS_HOURS:
                 violations.append({
-                    "type": "cashless_decision_delayed",
-                    "regulation": "IRDAI Master Circular 2024, Section B",
+                    "type": "cashless_timeline_inconsistency",
+                    "regulation": "IRDAI Master Circular on Health Insurance, 2024 (cashless authorisation timeline)",
+                    "applicable_timeline": f"{self.TAT_CASHLESS_HOURS} hour",
+                    "basis": "Cashless authorisation timeline referenced in the IRDAI Master Circular on Health Insurance, 2024; verify against the primary source.",
                     "detail": (
-                        f"Cashless pre-authorisation took {hours_taken:.1f} hours "
-                        f"(IRDAI limit: {self.TAT_CASHLESS_HOURS} hour)."
+                        f"The documented times show the cashless pre-authorisation took {hours_taken:.1f} hours. "
+                        f"Applicable timeline: {self.TAT_CASHLESS_HOURS} hour."
                     ),
-                    "severity": "high",
-                    "legal_citation": "IRDAI Master Circular 2024 — Cashless Treatment Rights",
+                    "severity": "medium",
+                    "legal_citation": "IRDAI Master Circular on Health Insurance, 2024 — cashless treatment provisions",
                 })
 
         # Compute deadlines from rejection date
@@ -192,7 +202,7 @@ class IRDAIRulesEngine:
             "note": "Rejection does not appear to be PED-based; moratorium check not applicable.",
         }
 
-    # ── Step 2b: CIS Violation Check ─────────────────────────────
+    # ── Step 2b: CIS Consistency Check ────────────────────────────
     def check_cis_violation(
         self,
         rejection_reason: str,
@@ -218,10 +228,10 @@ class IRDAIRulesEngine:
                 "regulation": "IRDAI Master Circular 2024, Para 4.2",
                 "argument": (
                     "The rejection cites an exclusion that does not appear to be "
-                    "disclosed in the Customer Information Sheet (CIS). Under the "
-                    "IRDAI Master Circular 2024, Para 4.2, insurers CANNOT enforce "
-                    "exclusions that were not clearly disclosed in the CIS provided "
-                    "at policy issuance. This is an independent ground for appeal."
+                    "disclosed in the Customer Information Sheet (CIS) that was uploaded. "
+                    "The IRDAI Master Circular on Health Insurance, 2024 refers to the CIS as the summary of "
+                    "inclusions and exclusions provided at policy issuance. This is a potential "
+                    "inconsistency the user may wish to raise; verify the CIS and the provision in the primary source."
                 ),
                 "severity": "high",
             }
@@ -239,13 +249,13 @@ class IRDAIRulesEngine:
     ) -> dict:
         """
         Consumer Protection Act, 2019, Section 2(11).
-        Determines if Deficiency in Service can be alleged.
+        Indicates whether a Deficiency in Service allegation could be considered.
         """
         reasons = []
         if sla_violations:
-            reasons.append("Failure to settle within IRDAI-mandated TAT")
+            reasons.append("Documented dates that appear inconsistent with the applicable timeline")
         if irdai_violations:
-            reasons.append("Violation of IRDAI Master Circular 2024 provisions")
+            reasons.append("Potential inconsistency with IRDAI Master Circular provisions")
         if rejection_appears_arbitrary:
             reasons.append("Arbitrary rejection without valid policy/regulatory basis")
 
@@ -255,12 +265,12 @@ class IRDAIRulesEngine:
                 "legal_basis": "Consumer Protection Act, 2019, Section 2(11)",
                 "reasons": reasons,
                 "statement": (
-                    "The acts and omissions of the insurer constitute 'Deficiency in Service' "
-                    "as defined under Section 2(11) of the Consumer Protection Act, 2019, "
-                    "specifically: " + "; ".join(reasons) + ". "
-                    "This entitles the complainant to relief under the Consumer Protection Act, 2019, "
-                    "including the claim amount, interest, compensation for mental agony, "
-                    "and costs of litigation."
+                    "The complainant may allege 'Deficiency in Service' as defined under "
+                    "Section 2(11) of the Consumer Protection Act, 2019, "
+                    "on the following grounds: " + "; ".join(reasons) + ". "
+                    "Whether this is established is for the relevant forum to decide. "
+                    "Relief that may be sought under the Consumer Protection Act, 2019 includes "
+                    "the claim amount, interest, compensation and costs."
                 ),
                 "product_liability_note": (
                     "If the policy was mis-sold or its features misrepresented at the time of "
@@ -279,8 +289,8 @@ class IRDAIRulesEngine:
         rejection_date: Optional[datetime] = None,
     ) -> dict:
         """
-        Step 3 of Hierarchy of Evidence.
-        Determines the correct redressal route based on claim amount and status.
+        Step 3: Redressal route.
+        Suggests a redressal route based on claim amount and status.
         """
         now = datetime.now()
         paths = []
@@ -290,14 +300,14 @@ class IRDAIRulesEngine:
             "step": 1,
             "route": "GRO — Grievance Redressal Officer",
             "regulation": "IRDAI Master Circular 2024, Para 10",
-            "deadline": "Within 15 days of rejection",
+            "deadline": "Applicable grievance timeline; verify with your insurer's grievance policy",
             "how": (
                 "Write to the insurer's GRO. The GRO name and address is on your policy document "
                 "and the insurer's website. Send by registered post AND email."
             ),
             "cost": "Free",
-            "expected_resolution": "15 days",
-            "if_no_response": f"If no response in {self.EJAGRITI_TRIGGER_DAYS} days → proceed to Step 2",
+            "expected_resolution": "As per the insurer's grievance timeline",
+            "if_no_response": "If there is no response within the applicable timeline, consider Step 2",
             "gro_already_filed": gro_filed,
             "gro_overdue": gro_filed and gro_days_elapsed > self.TAT_GRO_DAYS,
         })
@@ -316,7 +326,8 @@ class IRDAIRulesEngine:
             "expected_resolution": "3 months",
             "powers": "Can award full claim + ₹5,000 costs. Binding on insurer.",
             "when_to_use": (
-                "If GRO fails to resolve within 30 days OR insurer gives unsatisfactory reply"
+                "If the grievance is not resolved within the applicable timeline, is rejected, or the reply is unsatisfactory. "
+                "Check the eligibility conditions in the Insurance Ombudsman Rules, 2017."
             ),
             "not_eligible_reason": (
                 None if is_ombudsman_eligible
@@ -346,16 +357,15 @@ class IRDAIRulesEngine:
             "expected_resolution": "3–6 months",
             "ejagriti_now_applicable": ejagriti_applicable,
             "trigger_note": (
-                "e-Jagriti is triggered if insurer does NOT respond within 15 days of complaint"
+                "e-Jagriti may be considered if the insurer has not responded within the applicable grievance timeline"
                 if ejagriti_applicable else
-                f"e-Jagriti applicable if insurer silent for {self.EJAGRITI_TRIGGER_DAYS} days"
+                "e-Jagriti may be considered if the insurer does not respond within the applicable grievance timeline"
             ),
             "relief_available": [
                 "Full claim amount",
-                "Interest on delayed payment (9–12% per annum)",
-                "Compensation for mental agony and harassment",
-                "Cost of litigation",
-                "Punitive damages in cases of gross misconduct",
+                "Interest on delayed payment, as the forum may decide",
+                "Compensation, as the forum may decide",
+                "Cost of litigation, as the forum may decide",
             ],
         })
 
@@ -385,20 +395,20 @@ class IRDAIRulesEngine:
         now = datetime.now()
         if not gro_filed:
             return (
-                "URGENT: File a written GRO complaint with the insurer immediately. "
-                "The 15-day GRO window starts from your rejection date."
+                "Consider filing a written grievance with the insurer's GRO soon. "
+                "Check the insurer's grievance policy for the applicable timeline."
             )
         if gro_days_elapsed >= self.EJAGRITI_TRIGGER_DAYS:
             return (
-                "GRO deadline exceeded. File immediately with the Insurance Ombudsman "
-                "(igms.irda.gov.in) AND/OR e-Jagriti Consumer Court (e-jagriti.gov.in)."
+                "The applicable grievance timeline appears to have passed without resolution. Consider the Insurance Ombudsman "
+                "and/or e-Jagriti (e-jagriti.gov.in), after verifying eligibility."
             )
         if rejection_date and (now - rejection_date).days > 30:
             return (
-                "30-day TAT exceeded. Insurer is liable to pay interest on the claim amount. "
-                "Escalate to Ombudsman immediately and demand interest in your appeal."
+                "The documented dates may indicate a delay beyond the applicable settlement timeline. "
+                "Verify the timeline and its basis; if it is confirmed, you may request interest in your appeal."
             )
-        return "File GRO complaint and track the 15-day resolution deadline."
+        return "File a grievance with the insurer and track the applicable resolution timeline."
 
     # ── Utilities ─────────────────────────────────────────────────
     def get_rejection_category(self, rejection_text: str) -> str:

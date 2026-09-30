@@ -32,6 +32,12 @@ export default function DisclaimerPage() {
                 not a licensed insurance advocate, and does not provide legal advice</strong> of any kind.
                 Using this tool does not create any attorney-client relationship.
               </p>
+              <p className="text-sm leading-relaxed mt-3" style={{color:"#FCD34D",opacity:0.85}}>
+                RedoClaim does not make official determinations about whether an insurer has violated a law,
+                regulation, policy term, or regulatory requirement. It identifies potential issues based on the
+                documents and sources available to the system for the user&apos;s review. RedoClaim is currently
+                focused on Indian health insurance.
+              </p>
             </div>
           </div>
         </div>
@@ -44,7 +50,7 @@ export default function DisclaimerPage() {
           <ul className="space-y-2 text-sm" style={{color:"var(--text-secondary)"}}>
             {[
               "An AI-assisted research tool to help you understand IRDAI insurance regulations",
-              "A document drafting aid that generates starting-point letters for your review",
+              "A document drafting aid that generates editable grievance and appeal drafts for your review",
               "A reference tool that points to relevant IRDAI circulars and consumer rights",
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
@@ -64,6 +70,7 @@ export default function DisclaimerPage() {
               "A substitute for a licensed insurance advocate or legal professional",
               "A guarantee of any particular legal outcome",
               "A source of legally binding or formally verified regulatory information",
+              "An authority that determines whether an insurer has violated a law, regulation or policy term",
               "Responsible for any decisions you make based on its AI-generated output",
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
@@ -83,7 +90,7 @@ export default function DisclaimerPage() {
             <p><strong style={{color:"var(--text-primary)"}}>OCR can misread documents.</strong> Scanned PDFs, low-quality images, and handwritten
             documents may be misread by the OCR pipeline, leading to incorrect extracted text and wrong analysis.</p>
             <p><strong style={{color:"var(--text-primary)"}}>Regulations change.</strong> IRDAI regulations are updated periodically. The AI's
-            knowledge reflects the regulations it was trained on. Always check the current version at{" "}
+            knowledge reflects the regulations it was trained on. Primary regulatory and government sources take precedence over anything shown by RedoClaim. Always check the current version at{" "}
             <a href="https://irdai.gov.in/home" target="_blank" rel="noopener noreferrer"
               style={{color:"#A78BFA"}} className="underline">https://irdai.gov.in/home</a>.</p>
             <p><strong style={{color:"var(--text-primary)"}}>Every case is different.</strong> Even if a regulation appears to apply to your
@@ -101,7 +108,8 @@ export default function DisclaimerPage() {
               "Check all IRDAI regulation citations at irdai.gov.in before citing them",
               "Correct all errors (names, dates, amounts, policy numbers) in draft letters",
               "Consult a licensed advocate for important legal decisions",
-              "Verify deadlines with your insurer — deadline estimates may be inaccurate",
+              "Verify applicable deadlines and timelines with your insurer and the primary sources — estimates may be inaccurate",
+              "Seek professional assistance for complex or high-value matters",
             ].map((item) => (
               <li key={item} className="flex items-start gap-2">
                 <Scale size={13} className="shrink-0 mt-0.5" style={{color:"#A78BFA"}} />{item}

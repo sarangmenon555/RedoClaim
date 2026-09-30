@@ -19,8 +19,8 @@ const APPEAL_TYPES = [
     icon: Building2,
     activeColor: "border-violet-500 bg-surface-2",
     borderColor: "border-surface-4 hover:border-blue-300",
-    step: "First step — file within 15 days of rejection",
-    regulation: "IRDAI Master Circular 2024",
+    step: "Usual first step — check the insurer's grievance timeline",
+    regulation: "IRDAI grievance redressal provisions",
   },
   {
     type: "insurer_escalation" as AppealType,
@@ -39,7 +39,7 @@ const APPEAL_TYPES = [
     icon: Scale,
     activeColor: "border-green-500 bg-surface-2",
     borderColor: "border-surface-4 hover:border-green-300",
-    step: "If GRO fails within 30 days",
+    step: "If the GRO does not resolve within the applicable timeline",
     regulation: "Insurance Ombudsman Rules 2017",
   },
   {

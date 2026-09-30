@@ -104,7 +104,7 @@ export default function PreauthCheckPage() {
 
           {result.tat_violated && (
             <div className="rounded-lg p-3" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)" }}>
-              <p className="text-xs font-semibold" style={{ color: "#F87171" }}>Cashless TAT violated</p>
+              <p className="text-xs font-semibold" style={{ color: "#F87171" }}>Cashless timeline may not have been met</p>
               <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{result.tat_violation_detail}</p>
             </div>
           )}

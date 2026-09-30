@@ -60,7 +60,7 @@ def build_audit_trail_pdf(
     story = []
 
     # ── Cover / summary ──────────────────────────────────────────
-    story.append(Paragraph("RedoClaim — Case Audit Trail", styles["RCTitle"]))
+    story.append(Paragraph("RedoClaim — Case Analysis Summary", styles["RCTitle"]))
     story.append(Paragraph(
         f"Generated {datetime.now().strftime('%d %B %Y, %I:%M %p')} for {_safe(user_name)}",
         styles["RCMeta"],
@@ -77,8 +77,8 @@ def build_audit_trail_pdf(
         ["Current Status", _safe(claim.get("status"), "Unknown").replace("_", " ").title()],
         ["Claim Filed", _safe(claim.get("claim_date"))],
         ["Rejected On", _safe(claim.get("rejection_date"))],
-        ["GRO Deadline", _safe(claim.get("gro_deadline"))],
-        ["IRDAI Ombudsman Deadline", _safe(claim.get("irdai_deadline"))],
+        ["Indicative GRO Timeline", _safe(claim.get("gro_deadline"))],
+        ["Indicative Ombudsman Timeline", _safe(claim.get("irdai_deadline"))],
     ]
     table = Table(summary_rows, colWidths=[5.5 * cm, 10 * cm])
     table.setStyle(TableStyle([
@@ -97,17 +97,17 @@ def build_audit_trail_pdf(
 
     # ── Audit findings ───────────────────────────────────────────
     if audit_report:
-        story.append(Paragraph("Audit Findings", styles["RCH2"]))
+        story.append(Paragraph("Analysis Findings", styles["RCH2"]))
         deficiency = audit_report.get("deficiency_statement")
         if deficiency:
-            story.append(Paragraph(f"<b>Deficiency in Service:</b> {_safe(deficiency)}", styles["RCBody"]))
+            story.append(Paragraph(f"<b>Possible Deficiency in Service allegation:</b> {_safe(deficiency)}", styles["RCBody"]))
             story.append(Spacer(1, 6))
 
         violations = audit_report.get("step2_regulatory_violations") or []
         if violations:
-            story.append(Paragraph("<b>IRDAI Regulatory Violations Found:</b>", styles["RCBody"]))
+            story.append(Paragraph("<b>Potential Regulatory Inconsistencies (for user review):</b>", styles["RCBody"]))
             for v in violations[:10]:
-                text = v.get("description") if isinstance(v, dict) else str(v)
+                text = (v.get("violation") or v.get("description")) if isinstance(v, dict) else str(v)
                 reg = v.get("regulation") if isinstance(v, dict) else None
                 line = f"• {_safe(text)}" + (f" <i>({reg})</i>" if reg else "")
                 story.append(Paragraph(line, styles["RCBody"]))

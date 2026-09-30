@@ -82,14 +82,20 @@ export default function HomePage() {
 
           <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight tracking-tight"
             style={{color:"var(--text-primary)"}}>
-            Fight Unfair Insurance<br />
-            <span className="gradient-text">Claim Rejections</span>
+            Understand Your Insurance<br />
+            <span className="gradient-text">Claim Rejection</span>
           </h1>
 
           <p className="text-lg mb-8 max-w-2xl mx-auto leading-relaxed"
             style={{color:"var(--text-secondary)"}}>
-            India's dedicated, fully automated AI research tool for policyholders.
-            Upload your rejection letter — get an IRDAI Master Circular 2024-compliant audit and AI-drafted appeal letters in minutes.
+            An AI-assisted research and document-analysis tool for policyholders in India.
+            Upload your rejection letter to get an AI-assisted analysis referencing the IRDAI Master Circular on Health Insurance, 2024,
+            and AI-assisted appeal and grievance drafts for your review, so you can better understand the coverage, exclusions and
+            conditions described in your policy.
+          </p>
+
+          <p className="text-sm mb-8 max-w-2xl mx-auto font-medium" style={{color:"var(--text-primary)"}}>
+            Currently focused on Indian health insurance.
           </p>
 
           {/* Primary CTA row */}
@@ -117,8 +123,9 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <p className="mt-4 text-xs" style={{color:"var(--text-tertiary)"}}>
-            AI Claim Analysis Tool for Research Assistance
+          <p className="mt-4 text-xs max-w-xl mx-auto leading-relaxed" style={{color:"var(--text-tertiary)"}}>
+            AI Claim Analysis Tool for Research Assistance. RedoClaim does not make official legal or regulatory
+            determinations, approve or reject claims, or guarantee claim outcomes.
           </p>
         </div>
       </section>
@@ -130,7 +137,7 @@ export default function HomePage() {
             { value: "₹50L",    label: "Ombudsman claim limit",  color: "#A78BFA" },
             { value: "5 yrs",   label: "Moratorium period (2024)", color: "#22D3EE" },
             { value: "1 hr",    label: "Cashless TAT (IRDAI)",   color: "#4ADE80" },
-            { value: "30 days", label: "Settlement deadline",     color: "#FBBF24" },
+            { value: "Health",  label: "Currently focused on Indian health insurance", color: "#FBBF24" },
           ].map((s) => (
             <div key={s.label}>
               <div className="text-3xl font-bold mb-1" style={{color: s.color}}>{s.value}</div>
@@ -160,22 +167,22 @@ export default function HomePage() {
             },
             {
               icon: FileSearch, label: "CIS Scanner",
-              desc: "Scans your Customer Information Sheet — extracts inclusions and exclusions per IRDAI Master Circular 2024, Para 4.2.",
+              desc: "Scans your Customer Information Sheet — extracts inclusions and exclusions with reference to the IRDAI Master Circular on Health Insurance, 2024.",
               color: "#A78BFA", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.15)",
             },
             {
               icon: AlertTriangle, label: "Rejection Auditor",
-              desc: "3-step IRDAI Hierarchy of Evidence audit: SLA violations → Regulatory violations → Redressal route.",
+              desc: "Structured evidence-based analysis: Timeline & TAT Analysis → Potential Regulatory Inconsistencies → Redressal route.",
               color: "#F87171", bg: "rgba(248,113,113,0.08)", border: "rgba(248,113,113,0.15)",
             },
             {
               icon: FileText, label: "Appeal Drafter",
-              desc: "Generates draft GRO letters, Ombudsman complaints, e-Jagriti drafts citing IRDAI regulations.",
+              desc: "Generates editable grievance and appeal drafts for user review: GRO letters, Ombudsman complaints and e-Jagriti consumer-complaint drafts referencing IRDAI provisions.",
               color: "#4ADE80", bg: "rgba(74,222,128,0.08)", border: "rgba(74,222,128,0.15)",
             },
             {
               icon: Clock, label: "Timeline Tracker",
-              desc: "Tracks 15-day GRO, 30-day TAT, Ombudsman, and Consumer Court deadlines with alerts.",
+              desc: "Tracks the applicable claim and grievance timelines, each shown with its basis, along with Ombudsman and Consumer Court limitation periods.",
               color: "#FBBF24", bg: "rgba(251,191,36,0.08)", border: "rgba(251,191,36,0.15)",
             },
             {
@@ -211,7 +218,8 @@ export default function HomePage() {
           Start your research today
         </h2>
         <p className="mb-8 max-w-lg mx-auto text-sm" style={{color:"var(--text-secondary)"}}>
-          For legal action, always consult a licensed insurance advocate.
+          For legal action, always consult a licensed insurance advocate. Verify important findings, citations and
+          deadlines against the applicable primary sources.
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <button

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class MotorInsuranceRulesEngine:
     """
-    IRDAI-compliant rules for motor insurance claim rejection analysis.
+    Reference rules for motor insurance claim rejection analysis (AI-assisted, for user review).
     Covers Own Damage (OD) and Third-Party (TP) claims.
     """
 
@@ -31,7 +31,7 @@ class MotorInsuranceRulesEngine:
     TAT_GRO_DAYS = 15
     OMBUDSMAN_MAX_RUPEES = 5_000_000
 
-    # ── Step 1: SLA Violation Check (Motor) ──────────────────────
+    # ── Step 1: Timeline & TAT Analysis (Motor) ──────────────────
     def check_sla_violations(
         self,
         claim_intimation_date: Optional[datetime],
@@ -41,7 +41,7 @@ class MotorInsuranceRulesEngine:
         grievance_date: Optional[datetime] = None,
     ) -> dict:
         """
-        Check IRDAI-mandated TATs for motor insurance claims.
+        Compare documented dates with the applicable timelines for motor insurance claims.
         IRDAI Motor Surveyor Regulations 2015 & Master Circular 2024.
         """
         violations = []
@@ -56,7 +56,7 @@ class MotorInsuranceRulesEngine:
                     "regulation": "IRDAI (Surveyors and Loss Assessors) Regulations 2015, Regulation 13",
                     "detail": (
                         f"Surveyor was appointed {hours:.0f} hours after claim intimation. "
-                        f"IRDAI mandates appointment within {self.TAT_SURVEY_HOURS} hours."
+                        f"Applicable timeline: {self.TAT_SURVEY_HOURS} hours (basis: IRDAI Surveyors and Loss Assessors Regulations 2015; verify in the primary source)."
                     ),
                     "severity": "high",
                     "legal_citation": "IRDAI Motor Guidelines 2017 — Surveyor Appointment TAT",
@@ -72,8 +72,8 @@ class MotorInsuranceRulesEngine:
                     "regulation": "IRDAI (Surveyors and Loss Assessors) Regulations 2015, Regulation 19",
                     "detail": (
                         f"Survey report submitted {days} days after appointment. "
-                        f"IRDAI limit is {self.TAT_SURVEY_REPORT_DAYS} days. "
-                        f"Excess delay: {excess} days."
+                        f"Applicable timeline: {self.TAT_SURVEY_REPORT_DAYS} days (basis: IRDAI Surveyors and Loss Assessors Regulations 2015; verify in the primary source). "
+                        f"This appears to be {excess} days longer."
                     ),
                     "severity": "medium",
                     "legal_citation": "IRDAI Surveyor Regulations 2015, Regulation 19 — Survey Report Timeline",
@@ -89,14 +89,14 @@ class MotorInsuranceRulesEngine:
                     "regulation": "IRDAI Master Circular 2024, Para 7.3",
                     "detail": (
                         f"Claim took {days} days to settle after survey report. "
-                        f"IRDAI limit: {self.TAT_CLAIM_SETTLEMENT_DAYS} days. "
-                        f"Excess: {excess} days."
+                        f"Applicable timeline: {self.TAT_CLAIM_SETTLEMENT_DAYS} days (basis: IRDAI motor claim settlement provisions; verify in the primary source). "
+                        f"This appears to be {excess} days longer."
                     ),
                     "severity": "high",
                     "interest_applicable": True,
                     "interest_note": (
-                        "Insurer liable to pay interest at Bank Rate + 2% per annum "
-                        f"on the claim amount for {excess} excess days."
+                        "If the delay is confirmed, interest may be claimable at Bank Rate + 2% per annum "
+                        f"for the {excess} excess days. Verify the current provision."
                     ),
                     "legal_citation": "IRDAI Master Circular 2024, Para 7.4 — Interest on Delayed Claims",
                 })
@@ -110,11 +110,11 @@ class MotorInsuranceRulesEngine:
                     "regulation": "IRDAI Master Circular 2024, Para 10.2",
                     "detail": (
                         f"GRO complaint filed {days_since} days ago. "
-                        f"Resolution mandated within {self.TAT_GRO_DAYS} days."
+                        f"Applicable timeline: {self.TAT_GRO_DAYS} days (verify the current period for your insurer)."
                     ),
                     "severity": "high",
                     "ejagriti_trigger": True,
-                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti applicable",
+                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti may be an available forum",
                 })
 
         deadlines = {}
@@ -258,7 +258,7 @@ class MotorInsuranceRulesEngine:
 
 class LifeInsuranceRulesEngine:
     """
-    IRDAI-compliant rules for life insurance claim rejection analysis.
+    Reference rules for life insurance claim rejection analysis (AI-assisted, for user review).
     Covers Term, Endowment, ULIP, and Whole Life policies.
     """
 
@@ -274,7 +274,7 @@ class LifeInsuranceRulesEngine:
     # Incontestability period (after 3 years, only fraud can void)
     INCONTESTABILITY_YEARS = 3
 
-    # ── Step 1: SLA Violation Check (Life) ───────────────────────
+    # ── Step 1: Timeline & TAT Analysis (Life) ───────────────────
     def check_sla_violations(
         self,
         claim_submission_date: Optional[datetime],
@@ -283,7 +283,7 @@ class LifeInsuranceRulesEngine:
         grievance_date: Optional[datetime] = None,
     ) -> dict:
         """
-        Check IRDAI-mandated TATs for life insurance claims.
+        Compare documented dates with the applicable timelines for life insurance claims.
         IRDAI (Life Insurance) Regulations 2023.
         """
         violations = []
@@ -299,14 +299,14 @@ class LifeInsuranceRulesEngine:
                     "regulation": "IRDAI (Life Insurance) Regulations 2023, Regulation 23(5)",
                     "detail": (
                         f"Claim took {days} days post complete documentation. "
-                        f"IRDAI mandates settlement within {self.TAT_CLAIM_SETTLEMENT_DAYS} days. "
-                        f"Excess: {excess} days."
+                        f"Applicable timeline: {self.TAT_CLAIM_SETTLEMENT_DAYS} days (basis: IRDAI Life Insurance Regulations 2023; verify in the primary source). "
+                        f"This appears to be {excess} days longer."
                     ),
                     "severity": "high",
                     "interest_applicable": True,
                     "interest_note": (
-                        "Insurer liable to pay interest at prevailing bank rate + 2% "
-                        f"for {excess} excess days of delay."
+                        "If the delay is confirmed, interest may be claimable at prevailing bank rate + 2% "
+                        f"for {excess} excess days. Verify the current provision."
                     ),
                     "legal_citation": "IRDAI Master Circular 2024, Para 7.4 — Interest on Delayed Claims",
                 })
@@ -320,11 +320,11 @@ class LifeInsuranceRulesEngine:
                     "regulation": "IRDAI Master Circular 2024, Para 10.2",
                     "detail": (
                         f"GRO complaint filed {days_since} days ago. "
-                        f"IRDAI mandates resolution within {self.TAT_GRO_DAYS} days."
+                        f"Applicable timeline: {self.TAT_GRO_DAYS} days (verify the current period for your insurer)."
                     ),
                     "severity": "high",
                     "ejagriti_trigger": True,
-                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti applicable",
+                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti may be an available forum",
                 })
 
         deadlines = {}

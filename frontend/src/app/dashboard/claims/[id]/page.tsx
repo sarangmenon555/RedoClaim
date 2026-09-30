@@ -294,7 +294,7 @@ export default function ClaimDetailPage() {
         <div className="card p-6" style={{ background: "var(--surface-1)", border: "1px solid var(--surface-5)" }}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
-              <Scale size={15} /> Is this worth fighting?
+              <Scale size={15} /> Is it worth pursuing?
             </h2>
             {!costBenefit && (
               <button onClick={runCostBenefit} disabled={loadingCostBenefit} className="btn-secondary text-xs px-3 py-1.5" suppressHydrationWarning>

@@ -76,7 +76,7 @@ function AuditorPageInner() {
         if (doc.ocr_status === "done") {
           setRejectionDoc(doc);
           setStep("form");
-          toast.success(`"${doc.file_name}" loaded. Fill in claim details to start audit.`);
+          toast.success(`"${doc.file_name}" loaded. Fill in claim details to start the analysis.`);
           setLoadingDoc(false);
         } else if (doc.ocr_status === "failed") {
           toast.error("Document OCR failed. Please re-upload.");
@@ -91,7 +91,7 @@ function AuditorPageInner() {
                 setStep("form");
                 clearInterval(interval);
                 setLoadingDoc(false);
-                toast.success("Ready. Fill in claim details to start audit.");
+                toast.success("Ready. Fill in claim details to start the analysis.");
               } else if (r.data.ocr_status === "failed") {
                 clearInterval(interval);
                 setLoadingDoc(false);
@@ -137,7 +137,7 @@ function AuditorPageInner() {
               setRejectionDoc(docRes.data);
               clearInterval(interval);
               setStep("form");
-              toast.success("Ready. Fill in claim details to start audit.");
+              toast.success("Ready. Fill in claim details to start the analysis.");
             } else if (docRes.data.ocr_status === "failed") {
               clearInterval(interval);
               toast.error("OCR failed. Please try a clearer image or PDF.");
@@ -186,7 +186,7 @@ function AuditorPageInner() {
       if (detail?.includes("still processing")) {
         toast.error("Document is still being processed. Please wait a moment and try again.");
       } else {
-        toast.error(detail || "Audit failed. Please try again.");
+        toast.error(detail || "Analysis failed. Please try again.");
       }
       setStep("form");
     }
@@ -211,16 +211,16 @@ function AuditorPageInner() {
   return (
     <div className="max-w-4xl space-y-6 animate-fade-in" style={{ color: "var(--text-primary)" }}>
       <div>
-        <h2 className="text-2xl font-bold style-text-primary">Claim Rejection Auditor</h2>
+        <h2 className="text-2xl font-bold style-text-primary">Claim Rejection Analysis</h2>
         <p className="style-text-tertiary text-sm mt-1">
-          AI audits your rejection against IRDAI Master Circular 2024 using the Hierarchy of Evidence.
+          AI-assisted analysis of your rejection, referencing the IRDAI Master Circular on Health Insurance, 2024, using a structured evidence-based approach.
         </p>
       </div>
 
       <div className="card p-4 bg-surface-2" style={{ borderColor: "rgba(139,92,246,0.2)" }}>
-        <p className="text-xs font-semibold style-text-secondary mb-2">IRDAI Hierarchy of Evidence</p>
+        <p className="text-xs font-semibold style-text-secondary mb-2">Structured evidence-based analysis</p>
         <div className="flex gap-4 text-xs text-violet-400 flex-wrap">
-          {["Step 1: SLA/TAT violations", "Step 2: Master Circular 2024 violations", "Step 3: Redressal route"].map((s, i) => (
+          {["Step 1: Timeline & TAT analysis", "Step 2: Potential regulatory inconsistencies", "Step 3: Redressal route"].map((s, i) => (
             <div key={i} className="flex items-center gap-1.5">
               <span className="w-5 h-5 bg-violet-500 text-white rounded-full flex items-center justify-center font-bold text-xs">{i + 1}</span>
               {s.replace(/Step \d: /, "")}
@@ -268,7 +268,7 @@ function AuditorPageInner() {
             <CheckCircle className="text-green-600 shrink-0" size={18} />
             <div className="flex-1 min-w-0">
               <p className="font-medium text-green-800 text-sm truncate">Document ready: {rejectionDoc.file_name}</p>
-              <p className="text-xs text-green-600">OCR complete — fill details for IRDAI audit</p>
+              <p className="text-xs text-green-600">OCR complete — fill in details for the analysis</p>
             </div>
             <button
               onClick={() => { setRejectionDoc(null); setStep("upload"); }}
@@ -374,7 +374,7 @@ function AuditorPageInner() {
                     <label className="label">Survey report date</label>
                     <input className="input" type="date" value={form.surveyReportDate}
                       onChange={(e) => setForm({ ...form, surveyReportDate: e.target.value })} />
-                    <p className="text-xs style-text-tertiary mt-1">Report must be submitted within 30 days of appointment</p>
+                    <p className="text-xs style-text-tertiary mt-1">Enter the date the survey report was submitted</p>
                   </div>
                 </>
               )}
@@ -391,7 +391,7 @@ function AuditorPageInner() {
                     <label className="label">Documents complete date</label>
                     <input className="input" type="date" value={form.documentsCompleteDate}
                       onChange={(e) => setForm({ ...form, documentsCompleteDate: e.target.value })} />
-                    <p className="text-xs style-text-tertiary mt-1">Date insurer confirmed all documents received — 30-day TAT starts here</p>
+                    <p className="text-xs style-text-tertiary mt-1">Date insurer confirmed all documents received — the applicable settlement timeline may run from here</p>
                   </div>
                 </>
               )}
@@ -444,7 +444,7 @@ function AuditorPageInner() {
 
             <div className="flex gap-3 pt-2">
               <button onClick={runAudit} className="btn-primary">
-                Run IRDAI Audit <ArrowRight size={15} />
+                Run AI-Assisted Analysis <ArrowRight size={15} />
               </button>
               <button onClick={() => { setRejectionDoc(null); setStep("upload"); }} className="btn-secondary">
                 Re-upload
@@ -457,11 +457,11 @@ function AuditorPageInner() {
       {step === "analyzing" && (
         <div className="card p-12 text-center">
           <Loader2 className="animate-spin text-violet-400 mx-auto mb-4" size={40} />
-          <p className="font-semibold style-text-primary mb-3">Running IRDAI Hierarchy of Evidence Audit...</p>
+          <p className="font-semibold style-text-primary mb-3">Running structured evidence-based analysis...</p>
           <div className="text-sm style-text-tertiary space-y-1.5 text-left max-w-xs mx-auto">
             <p className="text-green-600">✓ OCR complete</p>
             <p className="text-green-600">✓ RAG: retrieving IRDAI regulations from Qdrant</p>
-            <p className="text-blue-500 animate-pulse">⟳ Step 1: Checking SLA/TAT violations...</p>
+            <p className="text-blue-500 animate-pulse">⟳ Step 1: Timeline & TAT analysis...</p>
             {form.insuranceType === "motor" && (
               <p className="text-blue-500 animate-pulse">⟳ Motor: Checking surveyor TAT &amp; depreciation...</p>
             )}
@@ -552,16 +552,16 @@ function AuditResultView({
               : <CheckCircle className="text-green-600" size={28} />}
             <div>
               <h3 className="text-lg font-bold style-text-primary">
-                {!summary.is_valid_rejection ? "Rejection appears INVALID" : "Rejection appears valid"}
+                {!summary.is_valid_rejection ? "AI analysis: grounds to review this rejection" : "AI analysis: rejection appears consistent with the policy terms"}
               </h3>
               <div className="flex flex-wrap gap-2 mt-1">
-                {summary.sla_violations > 0 && <span className="badge-high">{summary.sla_violations} SLA Violation{summary.sla_violations > 1 ? "s" : ""}</span>}
-                {summary.irdai_violations > 0 && <span className="badge-high">{summary.irdai_violations} IRDAI Violation{summary.irdai_violations > 1 ? "s" : ""}</span>}
+                {summary.sla_violations > 0 && <span className="badge-high">{summary.sla_violations} Timeline Item{summary.sla_violations > 1 ? "s" : ""} to Review</span>}
+                {summary.irdai_violations > 0 && <span className="badge-high">{summary.irdai_violations} Potential Regulatory Inconsistenc{summary.irdai_violations > 1 ? "ies" : "y"}</span>}
                 {summary.moratorium_shield && <span className="badge-low">Moratorium Shield</span>}
-                {summary.deficiency_in_service && <span className="badge-medium">Deficiency in Service</span>}
-                {summary.cis_violation && <span className="badge-high">CIS Violation</span>}
-                {summary.interest_applicable && <span className="badge-medium">Interest Applicable</span>}
-                {summary.ejagriti_applicable && <span className="badge-high">e-Jagriti NOW</span>}
+                {summary.deficiency_in_service && <span className="badge-medium">Possible Deficiency in Service Allegation</span>}
+                {summary.cis_violation && <span className="badge-high">CIS Inconsistency</span>}
+                {summary.interest_applicable && <span className="badge-medium">Interest May Apply</span>}
+                {summary.ejagriti_applicable && <span className="badge-high">e-Jagriti May Be Available</span>}
                 {insuranceType === "motor" && summary.depreciation_applicable === false && (
                   <span className="badge-low">No Depreciation</span>
                 )}
@@ -660,14 +660,14 @@ function AuditResultView({
         </div>
       )}
 
-      {/* Step 1: SLA */}
+      {/* Step 1: Timeline & TAT Analysis */}
       <Accordion
-        title={`Step 1 — SLA/TAT Violations (${sla?.violations_found || 0} found)`}
+        title={`Step 1 — Timeline & TAT Analysis (${sla?.violations_found || 0} item${sla?.violations_found === 1 ? "" : "s"} to review)`}
         icon={<Clock size={16} className="text-amber-500" />}
         expanded={expandedSections.sla}
         onToggle={() => toggle("sla")}
         badge={sla?.violations_found > 0 ? "high" : "low"}
-        badgeText={sla?.violations_found > 0 ? "VIOLATIONS FOUND" : "COMPLIANT"}
+        badgeText={sla?.violations_found > 0 ? "REVIEW" : "NO CONCERNS NOTED"}
       >
         {sla?.sla_violations?.length > 0 ? (
           <div className="divide-y divide-slate-100">
@@ -676,13 +676,21 @@ function AuditResultView({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-medium style-text-primary text-sm">{v.detail}</p>
+                    {v.applicable_timeline && (
+                      <p className="text-xs style-text-secondary mt-1">
+                        Applicable timeline: {v.applicable_timeline}
+                      </p>
+                    )}
+                    {v.basis && (
+                      <p className="text-xs style-text-tertiary mt-0.5">Basis: {v.basis}</p>
+                    )}
                     <p className="text-xs text-violet-400 mt-1">{v.regulation}</p>
                     {v.interest_applicable && (
                       <p className="text-xs text-amber-700 mt-1 font-medium">{v.interest_note}</p>
                     )}
                     {v.ejagriti_trigger && (
                       <p className="text-xs text-red-700 mt-1 font-medium">
-                        e-Jagriti filing now applicable — insurer GRO overdue
+                        e-Jagriti may be an available forum — no resolution documented within the applicable grievance timeline
                       </p>
                     )}
                   </div>
@@ -692,27 +700,28 @@ function AuditResultView({
             ))}
           </div>
         ) : (
-          <p className="p-4 text-sm style-text-tertiary">No SLA violations detected based on provided dates.</p>
+          <p className="p-4 text-sm style-text-tertiary">No timeline concerns noted based on the dates provided.</p>
         )}
         {sla?.interest_applicable && (
           <div className="p-4 bg-surface-2 border-t border-surface-4 flex items-start gap-2">
             <Banknote size={15} className="text-amber-600 mt-0.5 shrink-0" />
             <p className="text-xs text-amber-800">
-              <strong>Interest demand:</strong> Under IRDAI Master Circular 2024, Para 7.4, the insurer must pay
-              interest at Bank Rate + 2% per annum on the claim amount for every day of delay beyond 30 days.
+              <strong>Interest:</strong> If the applicable timeline is confirmed to have been exceeded, interest at
+              Bank Rate + 2% per annum may be claimable for the period of delay, subject to the applicable provision.
+              Verify the provision and its current wording in the primary source before relying on this.
             </p>
           </div>
         )}
       </Accordion>
 
-      {/* Step 2: IRDAI Violations */}
+      {/* Step 2: Potential Regulatory Inconsistencies */}
       <Accordion
-        title={`Step 2 — IRDAI Regulatory Violations (${audit?.step2_regulatory_violations?.length || 0} found)`}
+        title={`Step 2 — Potential Regulatory Inconsistencies (${audit?.step2_regulatory_violations?.length || 0} identified)`}
         icon={<AlertTriangle size={16} className="text-red-500" />}
         expanded={expandedSections.violations}
         onToggle={() => toggle("violations")}
         badge={audit?.step2_regulatory_violations?.length > 0 ? "high" : "low"}
-        badgeText={audit?.step2_regulatory_violations?.length > 0 ? "VIOLATIONS" : "NONE"}
+        badgeText={audit?.step2_regulatory_violations?.length > 0 ? "POTENTIAL" : "NONE IDENTIFIED"}
       >
         {audit?.step2_regulatory_violations?.length > 0 ? (
           <div className="divide-y divide-slate-100">
@@ -720,9 +729,16 @@ function AuditResultView({
               <div key={i} className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-medium style-text-primary text-sm">{v.violation}</p>
-                    <p className="text-xs text-violet-400 mt-1">{v.regulation}</p>
-                    {v.argument && <p className="text-xs style-text-tertiary mt-1 italic">{v.argument}</p>}
+                    <p className="font-medium style-text-primary text-sm">Potential inconsistency: {v.violation}</p>
+                    <div className="mt-2 space-y-0.5 text-xs style-text-secondary">
+                      <p><span className="style-text-tertiary">Source:</span> {v.source || v.regulation}</p>
+                      <p><span className="style-text-tertiary">Provision:</span> {v.provision || v.regulation}</p>
+                      {v.evidence_from_document && (
+                        <p><span className="style-text-tertiary">Evidence from your document:</span> {v.evidence_from_document}</p>
+                      )}
+                      <p><span className="style-text-tertiary">Verification:</span> {v.verification_note || "Review against the current primary source before relying on this finding."}</p>
+                    </div>
+                    {v.argument && <p className="text-xs style-text-tertiary mt-2 italic">{v.argument}</p>}
                   </div>
                   <span className={`badge-${v.severity} shrink-0`}>{v.severity}</span>
                 </div>
@@ -730,11 +746,11 @@ function AuditResultView({
             ))}
           </div>
         ) : (
-          <p className="p-4 text-sm style-text-tertiary">No specific regulatory violations identified by AI.</p>
+          <p className="p-4 text-sm style-text-tertiary">No specific potential regulatory inconsistencies identified by the AI analysis.</p>
         )}
         {cis?.cis_violation && (
           <div className="p-4 bg-surface-2 border-t border-surface-4">
-            <p className="text-xs font-semibold text-red-800 mb-1">CIS Violation — IRDAI Master Circular 2024, Para 4.2</p>
+            <p className="text-xs font-semibold text-red-800 mb-1">Potential CIS Inconsistency — IRDAI Master Circular on Health Insurance, 2024 (verify provision)</p>
             <p className="text-xs text-red-700">{cis.argument}</p>
           </div>
         )}
@@ -895,7 +911,7 @@ function AuditResultView({
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <p className="font-semibold style-text-primary">Generate your appeal letter</p>
-            <p className="text-sm style-text-secondary">AI will cite every violation found above in the letter</p>
+            <p className="text-sm style-text-secondary">AI will reference the potential inconsistencies identified above in an editable draft for your review</p>
           </div>
           <Link href={`/dashboard/appeals?claim_id=${result.claim_id}`} className="btn-primary">
             Generate Appeal <ArrowRight size={15} />

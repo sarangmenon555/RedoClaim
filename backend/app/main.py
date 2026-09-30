@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="RedoClaim API",
-    description="AI-powered Insurance Rights & Claims Grievance Platform for India",
+    description="AI-assisted insurance claim analysis and grievance drafting platform for India, currently focused on health insurance",
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/api/docs" if settings.ENVIRONMENT != "production" else None,

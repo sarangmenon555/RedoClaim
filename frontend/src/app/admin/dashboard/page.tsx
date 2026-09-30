@@ -404,7 +404,7 @@ function Dashboard({ token, onLogout }: { token: string; onLogout: () => void })
               <StatCard label="Active users" value={stats.active_users} sub={`${stats.users > 0 ? Math.round((stats.active_users / stats.users) * 100) : 0}% of total`} />
               <StatCard label="Verified users" value={stats.verified_users} />
               <StatCard label="Total claims" value={stats.claims.toLocaleString()} />
-              <StatCard label="IRDAI violations" value={stats.irdai_violations_found} accent={stats.irdai_violations_found > 0 ? "warning" : undefined} />
+              <StatCard label="Potential inconsistencies flagged" value={stats.irdai_violations_found} accent={stats.irdai_violations_found > 0 ? "warning" : undefined} />
               <StatCard label="Documents" value={stats.documents.toLocaleString()} />
               <StatCard label="Appeals" value={stats.appeals.toLocaleString()} />
             </div>

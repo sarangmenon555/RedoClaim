@@ -24,7 +24,7 @@ export default function DataPolicyPage() {
             <div>
               <h1 className="text-xl font-bold mb-2" style={{color:"var(--text-primary)"}}>Data Policy</h1>
               <p className="text-sm leading-relaxed" style={{color:"var(--text-secondary)"}}>
-                Last updated: September 23, 2026. This Data Policy describes, in technical detail, what data
+                Last updated: September 30, 2026. This Data Policy describes, in technical detail, what data
                 RedoClaim stores, where it is processed, how long it is kept, and how it flows through our
                 systems. It supplements our Privacy Policy.
               </p>
@@ -49,11 +49,11 @@ export default function DataPolicyPage() {
               <tbody>
                 {[
                   ["Account data", "Name, email, hashed password", "PostgreSQL (Neon)"],
-                  ["Claim data", "Policy number, insurer, claim amount, status, rejection reason, IRDAI violation analysis", "PostgreSQL (Neon)"],
+                  ["Claim data", "Policy number, insurer, claim amount, status, rejection reason, claim analysis findings / potential regulatory inconsistencies", "PostgreSQL (Neon)"],
                   ["Documents", "Uploaded claim/policy/medical/motor documents", "Object storage"],
                   ["Document embeddings", "Vector representations of document text for retrieval", "Qdrant vector database"],
-                  ["Translated reports", "Cached translations of audit reports", "PostgreSQL (Neon), linked to claim"],
-                  ["Timeline/deadline data", "GRO and IRDAI deadlines and reminder status", "PostgreSQL (Neon)"],
+                  ["Translated reports", "Cached translations of analysis reports", "PostgreSQL (Neon), linked to claim"],
+                  ["Timeline/deadline data", "Applicable grievance and claim timelines and reminder status", "PostgreSQL (Neon)"],
                 ].map(([type, ex, loc]) => (
                   <tr key={type} style={{borderTop:"1px solid var(--surface-4)"}}>
                     <td className="py-2 pr-4">{type}</td>
@@ -74,9 +74,9 @@ export default function DataPolicyPage() {
           <ol className="space-y-2 text-sm list-decimal list-inside" style={{color:"var(--text-secondary)"}}>
             <li>You upload a document, which is stored in object storage.</li>
             <li>The document is processed via OCR to extract text.</li>
-            <li>Extracted text is analyzed by our AI/LLM pipeline to identify claim details, IRDAI violations, and generate an audit report.</li>
+            <li>Extracted text is analyzed by our AI/LLM pipeline to identify claim details, potential policy or regulatory inconsistencies, relevant supporting information, and generate an AI-assisted analysis report.</li>
             <li>Text chunks may be embedded and stored in our vector database to support retrieval-augmented analysis.</li>
-            <li>If you request a translation, the relevant report text is sent to our translation provider and cached against your claim.</li>
+            <li>If you request a translation, the relevant report text is sent to our translation provider and cached against your claim. Translation is performed only when the user requests a translated report.</li>
           </ol>
         </div>
 
@@ -100,7 +100,7 @@ export default function DataPolicyPage() {
           <ul className="space-y-2 text-sm" style={{color:"var(--text-secondary)"}}>
             {[
               "Account and claim data is retained while your account is active",
-              "Uploaded documents are retained to support your ongoing claim and appeal process",
+              "Uploaded documents are retained while they are needed to provide the requested service and support the user's ongoing claim or appeal workflow, subject to applicable deletion requests and legal requirements",
               "Upon account deletion request, we delete or anonymize your personal data and documents within a reasonable period, except where retention is required by law",
               "Cached translations are deleted when the associated claim is deleted",
             ].map((item) => (

@@ -47,7 +47,7 @@ export default function NcbCheckPage() {
           <Percent size={22} style={{ color: "#A78BFA" }} /> No-Claim Bonus (NCB) Checker
         </h2>
         <p className="text-sm mt-1" style={{ color: "var(--text-tertiary)" }}>
-          Check whether your motor renewal quote applies the NCB discount you're actually entitled to,
+          Check whether your motor renewal quote applies the NCB discount that appears applicable to you,
           against IRDAI's standard NCB slabs.
         </p>
       </div>
@@ -93,7 +93,7 @@ export default function NcbCheckPage() {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-lg p-3 text-center" style={{ background: "var(--surface-2)" }}>
-              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>You're entitled to</p>
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Calculated NCB</p>
               <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>{result.expected_ncb_percent}%</p>
             </div>
             <div className="rounded-lg p-3 text-center" style={{ background: "var(--surface-2)" }}>

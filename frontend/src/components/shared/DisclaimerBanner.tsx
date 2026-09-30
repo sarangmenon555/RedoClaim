@@ -69,7 +69,7 @@ export function DisclaimerBanner({ variant = "banner", context = "general", clas
             {expanded && (
               <div className="mt-3 pt-3 space-y-2 text-xs leading-relaxed"
                 style={{borderTop:"1px solid rgba(251,191,36,0.15)",color:"rgba(252,211,77,0.7)"}}>
-                <p><strong style={{color:"#FCD34D"}}>RedoClaim is an AI research tool</strong>, not a law firm. AI models can hallucinate, misread documents, and cite regulations inaccurately.</p>
+                <p><strong style={{color:"#FCD34D"}}>RedoClaim is an AI research tool</strong>, not a law firm. It does not make official legal or regulatory determinations. AI models can hallucinate, misread documents, and cite regulations inaccurately.</p>
                 <p><strong style={{color:"#FCD34D"}}>Before sending any letter:</strong> verify every IRDAI citation at{" "}
                   <a href="https://irdai.gov.in/home" target="_blank" rel="noopener noreferrer"
                     className="underline" style={{color:"#A78BFA"}}>irdai.gov.in</a> and correct all factual errors.</p>

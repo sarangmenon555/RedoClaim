@@ -81,10 +81,11 @@ def advise_cost_benefit(
         "estimated_effort_hours": effort_hours,
         "estimated_effort_value": round(effort_cost, 2),
         "regulatory_violations_found": len(violations),
+        "potential_inconsistencies_found": len(violations),
         "verdict": verdict,
         "headline": headline,
         "reasoning": (
-            f"Case strength is rated '{strength}' with {len(violations)} regulatory violation(s) identified. "
+            f"Case strength is rated '{strength}' with {len(violations)} potential regulatory inconsistency(ies) identified. "
             f"The recommended route ({_ROUTE_LABELS.get(recommended_route, recommended_route)}) is estimated to take "
             f"roughly {effort_hours} hour(s) of your own time if self-filed (no lawyer fee assumed) — "
             f"worth about ₹{effort_cost:,.0f} at ₹{hourly_value:,.0f}/hour, against a claim of ₹{claim_amount:,.0f}."

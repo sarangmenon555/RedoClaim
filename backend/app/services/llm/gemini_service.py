@@ -357,19 +357,25 @@ async def audit_rejection(
     rejection_patterns: str = "",
 ) -> dict:
     system = (
-        "You are an AI legal research assistant helping Indian insurance policyholders "
-        "understand their rights under IRDAI regulations. You are NOT a lawyer. "
-        "Your output is NOT legal advice. "
-        "You reference IRDAI Master Circular 2024, IRDAI Health Regs 2024, "
+        "You are an AI research assistant helping Indian health insurance policyholders "
+        "review a claim rejection against IRDAI regulations. You are NOT a lawyer. "
+        "Your output is NOT legal advice and is NOT an official determination. "
+        "You reference the IRDAI Master Circular on Health Insurance, 2024, IRDAI Health Regs 2024, "
         "Insurance Ombudsman Rules 2017, Consumer Protection Act, 2019. "
-        "You STRICTLY follow the Hierarchy of Evidence: "
-        "Step 1: SLA violations. Step 2: IRDAI regulatory violations. Step 3: Redressal route. "
+        "You perform a structured evidence-based analysis in three stages: "
+        "Step 1: timeline and TAT analysis. Step 2: potential regulatory inconsistencies. Step 3: redressal route. "
+        "Never state that an insurer has violated a law, regulation or policy term. "
+        "Describe each finding as a potential inconsistency or an apparent inconsistency for the user to review. "
+        "For each finding identify the source, the specific provision, and the supporting text from the uploaded documents. "
+        "Do not assume one universal deadline. State the applicable timeline together with its basis, "
+        "and if the basis cannot be identified from the material provided, say so. "
         "CRITICAL: Return ONLY a valid JSON object. "
         "Output MUST start with { and end with }. "
         "No markdown fences, no preamble, no text before { or after }."
     )
 
-    prompt = f"""CLAIM REJECTION AUDIT — Follow the Hierarchy of Evidence strictly.
+    prompt = f"""CLAIM REJECTION ANALYSIS — structured evidence-based analysis.
+Use cautious wording such as "potential inconsistency" or "appears inconsistent". Do not use the words "violated" or "violation" in any value you write.
 
 REJECTION LETTER TEXT:
 {rejection_text[:3500]}
@@ -393,23 +399,27 @@ Return ONLY this JSON object. Start with {{ and end with }}. Nothing before or a
   "step1_sla_analysis": {{
     "tat_violated": false,
     "violations": [
-      {{"type": "...", "regulation": "IRDAI Master Circular 2024, Para X.Y", "detail": "..."}}
+      {{"type": "...", "regulation": "Source and provision e.g. IRDAI Master Circular on Health Insurance, 2024, Para X.Y", "detail": "...", "applicable_timeline": "e.g. 15 days", "basis": "specific provision or source for this timeline, or not identified"}}
     ],
     "interest_applicable": false
   }},
 
   "step2_regulatory_violations": [
     {{
-      "violation": "Specific description of what was violated",
-      "regulation": "Exact citation e.g. IRDAI Master Circular 2024, Para 8.3",
+      "violation": "Description of the potential inconsistency, in cautious wording",
+      "regulation": "Exact citation e.g. IRDAI Master Circular on Health Insurance, 2024, Para 8.3",
+      "source": "Name of the source document e.g. IRDAI Master Circular on Health Insurance, 2024",
+      "provision": "Specific section or paragraph",
+      "evidence_from_document": "Short extract or paraphrase from the uploaded rejection letter or policy that supports this finding",
+      "verification_note": "Review against the current primary source before relying on this finding.",
       "severity": "high|medium|low",
-      "argument": "How to use this in an appeal"
+      "argument": "How the user may raise this in an appeal"
     }}
   ],
 
   "deficiency_in_service": false,
   "deficiency_grounds": ["..."],
-  "deficiency_statement": "Formal legal statement using CPA 2019 Section 2(11) language",
+  "deficiency_statement": "Neutral statement of the grounds on which a Deficiency in Service allegation under CPA 2019 Section 2(11) could be considered. Do not present it as established.",
 
   "product_liability_applicable": false,
   "product_liability_note": "...",
@@ -476,7 +486,7 @@ async def generate_appeal_letter(
         "motor": (
             "References: IRDAI Motor Insurance Guidelines 2017, "
             "IRDAI (Surveyors and Loss Assessors) Regulations 2015, Motor Vehicles Act 1988. "
-            "For OD claims: cite surveyor TAT violations, IDV disputes, depreciation schedule. "
+            "For OD claims: cite apparent surveyor TAT delays, IDV disputes, depreciation schedule. "
             "For driving licence grounds: cite Swaran Singh (2004) SC principle. "
             "Demand the full Survey Report and Surveyor's certificate under Reg 19."
         ),
@@ -492,10 +502,11 @@ async def generate_appeal_letter(
 
     system = (
         f"You are an AI writing assistant that drafts Indian insurance appeal letters "
-        f"based on IRDAI regulations. You are NOT a lawyer. These are AI-generated DRAFTS "
-        f"the user must verify before sending. "
-        f"Use the EXACT legal term 'Deficiency in Service' (CPA 2019 Section 2(11)). "
-        f"Cite specific IRDAI regulations with paragraph numbers. "
+        f"based on IRDAI regulations. You are NOT a lawyer. These are AI-generated, editable DRAFTS "
+        f"for the user to review, verify and correct before sending. "
+        f"Where relevant, use the legal term 'Deficiency in Service' (CPA 2019 Section 2(11)) as an allegation, not as an established fact. "
+        f"Phrase concerns as apparent or potential inconsistencies and do not assert that a violation has been established. "
+        f"Cite specific IRDAI regulations with paragraph numbers where they are supplied in the analysis. "
         f"Follow correct Indian legal letter format. "
         f"Insurance type: {insurance_type.upper()}. {type_context}"
     )
@@ -505,16 +516,16 @@ async def generate_appeal_letter(
             "to": "The Grievance Redressal Officer (GRO)",
             "org": f"{insurer_name}",
             "context": (
-                "First formal escalation. Cite IRDAI Master Circular 2024 TATs. "
-                "Demand resolution within 15 days. Warn of Ombudsman escalation. "
-                "If TAT violated, demand interest under Para 7.4."
+                "First formal escalation. Refer to the applicable timelines and their stated basis. "
+                "Request resolution within the insurer's applicable grievance timeline. Mention possible Ombudsman escalation. "
+                "If the documented dates indicate the applicable timeline may have been exceeded, request interest where applicable, citing its basis."
             ),
         },
         "insurer_escalation": {
             "to": "The Chief Executive Officer / Chairman & Managing Director",
             "org": f"{insurer_name}",
             "context": (
-                "Direct CEO escalation. Use strong language about regulatory violations. "
+                "Direct CEO escalation. Use firm but measured language about apparent regulatory inconsistencies. "
                 "Mention potential IRDAI complaint and Ombudsman filing. "
                 "Reference Deficiency in Service under Consumer Protection Act, 2019."
             ),
@@ -524,7 +535,7 @@ async def generate_appeal_letter(
             "org": "Office of the Insurance Ombudsman",
             "context": (
                 "Formal Ombudsman complaint under Insurance Ombudsman Rules 2017. "
-                "State GRO was filed and unresolved. Cite all IRDAI violations. "
+                "State GRO was filed and unresolved. Cite all potential inconsistencies identified in the analysis. "
                 "Claim full amount + interest + costs up to Rs.5,000. "
                 "Reference Deficiency in Service under CPA 2019 S.2(11)."
             ),
@@ -534,7 +545,7 @@ async def generate_appeal_letter(
             "org": "IRDAI — Bima Bharosa Portal (igms.irda.gov.in)",
             "context": (
                 "IRDAI portal complaint. Concise, factual, regulatory-focused. "
-                "List every IRDAI regulation violated with paragraph numbers. "
+                "List each IRDAI provision the rejection appears inconsistent with, with paragraph numbers. "
                 "Request IRDAI intervention and insurer show-cause notice."
             ),
         },
@@ -584,11 +595,11 @@ Insurance Type: {claim_data.get("insurance_type", "Health")}
 Rejection Date: {rejection_date_display}
 Today's Date: {today}
 
-IRDAI VIOLATIONS FOUND:
-{json.dumps(violations, indent=2)[:1500] if violations else "See SLA violations below"}
+POTENTIAL REGULATORY INCONSISTENCIES IDENTIFIED:
+{json.dumps(violations, indent=2)[:1500] if violations else "See timeline analysis below"}
 
-SLA VIOLATIONS:
-{json.dumps(sla, indent=2)[:800] if sla else "None detected"}
+TIMELINE AND TAT ANALYSIS:
+{json.dumps(sla, indent=2)[:800] if sla else "No timeline concerns detected"}
 
 DEFICIENCY IN SERVICE STATEMENT:
 {deficiency[:500] if deficiency else "Insurer has failed in its service obligations"}
@@ -607,7 +618,7 @@ Write the complete letter. Include:
 2. Full address block to: {desc["to"]}, {desc["org"]}
 3. Subject line referencing policy number and claim
 4. Para 1: Facts of the case (policy, claim, rejection)
-5. Para 2-4: Legal arguments with specific IRDAI citations
+5. Para 2-4: Arguments with the relevant IRDAI citations, each phrased as an apparent inconsistency
 6. Para 5: Relief sought (specific amounts + interest if applicable)
 7. Para 6: Consequence of non-compliance (next escalation step)
 8. Closing: Yours faithfully, {user_name}
@@ -680,14 +691,15 @@ async def audit_motor_rejection(
 ) -> dict:
     system = (
         "You are an AI legal research assistant helping Indian motor insurance policyholders "
-        "understand their rights. You are NOT a lawyer. Output is NOT legal advice. "
+        "review a claim rejection. You are NOT a lawyer. Output is NOT legal advice and is NOT an official determination. "
         "You reference IRDAI Motor Insurance Guidelines 2017, Motor Vehicles Act 1988, "
         "IRDAI Master Circular 2024, Insurance Ombudsman Rules 2017, CPA 2019. "
+        "Describe findings as potential inconsistencies and never state that a violation has been established. "
         "CRITICAL: Return ONLY a valid JSON object. "
         "Output MUST start with { and end with }. No markdown, no text outside the JSON."
     )
 
-    prompt = f"""MOTOR INSURANCE CLAIM REJECTION AUDIT.
+    prompt = f"""MOTOR INSURANCE CLAIM REJECTION ANALYSIS.
 
 REJECTION LETTER TEXT:
 {rejection_text[:3500]}
@@ -767,16 +779,17 @@ async def audit_life_rejection(
     incontestability_check: dict,
 ) -> dict:
     system = (
-        "You are an AI legal research assistant helping Indian life insurance claimants "
-        "understand their rights under IRDAI regulations and Insurance Act 1938. "
-        "You are NOT a lawyer. Output is NOT legal advice. "
+        "You are an AI research assistant helping Indian life insurance claimants "
+        "review a claim rejection against IRDAI regulations and Insurance Act 1938. "
+        "You are NOT a lawyer. Output is NOT legal advice and is NOT an official determination. "
+        "Describe findings as potential inconsistencies and never state that a violation has been established. "
         "You reference IRDAI Life Regs 2023, Insurance Act 1938 S.45, "
         "IRDAI Master Circular 2024, Ombudsman Rules 2017, CPA 2019. "
         "CRITICAL: Return ONLY a valid JSON object. "
         "Output MUST start with { and end with }. No markdown, no text outside the JSON."
     )
 
-    prompt = f"""LIFE INSURANCE CLAIM REJECTION AUDIT.
+    prompt = f"""LIFE INSURANCE CLAIM REJECTION ANALYSIS.
 
 REJECTION LETTER TEXT:
 {rejection_text[:3500]}
@@ -1068,8 +1081,8 @@ async def audit_settlement(
     """
     system = (
         "You are an AI legal research assistant helping Indian insurance policyholders "
-        "check whether a PARTIAL settlement amount matches what their policy actually entitles "
-        "them to. You are NOT a lawyer. Your output is NOT legal advice. "
+        "review whether a PARTIAL settlement amount appears consistent with the terms of their policy. "
+        "You are NOT a lawyer. Your output is NOT legal advice and is NOT an official determination. "
         "Reference IRDAI Master Circular 2024, IRDAI Health Regs 2024, Insurance Ombudsman Rules 2017. "
         "CRITICAL: Return ONLY a valid JSON object. Output MUST start with { and end with }. "
         "No markdown fences, no preamble, no text before { or after }."
@@ -1077,7 +1090,7 @@ async def audit_settlement(
 
     shortfall = claim_amount - settled_amount
 
-    prompt = f"""SETTLEMENT AMOUNT AUDIT
+    prompt = f"""SETTLEMENT AMOUNT ANALYSIS
 
 CLAIM AMOUNT: ₹{claim_amount:,.0f}
 AMOUNT ACTUALLY SETTLED: ₹{settled_amount:,.0f}
@@ -1146,7 +1159,7 @@ async def audit_preauth_denial(
         "No markdown fences, no preamble, no text before { or after }."
     )
 
-    prompt = f"""CASHLESS PRE-AUTHORIZATION DENIAL AUDIT
+    prompt = f"""CASHLESS PRE-AUTHORIZATION DENIAL ANALYSIS
 
 INSURER'S PRE-AUTH DENIAL / QUERY LETTER:
 {denial_text[:3500]}
@@ -1171,7 +1184,7 @@ Return ONLY this JSON object:
   "is_valid_denial": false,
   "confidence": "high|medium|low",
   "tat_violated": false,
-  "tat_violation_detail": "specific TAT breach if any, else null",
+  "tat_violation_detail": "documented timing that appears inconsistent with the applicable cashless timeline and its basis, if any, else null",
   "immediate_recommendation": "pay_and_reimburse|escalate_to_gro_first|challenge_before_admission",
   "reimbursement_path_note": "brief note on the fact that paying out-of-pocket and claiming reimbursement afterward is still available regardless of this denial",
   "key_arguments": ["argument 1", "argument 2"],
