@@ -13,6 +13,7 @@ import { useLanguageStore } from "@/store/language";
 import { useT } from "@/lib/i18n/useT";
 import { isSupportedLanguage } from "@/lib/i18n/languages";
 import LanguageSwitcher from "@/components/shared/LanguageSwitcher";
+import ReportIssue from "@/components/shared/ReportIssue";
 import { useEffect } from "react";
 
 const navGroups = [
@@ -219,6 +220,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         <main className="p-6">{children}</main>
+        <ReportIssue />
       </div>
     </div>
   );

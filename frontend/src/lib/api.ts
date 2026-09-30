@@ -344,3 +344,12 @@ export const languageApi = {
       params: { target_language: targetLanguage },
     }),
 };
+
+export const feedbackApi = {
+  reportIssue: (data: {
+    category: string;
+    details?: string;
+    page_path?: string;
+    language?: string;
+  }) => api.post("/feedback/report-issue", data),
+};

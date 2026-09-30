@@ -10,6 +10,8 @@ import { authApi } from "@/lib/api";
 import { useAuthStore } from "@/store/auth";
 import toast from "react-hot-toast";
 import LanguageSwitcher from "@/components/shared/LanguageSwitcher";
+import HowItWorks from "@/components/landing/HowItWorks";
+import SiteFooter from "@/components/landing/SiteFooter";
 
 const DEMO_EMAIL    = "demo@redoclaim.in";
 const DEMO_PASSWORD = "RedoClaim@demo2024";
@@ -121,6 +123,9 @@ export default function HomePage() {
             <Link href="#features" className="btn-secondary text-base px-7 py-3">
               See features
             </Link>
+            <Link href="#how-it-works" className="btn-secondary text-base px-7 py-3">
+              How it works
+            </Link>
           </div>
 
           <p className="mt-4 text-xs max-w-xl mx-auto leading-relaxed" style={{color:"var(--text-tertiary)"}}>
@@ -212,6 +217,8 @@ export default function HomePage() {
         </div>
       </section>
 
+      <HowItWorks id="how-it-works" />
+
       {/* CTA */}
       <section className="max-w-6xl mx-auto px-4 py-20 text-center">
         <h2 className="text-3xl font-bold mb-4" style={{color:"var(--text-primary)"}}>
@@ -241,33 +248,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t py-8" style={{borderColor:"var(--surface-4)",background:"var(--surface-1)"}}>
-        <div className="max-w-6xl mx-auto px-4 space-y-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-md flex items-center justify-center"
-                style={{background:"linear-gradient(135deg,#7C3AED,#4F46E5)"}}>
-                <ShieldCheck size={12} className="text-white" />
-              </div>
-              <span className="font-semibold" style={{color:"var(--text-primary)"}}>RedoClaim</span>
-              <span style={{color:"var(--text-tertiary)"}}>— AI Powered Insurance Claim Analysis Tool</span>
-            </div>
-            <div className="flex gap-4 text-xs" style={{color:"var(--text-tertiary)"}}>
-              {[
-                ["IRDAI","https://irdai.gov.in/home"],
-                ["Bima Bharosa","https://bimabharosa.irdai.gov.in/"],
-                ["e-Jagriti","https://e-jagriti.gov.in/"],
-                ["Disclaimer","/disclaimer"],
-              ].map(([label, href]) => (
-                <a key={label} href={href} target={href.startsWith("http") ? "_blank" : undefined}
-                  rel="noopener noreferrer"
-                  className="hover:text-violet-400 transition-colors">{label}</a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
