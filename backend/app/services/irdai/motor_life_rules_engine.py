@@ -9,7 +9,7 @@ Sources:
   - IRDAI (Life Insurance) Regulations 2023
   - IRDAI Master Circular on Protection of Policyholders Interests (2024)
   - Insurance Ombudsman Rules 2017
-  - Consumer Protection Act 2019
+  - Consumer Protection Act, 2019
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -113,8 +113,8 @@ class MotorInsuranceRulesEngine:
                         f"Resolution mandated within {self.TAT_GRO_DAYS} days."
                     ),
                     "severity": "high",
-                    "edaakhil_trigger": True,
-                    "legal_citation": "Consumer Protection Act 2019 — E-Daakhil applicable",
+                    "ejagriti_trigger": True,
+                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti applicable",
                 })
 
         deadlines = {}
@@ -323,8 +323,8 @@ class LifeInsuranceRulesEngine:
                         f"IRDAI mandates resolution within {self.TAT_GRO_DAYS} days."
                     ),
                     "severity": "high",
-                    "edaakhil_trigger": True,
-                    "legal_citation": "Consumer Protection Act 2019 — E-Daakhil applicable",
+                    "ejagriti_trigger": True,
+                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti applicable",
                 })
 
         deadlines = {}

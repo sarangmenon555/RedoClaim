@@ -190,7 +190,7 @@ export const analysisApi = {
     reason_for_porting: string;
   }) => api.post("/analysis/portability-guide", data),
 
-  edaakhilGuide: () => api.get("/analysis/edaakhil-guide"),
+  ejagritiGuide: () => api.get("/analysis/ejagriti-guide"),
 
   // Free-form question answered by the backend's function-calling agent
   // (GPT-5 Nano + tools: claim lookup, policy clauses, IRDAI search,

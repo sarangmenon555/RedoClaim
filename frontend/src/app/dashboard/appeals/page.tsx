@@ -54,13 +54,13 @@ const APPEAL_TYPES = [
   },
   {
     type: "consumer_court" as AppealType,
-    label: "Consumer Court (E-Daakhil)",
+    label: "Consumer Court (e-Jagriti)",
     desc: "District Consumer Court online",
     icon: Monitor,
     activeColor: "border-red-500 bg-surface-2",
     borderColor: "border-surface-4 hover:border-red-400",
-    step: "Final escalation — edaakhil.nic.in",
-    regulation: "Consumer Protection Act 2019",
+    step: "Final escalation — e-jagriti.gov.in",
+    regulation: "Consumer Protection Act, 2019",
   },
 ];
 

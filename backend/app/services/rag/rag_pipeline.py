@@ -348,7 +348,7 @@ Policyholder can approach Ombudsman if:
 • Policyholder can reject the award and still approach civil courts
 
 ════════════════════════════════════════════════════════
-CONSUMER PROTECTION ACT 2019 — INSURANCE CLAIMS
+CONSUMER PROTECTION ACT, 2019 — INSURANCE CLAIMS
 ════════════════════════════════════════════════════════
 
 [DEFICIENCY IN SERVICE — Section 2(11)]
@@ -367,16 +367,16 @@ If the insurance product itself was:
 • Presented with false promises about coverage
 → This gives rise to a PRODUCT LIABILITY claim (separate from Deficiency in Service)
 
-[E-DAAKHIL — ONLINE CONSUMER COURT FILING]
-Portal: edaakhil.nic.in
+[e-Jagriti — ONLINE CONSUMER COURT FILING]
+Portal: e-jagriti.gov.in
 Procedure:
-1. Register on E-Daakhil portal
+1. Register on e-Jagriti portal
 2. Fill online complaint form with policy + rejection details
 3. Upload all documents digitally (rejection letter, policy, hospital records)
 4. Pay nominal court fee online (₹200 for claims up to ₹5 Lakhs, varies by amount)
 5. Receive case number and hearing schedule via email/SMS
 
-Trigger for E-Daakhil: If insurer does NOT respond to complaint within 15 DAYS
+Trigger for e-Jagriti: If insurer does NOT respond to complaint within 15 DAYS
 
 Consumer Forums by claim amount:
 • District Consumer Disputes Redressal Commission: Up to ₹50,00,000 (50 Lakhs)
@@ -410,7 +410,7 @@ Step 2 — REGULATORY VIOLATION CHECK (via RAG)
 
 Step 3 — REDRESSAL ROUTE DETERMINATION
   Claim ≤ ₹50 Lakhs → Insurance Ombudsman (Ombudsman Rules 2017) — FREE
-  Insurer silent after 15 days → E-Daakhil Consumer Court (CPA 2019)
+  Insurer silent after 15 days → e-Jagriti Consumer Court (CPA 2019)
   Claim > ₹50 Lakhs → Consumer Court directly
   Mis-selling suspected → Product Liability under CPA 2019
 

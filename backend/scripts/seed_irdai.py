@@ -185,18 +185,18 @@ IRDAI_CHUNKS = [
         "category": "portability",
     },
     {
-        "title": "Deficiency in Service - Consumer Protection Act",
+        "title": "Deficiency in Service - Consumer Protection Act, 2019",
         "text": (
-            "Consumer Protection Act 2019, Section 2(11): Insurance claim rejection constitutes "
+            "Consumer Protection Act, 2019, Section 2(11): Insurance claim rejection constitutes "
             "'Deficiency in Service' when the claim is rejected unreasonably or arbitrarily "
             "without valid policy grounds, when settlement is delayed beyond IRDAI-mandated "
             "30-day period, when the insurer provides false or misleading information to reject "
             "a claim, when the insurer fails to process documents within TAT, or when the policy "
             "was mis-sold with misrepresented features. The Consumer Court can award the full "
             "claim amount, interest at 9-12% per annum, compensation for mental agony, and "
-            "litigation costs. The E-Daakhil portal (edaakhil.nic.in) enables online filing."
+            "litigation costs. The e-Jagriti portal (e-jagriti.gov.in) enables online filing."
         ),
-        "regulation": "Consumer Protection Act 2019, Section 2(11)",
+        "regulation": "Consumer Protection Act, 2019, Section 2(11)",
         "category": "consumer_protection",
     },
     {

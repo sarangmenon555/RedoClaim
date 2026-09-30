@@ -6,7 +6,7 @@ Sources:
   - IRDAI Master Circular on Protection of Policyholders Interests (2024)
   - IRDAI (Health Insurance) Regulations 2024
   - Insurance Ombudsman Rules 2017
-  - Consumer Protection Act 2019
+  - Consumer Protection Act, 2019
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -26,7 +26,7 @@ class IRDAIRulesEngine:
     MORATORIUM_YEARS            = 5     # 5 continuous years (2024 reform)
     OMBUDSMAN_MAX_RUPEES        = 5_000_000   # ₹50 Lakhs
     INTEREST_RATE_BUFFER        = 2     # Bank Rate + 2% for delayed claims
-    EDAAKHIL_TRIGGER_DAYS       = 15    # if insurer silent for 15 days → E-Daakhil
+    EJAGRITI_TRIGGER_DAYS       = 15    # if insurer silent for 15 days → e-Jagriti
 
     # ── Step 1: SLA Violation Check ───────────────────────────────
     def check_sla_violations(
@@ -78,8 +78,8 @@ class IRDAIRulesEngine:
                         f"Resolution mandated within {self.TAT_GRO_DAYS} days."
                     ),
                     "severity": "high",
-                    "edaakhil_trigger": days_since_grievance >= self.EDAAKHIL_TRIGGER_DAYS,
-                    "legal_citation": "Consumer Protection Act 2019 — E-Daakhil applicable",
+                    "ejagriti_trigger": days_since_grievance >= self.EJAGRITI_TRIGGER_DAYS,
+                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti applicable",
                 })
 
         # Cashless 1-hour TAT
@@ -102,7 +102,7 @@ class IRDAIRulesEngine:
         if rejection_date:
             deadlines["gro_deadline"]         = rejection_date + timedelta(days=15)
             deadlines["ombudsman_deadline"]   = rejection_date + timedelta(days=45)
-            deadlines["edaakhil_trigger"]     = rejection_date + timedelta(days=15)
+            deadlines["ejagriti_trigger"]     = rejection_date + timedelta(days=15)
             deadlines["consumer_court_limit"] = rejection_date + timedelta(days=365 * 2)
             deadlines["days_left_for_gro"]    = max(0, (deadlines["gro_deadline"] - now).days)
             deadlines["days_left_for_ombudsman"] = max(0, (deadlines["ombudsman_deadline"] - now).days)
@@ -238,7 +238,7 @@ class IRDAIRulesEngine:
         rejection_appears_arbitrary: bool = False,
     ) -> dict:
         """
-        Consumer Protection Act 2019, Section 2(11).
+        Consumer Protection Act, 2019, Section 2(11).
         Determines if Deficiency in Service can be alleged.
         """
         reasons = []
@@ -252,20 +252,20 @@ class IRDAIRulesEngine:
         if reasons:
             return {
                 "deficiency_in_service": True,
-                "legal_basis": "Consumer Protection Act 2019, Section 2(11)",
+                "legal_basis": "Consumer Protection Act, 2019, Section 2(11)",
                 "reasons": reasons,
                 "statement": (
                     "The acts and omissions of the insurer constitute 'Deficiency in Service' "
                     "as defined under Section 2(11) of the Consumer Protection Act, 2019, "
                     "specifically: " + "; ".join(reasons) + ". "
-                    "This entitles the complainant to relief under the Consumer Protection Act, "
+                    "This entitles the complainant to relief under the Consumer Protection Act, 2019, "
                     "including the claim amount, interest, compensation for mental agony, "
                     "and costs of litigation."
                 ),
                 "product_liability_note": (
                     "If the policy was mis-sold or its features misrepresented at the time of "
                     "sale, an additional Product Liability claim under Section 2(34) of the "
-                    "Consumer Protection Act 2019 may also be maintainable."
+                    "Consumer Protection Act, 2019 may also be maintainable."
                 ),
             }
         return {"deficiency_in_service": False}
@@ -297,7 +297,7 @@ class IRDAIRulesEngine:
             ),
             "cost": "Free",
             "expected_resolution": "15 days",
-            "if_no_response": f"If no response in {self.EDAAKHIL_TRIGGER_DAYS} days → proceed to Step 2",
+            "if_no_response": f"If no response in {self.EJAGRITI_TRIGGER_DAYS} days → proceed to Step 2",
             "gro_already_filed": gro_filed,
             "gro_overdue": gro_filed and gro_days_elapsed > self.TAT_GRO_DAYS,
         })
@@ -324,31 +324,31 @@ class IRDAIRulesEngine:
             ),
         })
 
-        # Step 3: E-Daakhil / Consumer Court
+        # Step 3: e-Jagriti / Consumer Court
         forum = self._get_consumer_forum(claim_amount)
-        edaakhil_applicable = (
-            gro_filed and gro_days_elapsed >= self.EDAAKHIL_TRIGGER_DAYS
+        ejagriti_applicable = (
+            gro_filed and gro_days_elapsed >= self.EJAGRITI_TRIGGER_DAYS
         ) or (
-            rejection_date and (now - rejection_date).days >= self.EDAAKHIL_TRIGGER_DAYS
+            rejection_date and (now - rejection_date).days >= self.EJAGRITI_TRIGGER_DAYS
         )
         paths.append({
             "step": 3,
-            "route": f"E-Daakhil — {forum}",
-            "regulation": "Consumer Protection Act 2019",
+            "route": f"e-Jagriti — {forum}",
+            "regulation": "Consumer Protection Act, 2019",
             "legal_basis": "Deficiency in Service — Section 2(11) CPA 2019",
             "deadline": "Within 2 years of rejection date",
             "how": (
-                "File online at edaakhil.nic.in — register, fill complaint form, "
+                "File online at e-jagriti.gov.in — register, fill complaint form, "
                 "upload all documents, pay minimal court fee online. "
                 "Receive case number and hearing schedule by email/SMS."
             ),
             "cost": "Nominal court fee (₹200 for claims up to ₹5L; varies for higher amounts)",
             "expected_resolution": "3–6 months",
-            "edaakhil_now_applicable": edaakhil_applicable,
+            "ejagriti_now_applicable": ejagriti_applicable,
             "trigger_note": (
-                "E-Daakhil is triggered if insurer does NOT respond within 15 days of complaint"
-                if edaakhil_applicable else
-                f"E-Daakhil applicable if insurer silent for {self.EDAAKHIL_TRIGGER_DAYS} days"
+                "e-Jagriti is triggered if insurer does NOT respond within 15 days of complaint"
+                if ejagriti_applicable else
+                f"e-Jagriti applicable if insurer silent for {self.EJAGRITI_TRIGGER_DAYS} days"
             ),
             "relief_available": [
                 "Full claim amount",
@@ -388,10 +388,10 @@ class IRDAIRulesEngine:
                 "URGENT: File a written GRO complaint with the insurer immediately. "
                 "The 15-day GRO window starts from your rejection date."
             )
-        if gro_days_elapsed >= self.EDAAKHIL_TRIGGER_DAYS:
+        if gro_days_elapsed >= self.EJAGRITI_TRIGGER_DAYS:
             return (
                 "GRO deadline exceeded. File immediately with the Insurance Ombudsman "
-                "(igms.irda.gov.in) AND/OR E-Daakhil Consumer Court (edaakhil.nic.in)."
+                "(igms.irda.gov.in) AND/OR e-Jagriti Consumer Court (e-jagriti.gov.in)."
             )
         if rejection_date and (now - rejection_date).days > 30:
             return (

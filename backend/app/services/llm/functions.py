@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 DEADLINE_RULES = {
     "gro":            15,        # days to escalate to GRO after rejection
     "ombudsman":      45,        # days to file with Insurance Ombudsman
-    "edaakhil":       15,        # days after unresolved grievance to trigger e-Daakhil eligibility
-    "consumer_court": 365 * 2,   # limitation period, Consumer Protection Act 2019
+    "ejagriti":       15,        # days after unresolved grievance to trigger e-Jagriti eligibility
+    "consumer_court": 365 * 2,   # limitation period, Consumer Protection Act, 2019
 }
 
 OMBUDSMAN_CLAIM_LIMIT_INR = 50_00_000  # Rs. 50 Lakhs
@@ -243,7 +243,7 @@ async def _get_insurer_details(args: dict, db) -> dict:
             "gro": "Insurer's Grievance Redressal Officer — contact listed on policy document / insurer website",
             "irdai_igms": "https://igms.irda.gov.in",
             "ombudsman": "https://www.cioins.co.in",
-            "consumer_edaakhil": "https://edaakhil.nic.in",
+            "consumer_ejagriti": "https://e-jagriti.gov.in",
         },
     }
 
@@ -265,7 +265,7 @@ def _find_redressal_route(args: dict) -> dict:
         }
     return {
         "recommended_action": "consumer_court",
-        "reasoning": f"Claim amount (₹{amount:,.0f}) exceeds the Ombudsman's ₹50,00,000 limit, so this must go to the Consumer Court (District/State/National Commission by value) via e-Daakhil.",
+        "reasoning": f"Claim amount (₹{amount:,.0f}) exceeds the Ombudsman's ₹50,00,000 limit, so this must go to the Consumer Court (District/State/National Commission by value) via e-Jagriti.",
         "ombudsman_eligible": False,
     }
 

@@ -146,7 +146,7 @@ export default function TimelinePage() {
                     </Link>
                     {[
                       ["IRDAI Portal","https://igms.irda.gov.in"],
-                      ["E-Daakhil","https://edaakhil.nic.in"],
+                      ["e-Jagriti","https://e-jagriti.gov.in"],
                     ].map(([label, url]) => (
                       <a key={label} href={url} target="_blank" rel="noopener noreferrer"
                         className="btn-secondary text-xs px-3 py-2">

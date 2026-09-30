@@ -94,7 +94,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     answer:
       "No. An Ombudsman award is not the final word — you retain the right to approach a Consumer Disputes " +
       "Redressal Commission (District/State/National, depending on the claim amount) or a civil court, since " +
-      "these are independent legal remedies under the Consumer Protection Act, not an appeal of the Ombudsman's " +
+      "these are independent legal remedies under the Consumer Protection Act, 2019, not an appeal of the Ombudsman's " +
       "decision.",
     relatedTool: { label: "Generate a Consumer Forum complaint", href: "/dashboard/appeals" },
   },

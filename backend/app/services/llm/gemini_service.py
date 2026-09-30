@@ -361,7 +361,7 @@ async def audit_rejection(
         "understand their rights under IRDAI regulations. You are NOT a lawyer. "
         "Your output is NOT legal advice. "
         "You reference IRDAI Master Circular 2024, IRDAI Health Regs 2024, "
-        "Insurance Ombudsman Rules 2017, Consumer Protection Act 2019. "
+        "Insurance Ombudsman Rules 2017, Consumer Protection Act, 2019. "
         "You STRICTLY follow the Hierarchy of Evidence: "
         "Step 1: SLA violations. Step 2: IRDAI regulatory violations. Step 3: Redressal route. "
         "CRITICAL: Return ONLY a valid JSON object. "
@@ -426,7 +426,7 @@ Return ONLY this JSON object. Start with {{ and end with }}. Nothing before or a
   "step3_redressal": {{
     "recommended_action": "gro_appeal|ombudsman|consumer_court|accept",
     "ombudsman_eligible": true,
-    "edaakhil_applicable": true,
+    "ejagriti_applicable": true,
     "reasoning": "Why this route is recommended"
   }},
 
@@ -516,7 +516,7 @@ async def generate_appeal_letter(
             "context": (
                 "Direct CEO escalation. Use strong language about regulatory violations. "
                 "Mention potential IRDAI complaint and Ombudsman filing. "
-                "Reference Deficiency in Service under Consumer Protection Act 2019."
+                "Reference Deficiency in Service under Consumer Protection Act, 2019."
             ),
         },
         "ombudsman": {
@@ -543,7 +543,7 @@ async def generate_appeal_letter(
             "org": "District Consumer Disputes Redressal Commission",
             "context": (
                 "Formal Consumer Court complaint. Lead with Deficiency in Service under "
-                "CPA 2019 Section 2(11). Reference E-Daakhil filing. "
+                "CPA 2019 Section 2(11). Reference e-Jagriti filing. "
                 "Claim full amount + interest (9-12% p.a.) + mental agony compensation "
                 "+ litigation costs + punitive damages if warranted. "
                 "Mention Product Liability (CPA 2019 S.2(34)) if policy was mis-sold."
@@ -735,7 +735,7 @@ Return ONLY this JSON. Start with {{ end with }}:
   "step3_redressal": {{
     "recommended_action": "gro_appeal|ombudsman|consumer_court|accept",
     "ombudsman_eligible": true,
-    "edaakhil_applicable": true,
+    "ejagriti_applicable": true,
     "reasoning": "Why this route is recommended"
   }},
   "strength_of_case": "strong|moderate|weak",
@@ -832,7 +832,7 @@ Return ONLY this JSON. Start with {{ end with }}:
   "step3_redressal": {{
     "recommended_action": "gro_appeal|ombudsman|consumer_court|accept",
     "ombudsman_eligible": true,
-    "edaakhil_applicable": true,
+    "ejagriti_applicable": true,
     "reasoning": "Why this route is recommended"
   }},
   "strength_of_case": "strong|moderate|weak",

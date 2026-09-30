@@ -206,7 +206,7 @@ export interface SLAViolation {
   severity: "high" | "medium" | "low";
   interest_applicable?: boolean;
   interest_note?: string;
-  edaakhil_trigger?: boolean;
+  ejagriti_trigger?: boolean;
 }
 
 export interface MoratoriumCheck {
@@ -241,7 +241,7 @@ export interface EscalationStep {
   cost: string;
   regulation?: string;
   eligible?: boolean;
-  edaakhil_now_applicable?: boolean;
+  ejagriti_now_applicable?: boolean;
   relief_available?: string[];
 }
 
@@ -304,7 +304,7 @@ export interface AuditResponse {
     deficiency_in_service: boolean;
     cis_violation: boolean;
     interest_applicable: boolean;
-    edaakhil_applicable: boolean;
+    ejagriti_applicable: boolean;
     // Motor-specific
     surveyor_issues?: { report_provided: boolean; issues: string[]; demand_note: string };
     depreciation_applicable?: boolean;

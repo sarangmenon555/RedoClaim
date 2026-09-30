@@ -1,5 +1,5 @@
 export interface Citation {
-  law: string; // "IRDAI Master Circular 2024" | "Consumer Protection Act 2019" | etc.
+  law: string; // "IRDAI Master Circular 2024" | "Consumer Protection Act, 2019" | etc.
   section: string; // "Chapter II, Para 8.3" | "Section 2(11)" etc.
   title: string;
   summary: string;

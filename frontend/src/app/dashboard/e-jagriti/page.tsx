@@ -4,12 +4,12 @@ import { analysisApi } from "@/lib/api";
 import { ExternalLink, CheckCircle, AlertTriangle, Info, Monitor, Scale } from "lucide-react";
 import { useT } from "@/lib/i18n/useT";
 
-export default function EdaakhilPage() {
+export default function EJagritiPage() {
   const t = useT();
   const [guide, setGuide] = useState<any>(null);
 
   useEffect(() => {
-    analysisApi.edaakhilGuide().then((r) => setGuide(r.data)).catch(() => {});
+    analysisApi.ejagritiGuide().then((r) => setGuide(r.data)).catch(() => {});
   }, []);
 
   return (

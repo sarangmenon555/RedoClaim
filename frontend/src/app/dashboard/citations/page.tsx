@@ -27,7 +27,7 @@ export default function CitationsPage() {
           <Scale size={22} style={{ color: "#A78BFA" }} /> Regulatory Citation Library
         </h2>
         <p className="text-sm mt-1" style={{ color: "var(--text-tertiary)" }}>
-          The actual IRDAI circulars, Consumer Protection Act sections, and Ombudsman Rules our audit
+          The actual IRDAI circulars, Consumer Protection Act, 2019 sections, and Ombudsman Rules our audit
           tool cites — read the source law directly instead of just trusting the AI's citation.
         </p>
       </div>

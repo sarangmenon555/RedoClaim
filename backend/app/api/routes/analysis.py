@@ -385,7 +385,7 @@ async def audit_claim_rejection(
             "deficiency_in_service": deficiency.get("deficiency_in_service", False),
             "cis_violation": cis_check.get("cis_violation", False),
             "interest_applicable": sla_result.get("interest_applicable", False),
-            "edaakhil_applicable": escalation["escalation_path"][2].get("edaakhil_now_applicable", False),
+            "ejagriti_applicable": escalation["escalation_path"][2].get("ejagriti_now_applicable", False),
             **type_specific,
         },
     }
@@ -497,9 +497,9 @@ async def portability_guide(
     }
 
 
-# ── 5. E-Daakhil Guide ────────────────────────────────────────────
-@router.get("/edaakhil-guide")
-async def edaakhil_guide():
+# ── 5. e-Jagriti Guide ────────────────────────────────────────────
+@router.get("/ejagriti-guide")
+async def ejagriti_guide():
     return {
         "portal": "e-jagriti.gov.in",
         "when_to_use": (
@@ -507,7 +507,7 @@ async def edaakhil_guide():
             "OR if you are unsatisfied with their response, you can file directly "
             "on the e-Jagriti Consumer Court portal."
         ),
-        "legal_basis": "Consumer Protection Act 2019, Section 2(11) — Deficiency in Service",
+        "legal_basis": "Consumer Protection Act, 2019, Section 2(11) — Deficiency in Service",
         "steps": [
             {
                 "step": 1,

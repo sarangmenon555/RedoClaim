@@ -145,7 +145,7 @@ COMMON VALID GROUNDS:
     },
     {
         "id": "consumer_protection_2019",
-        "text": """Consumer Protection Act 2019 - Insurance Claims:
+        "text": """Consumer Protection Act, 2019 - Insurance Claims:
 
 DEFICIENCY IN SERVICE:
 Insurance rejection can constitute "Deficiency in Service" including:
@@ -154,8 +154,8 @@ Insurance rejection can constitute "Deficiency in Service" including:
 - Failure to process documents within TAT
 - Misleading information at time of policy sale (mis-selling)
 
-E-DAAKHIL PORTAL:
-- Online consumer court filing: edaakhil.nic.in
+e-Jagriti portal:
+- Online consumer court filing: e-jagriti.gov.in
 - Can file complaint entirely online
 - Upload all documents digitally
 - Pay minimal court fees online
@@ -181,7 +181,7 @@ RELIEF AVAILABLE:
 - Legal costs
 - Punitive damages in egregious cases""",
         "category": "consumer_protection",
-        "regulation": "Consumer Protection Act 2019"
+        "regulation": "Consumer Protection Act, 2019"
     },
     {
         "id": "common_rejection_tactics",

@@ -7,12 +7,12 @@ this just weighs that judgment against effort/cost to give a plain
 "is this worth fighting" verdict.
 
 Time/effort estimates below are rough, static assumptions (self-filing via
-GRO/Ombudsman/E-Daakhil is free and doesn't strictly require a lawyer) —
+GRO/Ombudsman/e-Jagriti is free and doesn't strictly require a lawyer) —
 clearly labeled as such so the user can adjust their own judgment.
 """
 
 # Effort estimates for redressal routes: hours of the user's own time, if
-# self-filed (which is how GRO, Ombudsman, and E-Daakhil are designed to be
+# self-filed (which is how GRO, Ombudsman, and e-Jagriti are designed to be
 # used — no lawyer fee is assumed).
 _ROUTE_EFFORT_HOURS = {
     "gro_appeal": 2,

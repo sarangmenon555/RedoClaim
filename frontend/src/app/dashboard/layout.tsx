@@ -41,7 +41,7 @@ const navGroups = [
     items: [
       { href: "/dashboard/appeals",     labelKey: "nav_appeals",     icon: FileText },
       { href: "/dashboard/portability", labelKey: "nav_portability", icon: ArrowRightLeft },
-      { href: "/dashboard/e-jagriti",   labelKey: "nav_edaakhil",    icon: Monitor },
+      { href: "/dashboard/e-jagriti",   labelKey: "nav_ejagriti",    icon: Monitor },
       { href: "/dashboard/faq",         labelKey: "nav_faq",         icon: BookOpen },
       { href: "/dashboard/checklist",   labelKey: "nav_checklist",   icon: ClipboardCheck },
       { href: "/dashboard/ombudsman-finder", labelKey: "nav_ombudsman_finder", icon: MapPin },

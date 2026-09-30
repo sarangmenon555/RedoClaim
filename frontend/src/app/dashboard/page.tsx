@@ -269,10 +269,10 @@ export default function DashboardPage() {
     },
     {
       href: "/dashboard/e-jagriti",
-      label: t("nav_edaakhil"),
+      label: t("nav_ejagriti"),
       icon: Clock,
       color: "#FBBF24",
-      desc: t("db_qa_edaakhil_desc"),
+      desc: t("db_qa_ejagriti_desc"),
     },
     {
       href: "/dashboard/settings",

@@ -170,7 +170,7 @@ export default function HomePage() {
             },
             {
               icon: FileText, label: "Appeal Drafter",
-              desc: "Generates draft GRO letters, Ombudsman complaints, E-Daakhil drafts citing IRDAI regulations.",
+              desc: "Generates draft GRO letters, Ombudsman complaints, e-Jagriti drafts citing IRDAI regulations.",
               color: "#4ADE80", bg: "rgba(74,222,128,0.08)", border: "rgba(74,222,128,0.15)",
             },
             {

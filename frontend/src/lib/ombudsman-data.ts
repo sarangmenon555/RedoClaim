@@ -37,7 +37,7 @@ export const OMBUDSMAN_OFFICES: OmbudsmanOffice[] = [
   },
   {
     center: "Chandigarh",
-    statesCovered: ["Punjab", "Haryana", "Himachal Pradesh", "Jammu & Kashmir", "Union Territory of Chandigarh"],
+    statesCovered: ["Punjab", "Haryana", "Himachal Pradesh", "Jammu & Kashmir", "Ladakh", "Union Territory of Chandigarh"],
     address: "S.C.O. No. 101-103, 2nd Floor, Batra Building, Sector 17-D, Chandigarh – 160017",
     email: "bimalokpal.chandigarh@cioins.co.in",
   },
@@ -73,7 +73,7 @@ export const OMBUDSMAN_OFFICES: OmbudsmanOffice[] = [
   },
   {
     center: "Ernakulam",
-    statesCovered: ["Kerala", "Lakshadweep", "Mahe (part of Puducherry UT)"],
+    statesCovered: ["Keralam", "Lakshadweep", "Mahe (part of Puducherry UT)"],
     address: "2nd Floor, Pulinat Building, Opp. Cochin Shipyard, M.G. Road, Ernakulam – 682015",
     email: "bimalokpal.ernakulam@cioins.co.in",
   },
@@ -136,3 +136,69 @@ export const CITY_TO_CENTER: Record<string, string> = {
   "patna": "Patna", "ranchi": "Patna", "jamshedpur": "Patna", "gaya": "Patna",
   "pune": "Pune", "nagpur": "Pune", "aurangabad": "Pune",
 };
+
+export interface StateOrUT {
+  name: string;
+  type: "State" | "Union Territory";
+  centers: string[];
+  note?: string;
+}
+
+export const STATES_AND_UTS: StateOrUT[] = [
+  { name: "Andhra Pradesh", type: "State", centers: ["Hyderabad"] },
+  { name: "Arunachal Pradesh", type: "State", centers: ["Guwahati"] },
+  { name: "Assam", type: "State", centers: ["Guwahati"] },
+  { name: "Bihar", type: "State", centers: ["Patna"] },
+  { name: "Chhattisgarh", type: "State", centers: ["Bhopal"] },
+  { name: "Goa", type: "State", centers: ["Mumbai"] },
+  { name: "Gujarat", type: "State", centers: ["Ahmedabad"] },
+  { name: "Haryana", type: "State", centers: ["Chandigarh"] },
+  { name: "Himachal Pradesh", type: "State", centers: ["Chandigarh"] },
+  { name: "Jharkhand", type: "State", centers: ["Patna"] },
+  { name: "Karnataka", type: "State", centers: ["Bengaluru"] },
+  { name: "Keralam", type: "State", centers: ["Ernakulam"] },
+  { name: "Madhya Pradesh", type: "State", centers: ["Bhopal"] },
+  {
+    name: "Maharashtra",
+    type: "State",
+    centers: ["Mumbai", "Pune"],
+    note: "Maharashtra is divided between two Ombudsman offices. The office depends on your district.",
+  },
+  { name: "Manipur", type: "State", centers: ["Guwahati"] },
+  { name: "Meghalaya", type: "State", centers: ["Guwahati"] },
+  { name: "Mizoram", type: "State", centers: ["Guwahati"] },
+  { name: "Nagaland", type: "State", centers: ["Guwahati"] },
+  { name: "Odisha", type: "State", centers: ["Bhubaneswar"] },
+  { name: "Punjab", type: "State", centers: ["Chandigarh"] },
+  {
+    name: "Rajasthan",
+    type: "State",
+    centers: ["Jaipur", "Delhi"],
+    note: "Rajasthan is divided between two Ombudsman offices. The office depends on your district.",
+  },
+  { name: "Sikkim", type: "State", centers: ["Kolkata"] },
+  { name: "Tamil Nadu", type: "State", centers: ["Chennai"] },
+  { name: "Telangana", type: "State", centers: ["Hyderabad"] },
+  { name: "Tripura", type: "State", centers: ["Guwahati"] },
+  {
+    name: "Uttar Pradesh",
+    type: "State",
+    centers: ["Lucknow", "Noida"],
+    note: "Uttar Pradesh is divided between two Ombudsman offices. The office depends on your district.",
+  },
+  { name: "Uttarakhand", type: "State", centers: ["Lucknow"] },
+  { name: "West Bengal", type: "State", centers: ["Kolkata"] },
+  { name: "Andaman and Nicobar Islands", type: "Union Territory", centers: ["Kolkata"] },
+  { name: "Chandigarh", type: "Union Territory", centers: ["Chandigarh"] },
+  { name: "Dadra and Nagar Haveli and Daman and Diu", type: "Union Territory", centers: ["Ahmedabad"] },
+  { name: "Delhi", type: "Union Territory", centers: ["Delhi"] },
+  { name: "Jammu and Kashmir", type: "Union Territory", centers: ["Chandigarh"] },
+  { name: "Ladakh", type: "Union Territory", centers: ["Chandigarh"] },
+  { name: "Lakshadweep", type: "Union Territory", centers: ["Ernakulam"] },
+  {
+    name: "Puducherry",
+    type: "Union Territory",
+    centers: ["Chennai", "Ernakulam", "Hyderabad"],
+    note: "Puducherry and Karaikal fall under Chennai, Mahe under Ernakulam, and Yanam under Hyderabad.",
+  },
+];

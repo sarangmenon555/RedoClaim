@@ -561,7 +561,7 @@ function AuditResultView({
                 {summary.deficiency_in_service && <span className="badge-medium">Deficiency in Service</span>}
                 {summary.cis_violation && <span className="badge-high">CIS Violation</span>}
                 {summary.interest_applicable && <span className="badge-medium">Interest Applicable</span>}
-                {summary.edaakhil_applicable && <span className="badge-high">E-Daakhil NOW</span>}
+                {summary.ejagriti_applicable && <span className="badge-high">e-Jagriti NOW</span>}
                 {insuranceType === "motor" && summary.depreciation_applicable === false && (
                   <span className="badge-low">No Depreciation</span>
                 )}
@@ -680,9 +680,9 @@ function AuditResultView({
                     {v.interest_applicable && (
                       <p className="text-xs text-amber-700 mt-1 font-medium">{v.interest_note}</p>
                     )}
-                    {v.edaakhil_trigger && (
+                    {v.ejagriti_trigger && (
                       <p className="text-xs text-red-700 mt-1 font-medium">
-                        E-Daakhil filing now applicable — insurer GRO overdue
+                        e-Jagriti filing now applicable — insurer GRO overdue
                       </p>
                     )}
                   </div>
@@ -825,11 +825,11 @@ function AuditResultView({
                   <p className="font-medium style-text-primary text-sm">{s.route}</p>
                   <p className="text-xs style-text-tertiary">{s.deadline} • {s.cost}</p>
                   <p className="text-xs style-text-tertiary mt-0.5">{s.how}</p>
-                  {s.edaakhil_now_applicable && (
+                  {s.ejagriti_now_applicable && (
                     <div className="mt-1">
-                      <a href="https://edaakhil.nic.in" target="_blank" rel="noopener noreferrer"
+                      <a href="https://e-jagriti.gov.in" target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs text-violet-400 font-medium hover:underline">
-                        File on E-Daakhil now <ExternalLink size={10} />
+                        File on e-Jagriti now <ExternalLink size={10} />
                       </a>
                     </div>
                   )}
