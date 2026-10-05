@@ -20,12 +20,17 @@ def get_storage_client():
             config=Config(signature_version="s3v4"),
             region_name="ap-south-1",
         )
-        # Ensure buckets exist
-        existing = [b["Name"] for b in _client.list_buckets().get("Buckets", [])]
-        for bucket in [settings.MINIO_BUCKET_DOCUMENTS, settings.MINIO_BUCKET_REPORTS]:
-            if bucket not in existing:
-                _client.create_bucket(Bucket=bucket)
-                logger.info(f"Created bucket: {bucket}")
+        # Best-effort bucket check. The buckets normally already exist, so a failure here
+        # (e.g. a key without ListBuckets permission, or a brief storage hiccup) must not
+        # block uploads — a real problem will surface on the upload itself.
+        try:
+            existing = [b["Name"] for b in _client.list_buckets().get("Buckets", [])]
+            for bucket in [settings.MINIO_BUCKET_DOCUMENTS, settings.MINIO_BUCKET_REPORTS]:
+                if bucket not in existing:
+                    _client.create_bucket(Bucket=bucket)
+                    logger.info(f"Created bucket: {bucket}")
+        except Exception as e:
+            logger.warning(f"Bucket check skipped (continuing to upload): {e}")
     return _client
 
 
