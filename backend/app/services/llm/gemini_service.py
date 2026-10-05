@@ -1,7 +1,7 @@
 """
 LLM service — despite the filename (kept for backward compatibility with
 existing imports across the codebase; renaming it is a larger refactor than
-this pass covers), this module talks to OpenAI, not Gemini. It used to
+this pass covers), this module is a provider-agnostic wrapper: Groq → Gemini → OpenAI fallback for chat. It used to
 route between Gemini/Groq/Llama depending on task; that routing is gone —
 everything now resolves to a single OpenAI model via _LEGACY_MODEL_ALIASES
 below, kept only so old caller code that still passes a "gemini-..." or
@@ -41,13 +41,53 @@ EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_DIMENSIONS = 768  # truncated via OpenAI's `dimensions` param — matches existing Qdrant collections
 
 
+_GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+
 def _resolve_model(model: str) -> str:
+    """Model for the OpenAI fallback provider (legacy names map to gpt-5-nano)."""
     return _MODEL_MAP.get(model, "gpt-5-nano")
 
 
+class _Provider:
+    def __init__(self, name: str, client: AsyncOpenAI, model: str | None):
+        self.name = name
+        self.client = client
+        self.model = model  # None → resolve from the caller's legacy model name (OpenAI)
+
+
 class OpenAIClientWrapper:
+    """
+    Provider-agnostic chat wrapper (class name kept for compatibility). Chat calls try Groq,
+    then Gemini, then OpenAI — whichever are configured — and fall back to the next on any error.
+    Embeddings use a single provider (Gemini preferred, else OpenAI) so vectors are never mixed.
+    """
+
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        self.providers: list[_Provider] = []
+        if getattr(settings, "GROQ_API_KEY", ""):
+            self.providers.append(_Provider(
+                "groq", AsyncOpenAI(api_key=settings.GROQ_API_KEY, base_url=_GROQ_BASE_URL), settings.GROQ_MODEL))
+        if getattr(settings, "GEMINI_API_KEY", ""):
+            self.providers.append(_Provider(
+                "gemini", AsyncOpenAI(api_key=settings.GEMINI_API_KEY, base_url=_GEMINI_BASE_URL),
+                settings.GEMINI_CHAT_MODEL))
+        if getattr(settings, "OPENAI_API_KEY", ""):
+            self.providers.append(_Provider("openai", AsyncOpenAI(api_key=settings.OPENAI_API_KEY), None))
+        if not self.providers:
+            logger.error("No LLM API key configured (GROQ_API_KEY / GEMINI_API_KEY / OPENAI_API_KEY)")
+
+        # Embedding client: Gemini preferred, else OpenAI, else none.
+        if getattr(settings, "GEMINI_API_KEY", ""):
+            self.embed_provider = "gemini"
+            self.embed_client = AsyncOpenAI(api_key=settings.GEMINI_API_KEY, base_url=_GEMINI_BASE_URL)
+        elif getattr(settings, "OPENAI_API_KEY", ""):
+            self.embed_provider = "openai"
+            self.embed_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        else:
+            self.embed_provider = None
+            self.embed_client = None
 
     async def generate(
         self,
@@ -55,17 +95,15 @@ class OpenAIClientWrapper:
         prompt: str,
         system: str = "",
         temperature: float = 0.05,
-        max_tokens: int = 4096,
+        max_tokens: int = 8192,
         tools: list | None = None,
         tool_choice: str | dict | None = None,
     ):
         """
-        Chat completion via OpenAI. Returns plain text by default. If `tools`
-        is passed, returns the raw message object instead (so the caller can
-        inspect `.tool_calls`) — used for function-calling flows such as
-        search_regulations() below.
+        Chat completion. Returns plain text by default. If `tools` is passed, returns the raw
+        message object instead (so the caller can inspect `.tool_calls`) — used for
+        function-calling flows such as search_regulations() below.
         """
-        openai_model = _resolve_model(model)
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
@@ -88,66 +126,85 @@ class OpenAIClientWrapper:
         model: str,
         messages: list,
         temperature: float = 0.05,
-        max_tokens: int = 4096,
+        max_tokens: int = 8192,
         tools: list | None = None,
         tool_choice: str | dict | None = None,
     ):
         """
-        Lower-level chat call that takes a full message list (including
-        prior `assistant` tool-call turns and `tool` result turns) — needed
-        for a multi-step function-calling loop. Returns the raw message
-        object. `generate()` above is a thin convenience wrapper over this
-        for the common single-prompt case.
+        Lower-level chat call taking a full message list (needed for multi-step function-calling
+        loops). Returns the raw message object. Tries each configured provider in order.
         """
-        openai_model = _resolve_model(model)
-        kwargs = {
-            "model": openai_model,
-            "messages": messages,
-            "max_completion_tokens": max_tokens,
-        }
-        if tools:
-            kwargs["tools"] = tools
-            if tool_choice:
-                kwargs["tool_choice"] = tool_choice
+        if not self.providers:
+            raise RuntimeError("LLM API error: no API key configured (set GROQ_API_KEY or GEMINI_API_KEY)")
 
-        try:
-            try:
-                completion = await self.client.chat.completions.create(
-                    temperature=temperature, **kwargs
-                )
-            except Exception as temp_err:
-                # gpt-5-nano (a reasoning model) only accepts the default
-                # temperature — retry without it instead of failing outright.
-                if "temperature" in str(temp_err).lower():
-                    completion = await self.client.chat.completions.create(**kwargs)
-                else:
+        errors = []
+        for prov in self.providers:
+            kwargs = {
+                "model": prov.model or _resolve_model(model),
+                "messages": messages,
+            }
+            # Reasoning models burn part of the limit on hidden thinking — add headroom for
+            # Groq/Gemini so the visible answer (often long JSON) isn't truncated.
+            headroom = getattr(settings, "LLM_REASONING_HEADROOM", 6000) if prov.name in ("groq", "gemini") else 0
+            effective_max = max_tokens + headroom
+            # Gemini's OpenAI-compat layer takes max_tokens; Groq/OpenAI take max_completion_tokens.
+            limit_key = "max_tokens" if prov.name == "gemini" else "max_completion_tokens"
+            kwargs[limit_key] = effective_max
+            if tools:
+                kwargs["tools"] = tools
+                if tool_choice:
+                    kwargs["tool_choice"] = tool_choice
+            if prov.name == "groq" and "gpt-oss" in (prov.model or ""):
+                kwargs["extra_body"] = {"reasoning_effort": getattr(settings, "GROQ_REASONING_EFFORT", "medium")}
+
+            async def _call(**extra):
+                try:
+                    return await prov.client.chat.completions.create(temperature=temperature, **{**kwargs, **extra})
+                except Exception as temp_err:
+                    # Some reasoning models only accept the default temperature — retry without it.
+                    if "temperature" in str(temp_err).lower():
+                        return await prov.client.chat.completions.create(**{**kwargs, **extra})
                     raise
 
-            return completion.choices[0].message
-        except Exception as e:
-            logger.error(f"OpenAI API error: {e}")
-            raise RuntimeError(f"OpenAI API error: {e}")
+            try:
+                completion = await _call()
+                choice = completion.choices[0]
+                # Output hit the limit (thinking + answer too long) → retry once with double the limit.
+                if getattr(choice, "finish_reason", None) == "length" and not getattr(choice.message, "tool_calls", None):
+                    logger.warning(f"LLM provider '{prov.name}' output truncated at {effective_max} tokens; retrying with {effective_max * 2}")
+                    completion = await _call(**{limit_key: effective_max * 2})
+                    choice = completion.choices[0]
+                return choice.message
+            except Exception as e:
+                logger.warning(f"LLM provider '{prov.name}' failed: {e}")
+                errors.append(f"{prov.name}: {e}")
+
+        logger.error(f"All LLM providers failed: {errors}")
+        raise RuntimeError(f"LLM API error: all providers failed — {'; '.join(errors)}")
 
     async def embed(self, text: str) -> list[float]:
         """
-        Embeddings via OpenAI text-embedding-3-small, truncated to 768 dims
-        (via the `dimensions` param) so existing Qdrant collections don't
-        need to be recreated. Falls back gracefully if the key is unset —
-        RAG is skipped and the hardcoded IRDAI context is used as fallback.
+        Embeddings, 768 dims (matches the Qdrant collections). Gemini (gemini-embedding-001) if
+        GEMINI_API_KEY is set, else OpenAI text-embedding-3-small. One provider only — no
+        fallback between them, because vectors from different models can't be compared.
+        Returns [] if unavailable, so RAG is skipped and the hardcoded IRDAI context is used.
         """
-        if not getattr(settings, "OPENAI_API_KEY", ""):
-            logger.warning("No OPENAI_API_KEY set — embeddings unavailable, skipping RAG")
+        if self.embed_client is None:
+            logger.warning("No GEMINI_API_KEY/OPENAI_API_KEY set — embeddings unavailable, skipping RAG")
             return []
-
         try:
-            resp = await self.client.embeddings.create(
-                model=EMBEDDING_MODEL,
-                input=text,
-                dimensions=EMBEDDING_DIMENSIONS,
-            )
+            if self.embed_provider == "gemini":
+                resp = await self.embed_client.embeddings.create(
+                    model=settings.GEMINI_EMBEDDING_MODEL, input=text, dimensions=EMBEDDING_DIMENSIONS)
+                vec = list(resp.data[0].embedding)
+                # Truncated Gemini embeddings aren't unit-length; normalise for consistent similarity.
+                norm = sum(x * x for x in vec) ** 0.5
+                return [x / norm for x in vec] if norm else vec
+            resp = await self.embed_client.embeddings.create(
+                model=EMBEDDING_MODEL, input=text, dimensions=EMBEDDING_DIMENSIONS)
             return resp.data[0].embedding
         except Exception as e:
-            logger.warning(f"Embedding failed: {e} — RAG context will be skipped")
+            logger.warning(f"Embedding failed ({self.embed_provider}): {e} — RAG context will be skipped")
             return []
 
 

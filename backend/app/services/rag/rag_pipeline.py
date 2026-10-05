@@ -23,7 +23,7 @@ from app.core.config import settings
 from app.services.llm.gemini_service import generate_embeddings
 
 logger = logging.getLogger(__name__)
-EMBEDDING_DIM = 768  # OpenAI text-embedding-3-small, truncated
+EMBEDDING_DIM = 768  # Gemini gemini-embedding-001 / OpenAI text-embedding-3-small, truncated to 768
 
 client = QdrantClient(
     url=settings.QDRANT_URL,
@@ -96,7 +96,7 @@ async def upsert_document_chunks(
         logger.warning(
             f"Skipped {skipped}/{len(chunks)} chunks due to missing embeddings. "
             "RAG search for this document will use hardcoded fallback context. "
-            "To enable full RAG, set a valid OPENAI_API_KEY in Render env vars."
+            "To enable full RAG, set a valid GEMINI_API_KEY (or OPENAI_API_KEY) in Render env vars."
         )
 
     if points:

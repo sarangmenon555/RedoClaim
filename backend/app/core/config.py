@@ -16,9 +16,29 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
-    # ── OpenAI API (LLM + embeddings) ──────────────────────────────
-    # Required — set in Render env vars. Get one at platform.openai.com
-    OPENAI_API_KEY: str
+    # ── LLM providers ──────────────────────────────────────────────
+    # Chat/LLM calls try providers in this order and fall back on failure:
+    #   1. Groq (GROQ_API_KEY)      2. Gemini (GEMINI_API_KEY)      3. OpenAI (OPENAI_API_KEY)
+    # Set whichever keys you have; at least one is needed for document processing.
+    GROQ_API_KEY: str = ""
+    GROQ_MODEL: str = "openai/gpt-oss-120b"       # see console.groq.com/docs/models
+
+    GEMINI_API_KEY: str = ""
+    GEMINI_CHAT_MODEL: str = "gemini-2.5-flash"   # verify it's available on your key/tier
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
+
+    OPENAI_API_KEY: str = ""
+
+    # Reasoning models (gpt-oss on Groq, Gemini "thinking") spend part of the output limit on hidden
+    # thinking. This many extra tokens are added to every call's max_tokens for Groq/Gemini so long
+    # JSON (clause extraction, audits) isn't cut off. Raise it if you still see truncated output.
+    LLM_REASONING_HEADROOM: int = 6000
+    # Groq gpt-oss thinking effort: "low" | "medium" | "high" (lower = faster, fewer thinking tokens).
+    GROQ_REASONING_EFFORT: str = "medium"
+
+    # Embeddings (RAG) use ONE provider only, never a mix: Gemini if GEMINI_API_KEY is set,
+    # otherwise OpenAI if OPENAI_API_KEY is set. Groq has no embeddings. Vectors from different
+    # embedding models are not comparable — if you change provider, re-seed your Qdrant collections.
 
     # ── Sarvam AI (regional language translation) ─────────────────
     # Get your key at: https://dashboard.sarvam.ai/key-management
