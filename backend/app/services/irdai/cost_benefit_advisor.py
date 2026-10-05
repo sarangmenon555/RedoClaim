@@ -1,19 +1,21 @@
 """
-Claim Cost-Benefit Advisor — pure arithmetic + rule-based logic over a
-claim's ALREADY-COMPUTED audit_report (strength_of_case, IRDAI violations
-found, recommended redressal route). No new LLM call: the audit engine
-already did the hard judgment work when it first analyzed the rejection;
-this just weighs that judgment against effort/cost to give a plain
-"is this worth fighting" verdict.
+Claim Prioritisation Aid ("Is it worth pursuing?") — rule-based and
+deterministic, reusing a claim's ALREADY-COMPUTED audit_report
+(strength_of_case, regulatory inconsistencies found, suggested redressal
+route). No new LLM call.
 
-Time/effort estimates below are rough, static assumptions (self-filing via
-GRO/Ombudsman/e-Jagriti is free and doesn't strictly require a lawyer) —
-clearly labeled as such so the user can adjust their own judgment.
+This is an INFORMATIONAL aid. It lays out the factors side by side
+(case strength rated by the Auditor, inconsistencies found, the suggested
+route and its rough effort). It deliberately does NOT:
+  - output a verdict such as "worth fighting" / "not worth fighting",
+  - predict the outcome, or
+  - let a small claim amount lower the result — whether to pursue a
+    grievance is the user's decision.
+
+If the audit lacks the inputs, it says so instead of defaulting to a verdict.
 """
 
-# Effort estimates for redressal routes: hours of the user's own time, if
-# self-filed (which is how GRO, Ombudsman, and e-Jagriti are designed to be
-# used — no lawyer fee is assumed).
+# Rough hours of the user's own time if self-filed — a static assumption.
 _ROUTE_EFFORT_HOURS = {
     "gro_appeal": 2,
     "ombudsman": 6,
@@ -22,77 +24,90 @@ _ROUTE_EFFORT_HOURS = {
 }
 
 _ROUTE_LABELS = {
-    "gro_appeal": "GRO Appeal (insurer's Grievance Redressal Officer)",
+    "gro_appeal": "Insurer's Grievance Redressal Officer (GRO)",
     "ombudsman": "Insurance Ombudsman",
     "consumer_court": "Consumer Forum / District Commission",
-    "accept": "Accept the insurer's decision",
+    "accept": "No escalation route suggested by the audit",
 }
 
-_STRENGTH_SCORE = {"strong": 3, "moderate": 2, "weak": 1}
+_STRENGTH_LABELS = {"strong", "moderate", "weak"}
+
+STANDARD_NOTICE = (
+    "This is an informational prioritisation aid, not a recommendation that you should or should not pursue "
+    "your rights."
+)
 
 
 def advise_cost_benefit(
     claim_amount: float,
     audit_report: dict,
-    hourly_value: float = 500.0,
+    hourly_value: float = 500.0,  # kept for API compatibility; no longer used
 ) -> dict:
-    """
-    hourly_value: what the user's own time is roughly worth per hour, for
-    converting effort into a comparable rupee figure. Defaults to a modest
-    ₹500/hr — the user can override this in the UI.
-    """
     audit_report = audit_report or {}
-    strength = (audit_report.get("strength_of_case") or "moderate").lower()
-    recommended_route = (audit_report.get("step3_redressal", {}) or {}).get("recommended_action", "gro_appeal")
-    violations = audit_report.get("step2_regulatory_violations") or []
-    is_valid_rejection = audit_report.get("is_valid_rejection", True)
 
-    effort_hours = _ROUTE_EFFORT_HOURS.get(recommended_route, 4)
-    effort_cost = effort_hours * hourly_value
+    strength_raw = str(audit_report.get("strength_of_case") or "").strip().lower()
+    strength = strength_raw if strength_raw in _STRENGTH_LABELS else None
+    route_raw = (audit_report.get("step3_redressal") or {}).get("recommended_action")
+    route = route_raw if route_raw in _ROUTE_EFFORT_HOURS else None
+    violations = audit_report.get("step2_regulatory_violations")
 
-    strength_score = _STRENGTH_SCORE.get(strength, 2)
-    # Simple weighting: stronger case + more regulatory violations found +
-    # larger claim amount all push toward "worth fighting". This is a
-    # transparent scoring rule, not a hidden model — the reasoning is shown
-    # to the user alongside the verdict.
-    violation_bonus = min(len(violations), 3) * 0.5
-    amount_factor = min(claim_amount / max(effort_cost, 1), 10)  # cap influence
+    missing = []
+    if strength is None:
+        missing.append("case-strength rating")
+    if route is None:
+        missing.append("suggested redressal route")
+    if violations is None:
+        missing.append("regulatory review results")
+    violation_count = len(violations or [])
 
-    score = strength_score + violation_bonus + min(amount_factor, 5)
+    effort_hours = _ROUTE_EFFORT_HOURS.get(route) if route else None
+    route_label = _ROUTE_LABELS.get(route) if route else None
 
-    if is_valid_rejection is True and strength == "weak" and not violations:
-        verdict = "not_worth_fighting"
-        headline = "The insurer's decision appears to hold up — fighting this is unlikely to succeed."
-    elif score >= 6:
-        verdict = "strongly_worth_fighting"
-        headline = "Strong case relative to the effort required — this is worth pursuing."
-    elif score >= 4:
-        verdict = "worth_fighting"
-        headline = "Reasonable case for the effort involved — worth pursuing, especially since escalation is free."
+    factors = [
+        {"label": "Claim amount", "value": f"₹{claim_amount:,.0f}"},
+        {"label": "Case strength rated by the Auditor", "value": strength.capitalize() if strength else "Not available"},
+        {
+            "label": "Potential regulatory inconsistencies identified",
+            "value": str(violation_count) if violations is not None else "Not available",
+        },
+        {"label": "Route suggested by the audit", "value": route_label or "Not available"},
+        {
+            "label": "Rough effort if you file yourself",
+            "value": f"~{effort_hours} hour(s)" if effort_hours is not None else "Not available",
+        },
+    ]
+
+    if missing:
+        headline = "Not enough information in the audit to lay out these factors reliably."
+        reasoning = "Missing: " + ", ".join(missing) + ". Re-run the Auditor on this claim to fill these in."
     else:
-        verdict = "marginal"
-        headline = "A borderline case — the claim amount is small relative to the effort, but escalation costs nothing but time."
+        headline = "Here are the factors to weigh — the decision is yours."
+        reasoning = (
+            f"The Auditor rated the case '{strength}' and identified {violation_count} potential regulatory "
+            f"inconsistency(ies). The route suggested by the audit is {route_label}, which we roughly estimate "
+            f"at {effort_hours} hour(s) of your own time if self-filed. The claim amount is ₹{claim_amount:,.0f}. "
+            "These factors are shown side by side; none is weighted against your right to raise a grievance."
+        )
 
     return {
         "claim_amount": claim_amount,
         "case_strength": strength,
-        "recommended_route": recommended_route,
-        "recommended_route_label": _ROUTE_LABELS.get(recommended_route, recommended_route),
+        "recommended_route": route,
+        "recommended_route_label": route_label,
         "estimated_effort_hours": effort_hours,
-        "estimated_effort_value": round(effort_cost, 2),
-        "regulatory_violations_found": len(violations),
-        "potential_inconsistencies_found": len(violations),
-        "verdict": verdict,
+        "regulatory_violations_found": violation_count,
+        "potential_inconsistencies_found": violation_count,
+        "verdict": "insufficient_information" if missing else "informational",
+        "insufficient_information": bool(missing),
+        "missing_inputs": missing,
         "headline": headline,
-        "reasoning": (
-            f"Case strength is rated '{strength}' with {len(violations)} potential regulatory inconsistency(ies) identified. "
-            f"The recommended route ({_ROUTE_LABELS.get(recommended_route, recommended_route)}) is estimated to take "
-            f"roughly {effort_hours} hour(s) of your own time if self-filed (no lawyer fee assumed) — "
-            f"worth about ₹{effort_cost:,.0f} at ₹{hourly_value:,.0f}/hour, against a claim of ₹{claim_amount:,.0f}."
-        ),
+        "factors": factors,
+        "reasoning": reasoning,
+        "standard_notice": STANDARD_NOTICE,
         "disclaimer": (
-            "This is a rough, transparent estimate based on your own time value and the case strength already "
-            "computed by the Auditor — not a guarantee of outcome. GRO and Ombudsman routes are free to file "
-            "yourself; a Consumer Forum complaint may involve nominal court fees depending on claim value."
+            f"{STANDARD_NOTICE} It is not a prediction of outcome. Case strength comes from the AI-assisted audit "
+            "and may be wrong. Effort figures are rough, static assumptions. Official routes such as the GRO and "
+            "Ombudsman are free to file yourself; a Consumer Forum complaint may involve nominal fees. Check each "
+            "channel's current official eligibility rules before filing."
         ),
     }

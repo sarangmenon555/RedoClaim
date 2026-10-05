@@ -55,13 +55,20 @@ export interface Document {
 export interface PayoutDeduction {
   reason: string;
   amount: number;
+  clause?: string;           // which policy clause the deduction comes from
+  extracted_value?: string;  // the value extracted from the policy for that clause
 }
 
 export interface PayoutEstimate {
   claim_amount: number;
-  estimated_payout: number;
-  estimated_payout_range: [number, number];
-  total_deductions: number;
+  label?: string;
+  can_estimate?: boolean;    // false when key clauses are missing — no number is given
+  confidence?: "insufficient" | "low" | "moderate";
+  missing_inputs?: string[];
+  estimated_payout: number | null;
+  estimated_payout_range: [number, number] | null;
+  range_note?: string | null;
+  total_deductions: number | null;
   deductions: PayoutDeduction[];
   assumptions: string[];
   disclaimer: string;

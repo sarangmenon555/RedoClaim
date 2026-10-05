@@ -2,14 +2,18 @@
 import { useState } from "react";
 import { networkHospitalsApi } from "@/lib/api";
 import toast from "react-hot-toast";
-import { Monitor, Loader2, CheckCircle2, XCircle, HelpCircle, Plus } from "lucide-react";
+import { Monitor, Loader2, CheckCircle2, XCircle, HelpCircle, Plus, AlertTriangle } from "lucide-react";
 import { DisclaimerBanner } from "@/components/shared/DisclaimerBanner";
 
+// Deliberately neutral wording/colours: these are unverified community reports,
+// not an official insurer network confirmation.
 const STATUS_META: Record<string, { color: string; icon: any; label: string }> = {
-  in_network: { color: "#4ADE80", icon: CheckCircle2, label: "In-network (cashless)" },
-  delisted: { color: "#F87171", icon: XCircle, label: "Delisted" },
-  unknown: { color: "#9CA3AF", icon: HelpCircle, label: "Unknown / no reports yet" },
+  in_network: { color: "#FBBF24", icon: CheckCircle2, label: "Community report: listed as in-network (cashless)" },
+  delisted: { color: "#FBBF24", icon: XCircle, label: "Community report: listed as delisted" },
+  unknown: { color: "#9CA3AF", icon: HelpCircle, label: "No community reports for this exact insurer + hospital" },
 };
+
+const fmtDate = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString() : "unknown date");
 
 export default function HospitalVerifyPage() {
   const [insurer, setInsurer] = useState("");
@@ -71,8 +75,8 @@ export default function HospitalVerifyPage() {
           <Monitor size={22} style={{ color: "#A78BFA" }} /> Hospital Network Check
         </h2>
         <p className="text-sm mt-1" style={{ color: "var(--text-tertiary)" }}>
-          Crowdsourced from other users — check whether a hospital is currently in an insurer's cashless
-          network, since insurers change networks and delisting is a common cashless-denial reason.
+          Unverified reports from other users about whether a hospital is in an insurer's cashless network.
+          This is not an official insurer list — networks change often, so always confirm before admission.
         </p>
       </div>
 
@@ -100,6 +104,22 @@ export default function HospitalVerifyPage() {
             <Icon size={20} style={{ color: meta.color }} />
             <span className="text-base font-semibold" style={{ color: meta.color }}>{meta.label}</span>
           </div>
+          {result.most_recent_status !== "unknown" && (
+            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+              Latest report: {fmtDate(result.most_recent_reported_on)}
+              {result.possibly_outdated && " — this may be out of date"}
+            </p>
+          )}
+
+          <div className="flex items-start gap-2 rounded-lg px-3 py-2.5" style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.3)" }}>
+            <AlertTriangle size={14} className="shrink-0 mt-0.5" style={{ color: "#FBBF24" }} />
+            <div className="text-xs leading-relaxed" style={{ color: "#FCD34D" }}>
+              <p className="font-semibold">Community report — not verified</p>
+              <p style={{ opacity: 0.9 }}>
+                This information may be outdated. Confirm directly with the insurer/hospital before admission.
+              </p>
+            </div>
+          </div>
 
           {result.reports.length > 0 ? (
             <div className="space-y-2">
@@ -107,7 +127,7 @@ export default function HospitalVerifyPage() {
                 <div key={r.id} className="rounded-lg p-3 text-sm" style={{ background: "var(--surface-2)", border: "1px solid var(--surface-5)" }}>
                   <div className="flex justify-between">
                     <span style={{ color: STATUS_META[r.status]?.color }}>{STATUS_META[r.status]?.label}</span>
-                    <span style={{ color: "var(--text-tertiary)" }}>{new Date(r.reported_on).toLocaleDateString()}</span>
+                    <span style={{ color: "var(--text-tertiary)" }}>{fmtDate(r.reported_on)}</span>
                   </div>
                   {r.note && <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{r.note}</p>}
                 </div>
@@ -115,8 +135,28 @@ export default function HospitalVerifyPage() {
             </div>
           ) : (
             <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-              No one has reported on this insurer + hospital pair yet — be the first.
+              No one has reported on this exact insurer + hospital pair yet. This does not mean the hospital is or
+              isn&apos;t in the network — please confirm with the insurer or hospital.
             </p>
+          )}
+
+          {result.possible_matches?.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>
+                Possible matches (different or partial names — may be a different hospital, branch or insurer)
+              </p>
+              {result.possible_matches.map((r: any) => (
+                <div key={r.id} className="rounded-lg p-3 text-xs" style={{ background: "var(--surface-2)", border: "1px dashed var(--surface-5)" }}>
+                  <div className="flex justify-between gap-2">
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      {r.hospital_name}{r.city ? `, ${r.city}` : ""} · {r.insurer_name}
+                    </span>
+                    <span style={{ color: "var(--text-tertiary)" }}>{fmtDate(r.reported_on)}</span>
+                  </div>
+                  <p className="mt-1" style={{ color: STATUS_META[r.status]?.color }}>{STATUS_META[r.status]?.label}</p>
+                </div>
+              ))}
+            </div>
           )}
 
           {!showReport ? (

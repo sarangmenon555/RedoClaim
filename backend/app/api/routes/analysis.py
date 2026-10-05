@@ -636,24 +636,28 @@ async def estimate_payout_route(
     current_user=Depends(get_current_user),
 ):
     """
-    Deterministic, itemized estimate of what a claim is actually likely to
-    be worth, computed from the policy clauses already extracted for
+    Deterministic, itemized estimate of the amount that may be eligible under
+    the policy clauses, computed from the policy clauses already extracted for
     `document_id` (sum insured, co-payment, sub-limits, room rent cap).
 
     No LLM call — pure arithmetic, so every deduction is traceable to a
-    specific clause. Helps a user judge whether escalating a rejection is
-    worth pursuing, not a legal or final figure (see disclaimer in the
-    response).
+    specific clause. Not a prediction of the actual settlement and not a
+    legal figure (see disclaimer in the response). Returns no number when
+    key clauses are missing.
     """
     doc = await db.get(Document, body.document_id)
     if not doc or str(doc.owner_id) != str(current_user.id):
         raise HTTPException(404, "Document not found")
-    if not doc.extracted_clauses:
+    if not doc.extracted_clauses or not any(
+        v not in (None, "", [], {}) for v in doc.extracted_clauses.values()
+    ):
         raise HTTPException(
             400,
             "This document hasn't finished clause extraction yet (or extraction failed) — "
             "check its ocr_status before requesting an estimate.",
         )
+    if body.claim_amount <= 0:
+        raise HTTPException(400, "Claim amount must be greater than zero.")
 
     estimate = estimate_payout(
         claim_amount=body.claim_amount,
@@ -955,7 +959,7 @@ async def cost_benefit_route(
     current_user=Depends(get_current_user),
 ):
     """
-    Deterministic "is this worth fighting" verdict, reusing the claim's
+    Deterministic, informational prioritisation aid (no verdict, no outcome prediction), reusing the claim's
     already-computed audit_report (strength_of_case, violations found,
     recommended route) rather than making a new LLM call.
     """

@@ -289,37 +289,37 @@ export default function ClaimDetailPage() {
         </div>
       )}
 
-      {/* Cost-benefit advisor */}
+      {/* Prioritisation aid — informational only */}
       {claim.audit_report && claim.status !== "resolved" && (
         <div className="card p-6" style={{ background: "var(--surface-1)", border: "1px solid var(--surface-5)" }}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold flex items-center gap-1.5" style={{ color: "var(--text-primary)" }}>
-              <Scale size={15} /> Is it worth pursuing?
+              <Scale size={15} /> Is it worth pursuing? — factors to weigh
             </h2>
             {!costBenefit && (
               <button onClick={runCostBenefit} disabled={loadingCostBenefit} className="btn-secondary text-xs px-3 py-1.5" suppressHydrationWarning>
-                {loadingCostBenefit ? <Loader2 size={12} className="animate-spin" /> : "Check"}
+                {loadingCostBenefit ? <Loader2 size={12} className="animate-spin" /> : "Show factors"}
               </button>
             )}
           </div>
+          <p className="text-xs mb-3 rounded-lg px-3 py-2" style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.25)", color: "var(--text-secondary)" }}>
+            This is an informational prioritisation aid, not a recommendation that you should or should not pursue your rights.
+          </p>
           {costBenefit && (
             <div className="space-y-3">
-              <p className="text-sm font-medium" style={{
-                color: costBenefit.verdict === "strongly_worth_fighting" ? "#4ADE80"
-                  : costBenefit.verdict === "not_worth_fighting" ? "#F87171" : "#FBBF24",
-              }}>
+              <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                 {costBenefit.headline}
               </p>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
-                  <p style={{ color: "var(--text-tertiary)" }}>Recommended route</p>
-                  <p className="font-medium mt-0.5" style={{ color: "var(--text-primary)" }}>{costBenefit.recommended_route_label}</p>
+              {Array.isArray(costBenefit.factors) && (
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {costBenefit.factors.map((f: { label: string; value: string }) => (
+                    <div key={f.label} className="rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
+                      <p style={{ color: "var(--text-tertiary)" }}>{f.label}</p>
+                      <p className="font-medium mt-0.5" style={{ color: "var(--text-primary)" }}>{f.value}</p>
+                    </div>
+                  ))}
                 </div>
-                <div className="rounded-lg p-3" style={{ background: "var(--surface-2)" }}>
-                  <p style={{ color: "var(--text-tertiary)" }}>Estimated effort</p>
-                  <p className="font-medium mt-0.5" style={{ color: "var(--text-primary)" }}>~{costBenefit.estimated_effort_hours}h (₹{costBenefit.estimated_effort_value.toLocaleString("en-IN")} of your time)</p>
-                </div>
-              </div>
+              )}
               <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{costBenefit.reasoning}</p>
               <p className="text-xs pt-2" style={{ color: "var(--text-tertiary)", borderTop: "1px solid var(--surface-5)" }}>{costBenefit.disclaimer}</p>
             </div>
