@@ -4,6 +4,7 @@ const LINKS: [string, string][] = [
   ["IRDAI", "https://irdai.gov.in/home"],
   ["Bima Bharosa", "https://bimabharosa.irdai.gov.in/"],
   ["e-Jagriti", "https://e-jagriti.gov.in/"],
+  ["Official Help", "/official-help"],
   ["Institutional Review", "/institutional-review"],
   ["Disclaimer", "/disclaimer"],
 ];
