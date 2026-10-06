@@ -31,7 +31,10 @@ export default function PortfolioPage() {
   }, {});
   const groupKeys = Object.keys(grouped).sort((a) => (a === "__self__" ? -1 : 1));
 
-  const riskyDocs = docs.filter((d) => (d.risk_flags?.length || 0) > 0);
+  // Only flags that need follow-up count; ordinary conditions (e.g. a co-payment) do not.
+  const riskyDocs = docs.filter((d: any) =>
+    (d.risk_flags || []).some((f: any) => !f.category || f.category === "potential_inconsistency" || f.category === "requires_verification")
+  );
   const activeClaims = claims.filter((c) => c.status !== "resolved");
 
   if (loading) {

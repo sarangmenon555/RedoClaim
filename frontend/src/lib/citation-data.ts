@@ -39,10 +39,10 @@ export const CITATIONS: Citation[] = [
   {
     law: "IRDAI Master Circular, 2024",
     section: "Moratorium Period (Health Insurance)",
-    title: "8-year moratorium on non-disclosure challenges",
+    title: "60-month moratorium on non-disclosure challenges",
     summary:
-      "After a health policy has been continuously in force for 8 years, no claim can be contested on grounds " +
-      "of non-disclosure or misrepresentation, except in proven cases of established fraud.",
+      "After a health policy has been continuously in force for 60 continuous months, a claim generally cannot be contested on grounds " +
+      "of non-disclosure or misrepresentation, except in proven cases of established fraud. Verify the provision in the primary source.",
   },
   {
     law: "Insurance Act, 1938",

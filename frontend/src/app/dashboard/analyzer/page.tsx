@@ -240,8 +240,13 @@ function AnalyzerPageInner() {
                 <div className="border-t divide-y divide-slate-100">
                   {clauses.risky_clauses.map((flag: RiskFlag, i: number) => (
                     <div key={i} className="p-4">
-                      <p className="font-medium style-text-primary text-sm">{flag.clause}</p>
-                      <p className="text-sm text-red-600 mt-1">{flag.why_risky}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium style-text-primary text-sm">{flag.clause}</p>
+                        <span className={flag.category === "potential_inconsistency" || flag.category === "requires_verification" ? "badge-medium" : "badge-low"}>
+                          {CATEGORY_LABELS[flag.category || "requires_verification"]}
+                        </span>
+                      </div>
+                      <p className="text-sm style-text-secondary mt-1">{flag.explanation || flag.why_risky}</p>
                       {flag.irdai_reference && (
                         <p className="text-xs style-text-tertiary mt-1">{flag.irdai_reference}</p>
                       )}
@@ -302,7 +307,7 @@ function AnalyzerPageInner() {
                 : t("az_none_detected")
               },
               { label: t("az_ped_waiting"), value: clauses.pre_existing_disease_waiting || "N/A" },
-              { label: t("az_moratorium"), value: clauses.moratorium_period || "5 years (IRDAI 2024)" },
+              { label: t("az_moratorium"), value: clauses.moratorium_period || "60 continuous months (IRDAI 2024)" },
               { label: t("az_network"), value: clauses.network_hospitals || t("az_unknown") },
               { label: t("az_portability"), value: clauses.portability_allowed ? t("az_allowed") : t("az_check_policy") },
             ].map(({ label, value }) => (
@@ -335,6 +340,13 @@ function AnalyzerPageInner() {
     </div>
   );
 }
+
+const CATEGORY_LABELS: Record<string, string> = {
+  key_policy_condition: "Key policy condition",
+  financial_impact: "Financial impact",
+  potential_inconsistency: "Potential inconsistency",
+  requires_verification: "Requires verification",
+};
 
 export default function AnalyzerPage() {
   return (

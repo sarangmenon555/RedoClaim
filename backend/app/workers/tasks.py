@@ -143,8 +143,8 @@ def send_deadline_reminders():
 
         async with AsyncSessionLocal() as db:
             for deadline_field, reminder_flag, label in [
-                ("gro_deadline", "gro_reminder_sent", "GRO response"),
-                ("irdai_deadline", "irdai_reminder_sent", "IRDAI Ombudsman filing"),
+                ("gro_deadline", "gro_reminder_sent", "Insurer grievance-response TAT"),
+                ("irdai_deadline", "irdai_reminder_sent", "Indicative Ombudsman window"),
             ]:
                 result = await db.execute(
                     select(Claim).where(
@@ -156,11 +156,15 @@ def send_deadline_reminders():
                 )
                 urgent_claims = result.scalars().all()
 
+                from app.services.irdai.timeline_model import current_deadline
                 for claim in urgent_claims:
+                    # Skip claims saved under the old (incorrect) timeline model.
+                    if current_deadline(claim, deadline_field) is None:
+                        continue
                     deadline_dt = getattr(claim, deadline_field)
                     days_left = (deadline_dt - now).days
                     logger.warning(
-                        f"URGENT: Claim {claim.id} {label} deadline in {days_left} days! "
+                        f"REMINDER: Claim {claim.id} - {label} date in {days_left} days. "
                         f"User: {claim.owner_id}"
                     )
                     setattr(claim, reminder_flag, True)

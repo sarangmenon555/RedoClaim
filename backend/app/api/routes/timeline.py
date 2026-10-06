@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.models.models import Claim
 from app.api.deps.auth import get_current_user
+from app.services.irdai.timeline_model import current_deadline
 
 router = APIRouter()
 
@@ -27,24 +28,28 @@ async def get_timeline_summary(
 
     urgent = []
     for c in claims:
-        if c.gro_deadline:
-            days_left = (c.gro_deadline - now).days
+        gro_due = current_deadline(c, "gro_deadline")
+        if gro_due:
+            days_left = (gro_due.replace(tzinfo=None) - now).days
             if 0 <= days_left <= 7:
                 urgent.append({
                     "claim_id": str(c.id),
                     "insurer_name": c.insurer_name,
-                    "deadline_type": "GRO",
-                    "deadline_date": c.gro_deadline.isoformat(),
+                    "deadline_type": "Insurer grievance response (TAT)",
+                    "deadline_kind": "tat",
+                    "deadline_date": gro_due.isoformat(),
                     "days_left": days_left,
                 })
-        if c.irdai_deadline:
-            days_left = (c.irdai_deadline - now).days
+        window = current_deadline(c, "irdai_deadline")
+        if window:
+            days_left = (window.replace(tzinfo=None) - now).days
             if 0 <= days_left <= 14:
                 urgent.append({
                     "claim_id": str(c.id),
                     "insurer_name": c.insurer_name,
-                    "deadline_type": "Ombudsman",
-                    "deadline_date": c.irdai_deadline.isoformat(),
+                    "deadline_type": "Indicative Ombudsman window",
+                    "deadline_kind": "limitation_indicative",
+                    "deadline_date": window.isoformat(),
                     "days_left": days_left,
                 })
 

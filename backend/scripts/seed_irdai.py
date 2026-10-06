@@ -209,7 +209,7 @@ IRDAI_CHUNKS = [
             "grievance, or the GRO does not resolve within 30 days, or the policyholder is "
             "unsatisfied with GRO resolution. File online at www.igms.irda.gov.in. "
             "The award is binding on the insurer if the policyholder accepts it. "
-            "The complaint must be filed within 1 year of the insurer's final decision."
+            "Eligibility and time limits depend on the Ombudsman rules; generally within 1 year of the relevant rejection/decision or expiry of the insurer-response period, subject to eligibility requirements."
         ),
         "regulation": "Insurance Ombudsman Rules 2017",
         "category": "ombudsman",

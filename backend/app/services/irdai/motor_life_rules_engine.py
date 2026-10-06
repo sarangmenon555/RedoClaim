@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 import logging
 
+from app.services.irdai.timeline_model import build_timeline, naive
+
 logger = logging.getLogger(__name__)
 
 
@@ -103,32 +105,36 @@ class MotorInsuranceRulesEngine:
 
         # GRO overdue check
         if grievance_date:
-            days_since = (now - grievance_date).days
+            days_since = (now - naive(grievance_date)).days
             if days_since > self.TAT_GRO_DAYS:
                 violations.append({
                     "type": "gro_resolution_overdue",
                     "regulation": "IRDAI Master Circular 2024, Para 10.2",
                     "detail": (
                         f"GRO complaint filed {days_since} days ago. "
-                        f"Applicable timeline: {self.TAT_GRO_DAYS} days (verify the current period for your insurer)."
+                        f"Applicable insurer turnaround: approximately {self.TAT_GRO_DAYS} days from receipt "
+                        f"(verify the current period for your insurer). No resolution is documented within that timeline."
                     ),
-                    "severity": "high",
+                    "severity": "medium",
                     "ejagriti_trigger": True,
                     "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti may be an available forum",
                 })
 
-        deadlines = {}
-        if rejection_date:
-            deadlines["gro_deadline"] = rejection_date + timedelta(days=15)
-            deadlines["ombudsman_deadline"] = rejection_date + timedelta(days=45)
-            deadlines["consumer_court_limit"] = rejection_date + timedelta(days=365 * 2)
-            deadlines["days_left_for_gro"] = max(0, (deadlines["gro_deadline"] - now).days)
-            deadlines["days_left_for_ombudsman"] = max(0, (deadlines["ombudsman_deadline"] - now).days)
+        # Events / insurer TATs / conditional routes / limitation windows are kept
+        # separate - see timeline_model.py. No GRO filing deadline and no
+        # hard-coded Ombudsman or consumer-court deadline is produced.
+        deadlines = build_timeline(
+            rejection_date=rejection_date,
+            grievance_date=grievance_date,
+            now=now,
+        )
 
         return {
             "sla_violations": violations,
             "violations_found": len(violations),
             "deadlines": deadlines,
+            "timeline_items": deadlines.get("timeline_items", []),
+            "timeline_model_version": deadlines.get("timeline_model_version"),
             "interest_applicable": any(v.get("interest_applicable") for v in violations),
         }
 
@@ -313,32 +319,36 @@ class LifeInsuranceRulesEngine:
 
         # GRO overdue check
         if grievance_date:
-            days_since = (now - grievance_date).days
+            days_since = (now - naive(grievance_date)).days
             if days_since > self.TAT_GRO_DAYS:
                 violations.append({
                     "type": "gro_resolution_overdue",
                     "regulation": "IRDAI Master Circular 2024, Para 10.2",
                     "detail": (
                         f"GRO complaint filed {days_since} days ago. "
-                        f"Applicable timeline: {self.TAT_GRO_DAYS} days (verify the current period for your insurer)."
+                        f"Applicable insurer turnaround: approximately {self.TAT_GRO_DAYS} days from receipt "
+                        f"(verify the current period for your insurer). No resolution is documented within that timeline."
                     ),
-                    "severity": "high",
+                    "severity": "medium",
                     "ejagriti_trigger": True,
                     "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti may be an available forum",
                 })
 
-        deadlines = {}
-        if rejection_date:
-            deadlines["gro_deadline"] = rejection_date + timedelta(days=15)
-            deadlines["ombudsman_deadline"] = rejection_date + timedelta(days=45)
-            deadlines["consumer_court_limit"] = rejection_date + timedelta(days=365 * 2)
-            deadlines["days_left_for_gro"] = max(0, (deadlines["gro_deadline"] - now).days)
-            deadlines["days_left_for_ombudsman"] = max(0, (deadlines["ombudsman_deadline"] - now).days)
+        # Events / insurer TATs / conditional routes / limitation windows are kept
+        # separate - see timeline_model.py. No GRO filing deadline and no
+        # hard-coded Ombudsman or consumer-court deadline is produced.
+        deadlines = build_timeline(
+            rejection_date=rejection_date,
+            grievance_date=grievance_date,
+            now=now,
+        )
 
         return {
             "sla_violations": violations,
             "violations_found": len(violations),
             "deadlines": deadlines,
+            "timeline_items": deadlines.get("timeline_items", []),
+            "timeline_model_version": deadlines.get("timeline_model_version"),
             "interest_applicable": any(v.get("interest_applicable") for v in violations),
         }
 

@@ -10,7 +10,8 @@ interface WaitingPeriodEntry {
   condition: string;
   duration_as_stated: string;
   risk_level: string;
-  status: "lapsed" | "active" | "unknown";
+  status: "lapsed" | "applies" | "exception_applies" | "may_apply_insufficient_evidence" | "unclear";
+  exceptions_found?: string[];
   lapses_on?: string;
   days_remaining?: number;
   note: string;
@@ -21,11 +22,16 @@ export default function WaitingPeriodPage() {
   const [documentId, setDocumentId] = useState("");
   const [asOfDate, setAsOfDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [accident, setAccident] = useState<"unknown" | "yes" | "no">("unknown");
+  const [accidentDate, setAccidentDate] = useState("");
+  const [claimDocIds, setClaimDocIds] = useState<string[]>([]);
+  const [allDocs, setAllDocs] = useState<Document[]>([]);
   const [result, setResult] = useState<{ inception_date: string | null; checked_as_of: string; waiting_periods: WaitingPeriodEntry[]; disclaimer: string } | null>(null);
 
   useEffect(() => {
     documentsApi.list().then((res) =>
-      setDocs(res.data.filter((d: Document) => d.doc_type === "policy" && d.ocr_status === "done"))
+      { setAllDocs(res.data.filter((d: Document) => d.ocr_status === "done"));
+        setDocs(res.data.filter((d: Document) => d.doc_type === "policy" && d.ocr_status === "done")); }
     ).catch(() => {});
   }, []);
 
@@ -37,7 +43,11 @@ export default function WaitingPeriodPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await analysisApi.checkWaitingPeriods(documentId, asOfDate || undefined);
+      const res = await analysisApi.checkWaitingPeriods(documentId, asOfDate || undefined, {
+        accident_related: accident === "unknown" ? null : accident === "yes",
+        accident_date: accidentDate || undefined,
+        claim_document_ids: claimDocIds,
+      });
       setResult(res.data);
     } catch (e: any) {
       toast.error(e?.response?.data?.detail || "Could not check waiting periods");
@@ -47,9 +57,11 @@ export default function WaitingPeriodPage() {
   };
 
   const statusStyle = (status: string) =>
-    status === "lapsed" ? { color: "#4ADE80", icon: CheckCircle2 }
-    : status === "active" ? { color: "#F87171", icon: Clock }
-    : { color: "#9CA3AF", icon: HelpCircle };
+    status === "lapsed" ? { color: "#4ADE80", icon: CheckCircle2, label: "LAPSED" }
+    : status === "exception_applies" ? { color: "#60A5FA", icon: CheckCircle2, label: "EXCEPTION MAY APPLY" }
+    : status === "applies" ? { color: "#FBBF24", icon: Clock, label: "MAY AFFECT CLAIM" }
+    : status === "may_apply_insufficient_evidence" ? { color: "#A78BFA", icon: HelpCircle, label: "EVIDENCE INSUFFICIENT" }
+    : { color: "#9CA3AF", icon: HelpCircle, label: "UNCLEAR" };
 
   return (
     <div className="max-w-3xl space-y-6 animate-fade-in">
@@ -58,8 +70,8 @@ export default function WaitingPeriodPage() {
           <Hourglass size={22} style={{ color: "#A78BFA" }} /> Waiting Period Check
         </h2>
         <p className="text-sm mt-1" style={{ color: "var(--text-tertiary)" }}>
-          Check whether a condition's waiting period has lapsed — computed directly from your
-          policy's inception date and waiting-period clauses. No AI guesswork, pure date arithmetic.
+          Check whether a condition's waiting period has lapsed, then whether an exception (such as an accident)
+          may apply. Dates are computed directly from your policy's inception date and clauses; no AI guesswork.
         </p>
       </div>
 
@@ -88,6 +100,29 @@ export default function WaitingPeriodPage() {
           <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
             Leave blank to check as of today, or set your treatment date to check whether the period had lapsed then.
           </p>
+        </div>
+
+        <div>
+          <label className="label">Was the treatment due to an accident? (optional)</label>
+          <select className="input" value={accident} onChange={(e) => setAccident(e.target.value as any)} suppressHydrationWarning>
+            <option value="unknown">Not sure / not stated</option>
+            <option value="yes">Yes, it followed an accident</option>
+            <option value="no">No, it was not accident-related</option>
+          </select>
+          {accident === "yes" && (
+            <input type="date" className="input mt-2" value={accidentDate} onChange={(e) => setAccidentDate(e.target.value)} suppressHydrationWarning />
+          )}
+          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>
+            Policies often exempt accident-related treatment from specific waiting periods. This is checked before any status is given.
+          </p>
+        </div>
+
+        <div>
+          <label className="label">Claim documents to scan for accident evidence (optional)</label>
+          <select multiple className="input h-24" value={claimDocIds}
+            onChange={(e) => setClaimDocIds(Array.from(e.target.selectedOptions).map((o) => o.value))} suppressHydrationWarning>
+            {allDocs.filter((d) => d.doc_type !== "policy").map((d) => <option key={d.id} value={d.id}>{d.file_name}</option>)}
+          </select>
         </div>
 
         <button onClick={runCheck} disabled={loading} className="btn-primary w-full justify-center py-3" suppressHydrationWarning>
@@ -119,7 +154,7 @@ export default function WaitingPeriodPage() {
                       </div>
                       <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full shrink-0"
                         style={{ background: `${s.color}1A`, color: s.color }}>
-                        <Icon size={12} /> {wp.status.toUpperCase()}
+                        <Icon size={12} /> {s.label}
                       </span>
                     </div>
                     <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>{wp.note}</p>

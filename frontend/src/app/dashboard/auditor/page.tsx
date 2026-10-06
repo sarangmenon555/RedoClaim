@@ -517,6 +517,10 @@ function AuditResultView({
   const cis = reg?.cis_check || {};
   const portability = report?.portability_advice;
   const insuranceType: string = summary?.insurance_type || report?.insurance_type || "health";
+  const evidence = reg?.evidence_assessment || audit?.evidence_assessment;
+  const insufficient = evidence?.status === "insufficient" || summary?.evidence_status === "insufficient";
+  const wpReview = reg?.waiting_period_review;
+  const timelineItems: any[] = sla?.timeline_items || sla?.deadlines?.timeline_items || [];
 
   return (
     <div className="space-y-4 animate-slide-up">
@@ -544,7 +548,46 @@ function AuditResultView({
       )}
 
       {/* Verdict */}
-      <div className={`card p-6 border-l-4 ${!summary.is_valid_rejection ? "border-red-500 bg-surface-2" : "border-green-500 bg-surface-2"}`}>
+      {insufficient && (
+        <div className="card p-6 border-l-4 border-amber-500 bg-surface-2">
+          <h3 className="text-lg font-bold style-text-primary flex items-center gap-2">
+            <AlertTriangle className="text-amber-500" size={22} /> INSUFFICIENT EVIDENCE
+          </h3>
+          <p className="text-sm style-text-secondary mt-2">{evidence?.summary}</p>
+          {evidence?.gaps?.length > 0 && (
+            <ul className="mt-3 space-y-1">
+              {evidence.gaps.map((g: string, i: number) => (
+                <li key={i} className="text-sm style-text-secondary flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 bg-amber-400 rounded-full mt-2 shrink-0" />{g}
+                </li>
+              ))}
+            </ul>
+          )}
+          {evidence?.documents_to_obtain?.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-surface-4">
+              <p className="text-xs font-semibold style-text-secondary mb-1">Documents to obtain next:</p>
+              <ul className="space-y-1">
+                {evidence.documents_to_obtain.map((d: string, i: number) => (
+                  <li key={i} className="text-xs style-text-tertiary">&bull; {d}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {audit?.possible_issues_to_verify?.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-surface-4">
+              <p className="text-xs font-semibold style-text-secondary mb-1">Possible issues requiring verification (once documents are available):</p>
+              {audit.possible_issues_to_verify.map((p: any, i: number) => (
+                <p key={i} className="text-xs style-text-tertiary mt-1">&bull; {p.issue}</p>
+              ))}
+              <p className="text-xs style-text-tertiary mt-1 italic">
+                The adequacy of the insurer&apos;s explanation may warrant review under the applicable regulatory or grievance framework. No legal classification is made on the present evidence.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!insufficient && <div className={`card p-6 border-l-4 ${!summary.is_valid_rejection ? "border-red-500 bg-surface-2" : "border-green-500 bg-surface-2"}`}>
         <div className="flex items-start justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
             {!summary.is_valid_rejection
@@ -582,7 +625,17 @@ function AuditResultView({
             {summary.strength_of_case?.toUpperCase()} CASE
           </span>
         </div>
-      </div>
+      </div>}
+
+      {/* Waiting-period review (exception stage already applied) */}
+      {wpReview?.waiting_periods?.length > 0 && (
+        <div className="card p-5 border-l-4 border-blue-500 bg-surface-2">
+          <p className="font-semibold style-text-primary text-sm mb-2">Waiting period review (exceptions checked first)</p>
+          {wpReview.waiting_periods.map((w: any, i: number) => (
+            <p key={i} className="text-xs style-text-secondary mt-1"><strong>{w.condition}:</strong> {w.note}</p>
+          ))}
+        </div>
+      )}
 
       {/* Motor: Surveyor Issues */}
       {insuranceType === "motor" && summary.surveyor_issues && (
@@ -669,6 +722,18 @@ function AuditResultView({
         badge={sla?.violations_found > 0 ? "high" : "low"}
         badgeText={sla?.violations_found > 0 ? "REVIEW" : "NO CONCERNS NOTED"}
       >
+        {timelineItems.length > 0 && (
+          <div className="p-4 border-b border-surface-4 space-y-2">
+            {timelineItems.map((it: any, i: number) => (
+              <div key={i} className="text-xs style-text-secondary">
+                <span className="font-medium style-text-primary">{it.label}</span>
+                <span className="style-text-tertiary"> [{it.kind === "tat" ? "insurer TAT" : it.kind === "limitation" ? "time limit, indicative" : it.kind === "conditional" ? "depends on eligibility" : it.kind}]</span>
+                {it.date && <span> &mdash; {new Date(it.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>}
+                {it.note && <p className="style-text-tertiary mt-0.5">{it.note}</p>}
+              </div>
+            ))}
+          </div>
+        )}
         {sla?.sla_violations?.length > 0 ? (
           <div className="divide-y divide-slate-100">
             {sla.sla_violations.map((v: any, i: number) => (
@@ -757,7 +822,7 @@ function AuditResultView({
       </Accordion>
 
       {/* Deficiency in Service */}
-      {deficiency?.deficiency_in_service && (
+      {!insufficient && deficiency?.deficiency_in_service && (
         <div className="card p-5 border-l-4 border-amber-500 bg-surface-2">
           <div className="flex items-start gap-3">
             <Scale className="text-amber-600 shrink-0" size={18} />
@@ -827,7 +892,7 @@ function AuditResultView({
         <div className="p-5 space-y-4">
           {esc?.recommended_immediate_action && (
             <div className="bg-surface-2 border border-surface-4 rounded-lg p-3">
-              <p className="text-sm font-semibold text-red-800">Immediate action required:</p>
+              <p className="text-sm font-semibold text-red-800">Suggested next step:</p>
               <p className="text-sm text-red-700 mt-0.5">{esc.recommended_immediate_action}</p>
             </div>
           )}

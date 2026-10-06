@@ -212,8 +212,18 @@ export const analysisApi = {
 
   // Deterministic (no LLM) waiting-period lapse check computed from a
   // policy's already-extracted waiting_periods clauses + inception date.
-  checkWaitingPeriods: (documentId: string, asOfDate?: string) =>
-    api.post("/analysis/waiting-period-check", { document_id: documentId, as_of_date: asOfDate }),
+  checkWaitingPeriods: (
+    documentId: string,
+    asOfDate?: string,
+    claimContext?: { accident_related?: boolean | null; accident_date?: string; claim_document_ids?: string[] },
+  ) =>
+    api.post("/analysis/waiting-period-check", {
+      document_id: documentId,
+      as_of_date: asOfDate,
+      accident_related: claimContext?.accident_related ?? null,
+      accident_date: claimContext?.accident_date || undefined,
+      claim_document_ids: claimContext?.claim_document_ids?.length ? claimContext.claim_document_ids : undefined,
+    }),
 
   // Side-by-side comparison of 2-3 already-analyzed policies. No new LLM call.
   comparePolicies: (documentIds: string[]) =>
@@ -251,7 +261,7 @@ export const analysisApi = {
 
   // Cashless pre-authorization denial at hospital admission — distinct
   // from a post-discharge claim rejection.
-  preauthCheck: (data: { denial_document_id: string; policy_document_id?: string; treatment_amount?: number }) =>
+  preauthCheck: (data: { denial_document_id: string; policy_document_id?: string; treatment_amount?: number; preauth_request_time?: string; preauth_decision_time?: string }) =>
     api.post("/analysis/preauth-check", data),
 
   // Deterministic "worth fighting?" verdict, reusing the claim's existing audit_report.

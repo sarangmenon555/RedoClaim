@@ -264,13 +264,13 @@ export default function ClaimDetailPage() {
                   ? `overdue since ${format(new Date(d.date), "d MMM yyyy")}`
                   : `${d.days_remaining} day(s) left, due ${format(new Date(d.date), "d MMM yyyy")}`}
               </p>
-              {d.is_overdue && (
+              {d.is_overdue && d.type === "gro_deadline" && (
                 <button
-                  onClick={() => runFollowup(d.type === "gro_deadline" ? "gro" : "irdai")}
+                  onClick={() => runFollowup("gro")}
                   disabled={loadingFollowup !== null}
                   className="btn-secondary text-xs px-2.5 py-1.5 shrink-0"
                   suppressHydrationWarning>
-                  {loadingFollowup === (d.type === "gro_deadline" ? "gro" : "irdai") ? <Loader2 size={12} className="animate-spin" /> : "Draft follow-up"}
+                  {loadingFollowup === "gro" ? <Loader2 size={12} className="animate-spin" /> : "Draft follow-up"}
                 </button>
               )}
             </div>

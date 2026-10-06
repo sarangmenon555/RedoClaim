@@ -21,14 +21,46 @@ from sqlalchemy import select, func as sa_func
 from app.services.llm.gemini_service import gemini
 from app.services.rag.rag_pipeline import search_irdai_regulations
 from app.models.models import Claim, Document, Appeal, AppealType
+from app.services.irdai.timeline_model import current_deadline
 
 logger = logging.getLogger(__name__)
 
+# Typed timeline rules. A "tat" is a turnaround the INSURER must meet; a
+# "limitation_indicative" is a conservative window for the POLICYHOLDER. There is
+# deliberately no rule for "days to file a GRO complaint" (none is established),
+# no short hard-coded Ombudsman deadline, and no consumer-court limitation date.
 DEADLINE_RULES = {
-    "gro":            15,        # days to escalate to GRO after rejection
-    "ombudsman":      45,        # days to file with Insurance Ombudsman
-    "ejagriti":       15,        # days after unresolved grievance to trigger e-Jagriti eligibility
-    "consumer_court": 365 * 2,   # limitation period, Consumer Protection Act, 2019
+    "gro_response_tat": {
+        "days": 15,
+        "kind": "tat",
+        "start_is": "the date the grievance was filed with the insurer's GRO",
+        "note": (
+            "Approximate insurer turnaround (about 15 days from receipt; some IRDAI material states 14 "
+            "days for the decision). This is the time the insurer has to respond, not a deadline for the "
+            "policyholder. Verify the period for the insurer and complaint channel."
+        ),
+    },
+    "ombudsman_window_indicative": {
+        "days": 365,
+        "kind": "limitation_indicative",
+        "start_is": "the date of the claim rejection (conservative)",
+        "note": (
+            "Indicative, conservative only. Insurance Ombudsman eligibility and time limits depend on the "
+            "applicable Ombudsman rules; generally a complaint may be made within one year of the relevant "
+            "rejection/decision or expiry of the applicable insurer-response period, subject to eligibility "
+            "requirements."
+        ),
+    },
+}
+NON_DATE_RULES = {
+    "consumer_law_limitation": (
+        "Consumer-law limitation may apply. It depends on the cause of action and the legal context, so no "
+        "date is calculated. Obtain appropriate legal guidance rather than relying on an automated estimate."
+    ),
+    "gro_filing_deadline": (
+        "No specific deadline for filing a grievance with the insurer has been established from the "
+        "information provided."
+    ),
 }
 
 OMBUDSMAN_CLAIM_LIMIT_INR = 50_00_000  # Rs. 50 Lakhs
@@ -79,14 +111,19 @@ TOOL_SCHEMAS = [
         "type": "function",
         "function": {
             "name": "calculate_deadline",
-            "description": "Calculate an IRDAI/CPA-mandated redressal deadline from a given date.",
+            "description": (
+                "Calculate a redressal timeline from a given date. 'gro_response_tat' returns the insurer's "
+                "response turnaround (a TAT, not a deadline for the user) from the grievance filing date; "
+                "'ombudsman_window_indicative' returns a conservative indicative window from the rejection date. "
+                "Other rules explain that no date can be calculated."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "date": {"type": "string", "description": "Start date in YYYY-MM-DD, e.g. the rejection date"},
                     "rule": {
                         "type": "string",
-                        "enum": list(DEADLINE_RULES.keys()),
+                        "enum": list(DEADLINE_RULES.keys()) + list(NON_DATE_RULES.keys()),
                         "description": "Which deadline to compute",
                     },
                 },
@@ -182,20 +219,25 @@ async def _get_policy_clause(args: dict, db) -> dict:
 
 def _calculate_deadline(args: dict) -> dict:
     rule = args["rule"]
-    days = DEADLINE_RULES.get(rule)
-    if days is None:
-        return {"error": f"Unknown rule '{rule}'. Valid rules: {list(DEADLINE_RULES.keys())}"}
+    if rule in NON_DATE_RULES:
+        return {"rule": rule, "date_calculated": False, "note": NON_DATE_RULES[rule]}
+    spec = DEADLINE_RULES.get(rule)
+    if spec is None:
+        return {"error": f"Unknown rule '{rule}'. Valid rules: {list(DEADLINE_RULES) + list(NON_DATE_RULES)}"}
     try:
         start = datetime.strptime(args["date"], "%Y-%m-%d")
     except ValueError:
         return {"error": "date must be in YYYY-MM-DD format"}
-    deadline = start + timedelta(days=days)
+    end = start + timedelta(days=spec["days"])
     return {
         "rule": rule,
+        "kind": spec["kind"],
         "start_date": start.date().isoformat(),
-        "days_allowed": days,
-        "deadline": deadline.date().isoformat(),
-        "days_remaining_from_today": (deadline - datetime.utcnow()).days,
+        "start_date_meaning": spec["start_is"],
+        "days": spec["days"],
+        "date": end.date().isoformat(),
+        "days_remaining_from_today": (end - datetime.utcnow()).days,
+        "note": spec["note"],
     }
 
 
@@ -213,8 +255,9 @@ async def _get_claim_status(args: dict, db) -> dict:
         "status": claim.status.value if claim.status else None,
         "irdai_violation": claim.irdai_violation,
         "rejection_date": claim.rejection_date.isoformat() if claim.rejection_date else None,
-        "gro_deadline": claim.gro_deadline.isoformat() if claim.gro_deadline else None,
-        "irdai_deadline": claim.irdai_deadline.isoformat() if claim.irdai_deadline else None,
+        # Typed, current-model values only (older claims hold superseded values).
+        "gro_response_tat_date": (current_deadline(claim, "gro_deadline").isoformat() if current_deadline(claim, "gro_deadline") else None),
+        "ombudsman_window_indicative_date": (current_deadline(claim, "irdai_deadline").isoformat() if current_deadline(claim, "irdai_deadline") else None),
         "audit_report": claim.audit_report,
     }
 

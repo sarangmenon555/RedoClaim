@@ -109,7 +109,7 @@ WAITING PERIOD RULES:
 JURISDICTION:
 - Claims up to Rs. 50,00,000 (50 Lakhs)
 - All types of insurance: life, health, motor, property
-- Must be filed within 1 year of insurer's final decision
+- Eligibility and time limits depend on the Ombudsman rules; generally within 1 year of the relevant rejection/decision or expiry of the insurer-response period, subject to eligibility requirements
 - Free service - no fee for policyholders
 
 WHO CAN FILE:
@@ -168,7 +168,7 @@ CONSUMER FORUMS (by claim amount):
 - Appeals go to next higher forum within 30 days
 
 IMPORTANT PROVISIONS:
-- Limitation period: 2 years from date of cause of action
+- Limitation: consumer-law limitation may apply and depends on the cause of action and legal context; obtain legal guidance (no fixed period is stated here)
 - Compensation for mental agony and harassment: Can be claimed
 - Punitive damages for gross negligence: Available
 - Product liability: If policy was defectively designed/sold

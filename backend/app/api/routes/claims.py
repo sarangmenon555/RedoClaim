@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import io
 
 from app.core.database import get_db
+from app.services.irdai.timeline_model import current_deadline
 from app.models.models import Claim, ClaimStatus, Appeal
 from app.api.deps.auth import get_current_user
 from app.services.documents.pdf_export import build_audit_trail_pdf
@@ -66,8 +67,8 @@ async def list_claims(
             "audit_report": c.audit_report,
             "claim_date": c.claim_date.isoformat() if c.claim_date else None,
             "rejection_date": c.rejection_date.isoformat() if c.rejection_date else None,
-            "gro_deadline": c.gro_deadline.isoformat() if c.gro_deadline else None,
-            "irdai_deadline": c.irdai_deadline.isoformat() if c.irdai_deadline else None,
+            "gro_deadline": current_deadline(c, "gro_deadline").isoformat() if current_deadline(c, "gro_deadline") else None,
+            "irdai_deadline": current_deadline(c, "irdai_deadline").isoformat() if current_deadline(c, "irdai_deadline") else None,
             "patient_name": c.patient_name,
             "patient_relationship": c.patient_relationship,
             "created_at": c.created_at.isoformat() if c.created_at else None,
@@ -98,8 +99,8 @@ async def get_claim(
         "audit_report": claim.audit_report,
         "claim_date": claim.claim_date.isoformat() if claim.claim_date else None,
         "rejection_date": claim.rejection_date.isoformat() if claim.rejection_date else None,
-        "gro_deadline": claim.gro_deadline.isoformat() if claim.gro_deadline else None,
-        "irdai_deadline": claim.irdai_deadline.isoformat() if claim.irdai_deadline else None,
+        "gro_deadline": current_deadline(claim, "gro_deadline").isoformat() if current_deadline(claim, "gro_deadline") else None,
+        "irdai_deadline": current_deadline(claim, "irdai_deadline").isoformat() if current_deadline(claim, "irdai_deadline") else None,
         "patient_name": claim.patient_name,
         "patient_relationship": claim.patient_relationship,
         "created_at": claim.created_at.isoformat() if claim.created_at else None,
@@ -168,13 +169,14 @@ async def get_urgent_deadlines(
 
     urgent = []
     for c in claims:
-        for field, label in [("gro_deadline", "GRO response"), ("irdai_deadline", "IRDAI Ombudsman filing")]:
-            deadline = getattr(c, field)
+        for field, label in [("gro_deadline", "Insurer grievance response (TAT)"), ("irdai_deadline", "Indicative Ombudsman window")]:
+            deadline = current_deadline(c, field)
             if deadline and deadline <= warning_window:
                 urgent.append({
                     "claim_id": str(c.id),
                     "insurer_name": c.insurer_name,
                     "deadline_type": label,
+                    "deadline_kind": "tat" if field == "gro_deadline" else "limitation_indicative",
                     "deadline_date": deadline.isoformat(),
                     "days_remaining": (deadline - now).days,
                     "is_overdue": deadline < now,
@@ -242,21 +244,27 @@ async def get_claim_timeline(
     now = datetime.now(claim.created_at.tzinfo) if claim.created_at and claim.created_at.tzinfo else datetime.now()
 
     upcoming = []
-    if claim.gro_deadline and claim.status not in (ClaimStatus.RESOLVED,):
+    gro_due = current_deadline(claim, "gro_deadline")
+    ombud_window = current_deadline(claim, "irdai_deadline")
+    if gro_due and claim.status not in (ClaimStatus.RESOLVED,):
         upcoming.append({
-            "date": claim.gro_deadline.isoformat(),
+            "date": gro_due.isoformat(),
             "type": "gro_deadline",
-            "title": "GRO response deadline",
-            "is_overdue": claim.gro_deadline < now,
-            "days_remaining": (claim.gro_deadline - now).days,
+            "kind": "tat",
+            "title": "Insurer's grievance-response TAT (approx. 15 days from receipt)",
+            "note": "A turnaround the insurer must meet - not a deadline for you.",
+            "is_overdue": gro_due < now,
+            "days_remaining": (gro_due - now).days,
         })
-    if claim.irdai_deadline and claim.status not in (ClaimStatus.RESOLVED,):
+    if ombud_window and claim.status not in (ClaimStatus.RESOLVED,):
         upcoming.append({
-            "date": claim.irdai_deadline.isoformat(),
+            "date": ombud_window.isoformat(),
             "type": "irdai_deadline",
-            "title": "IRDAI Ombudsman filing deadline",
-            "is_overdue": claim.irdai_deadline < now,
-            "days_remaining": (claim.irdai_deadline - now).days,
+            "kind": "limitation",
+            "title": "Ombudsman window (indicative, conservative - verify eligibility and time limits)",
+            "note": "Generally one year from the relevant rejection/decision, subject to eligibility requirements.",
+            "is_overdue": ombud_window < now,
+            "days_remaining": (ombud_window - now).days,
         })
 
     events.sort(key=lambda e: e["date"])
@@ -302,8 +310,8 @@ async def export_claim_pdf(
         "status": claim.status.value if hasattr(claim.status, "value") else claim.status,
         "claim_date": claim.claim_date.strftime("%d %b %Y") if claim.claim_date else None,
         "rejection_date": claim.rejection_date.strftime("%d %b %Y") if claim.rejection_date else None,
-        "gro_deadline": claim.gro_deadline.strftime("%d %b %Y") if claim.gro_deadline else None,
-        "irdai_deadline": claim.irdai_deadline.strftime("%d %b %Y") if claim.irdai_deadline else None,
+        "gro_deadline": current_deadline(claim, "gro_deadline").strftime("%d %b %Y") if current_deadline(claim, "gro_deadline") else None,
+        "irdai_deadline": current_deadline(claim, "irdai_deadline").strftime("%d %b %Y") if current_deadline(claim, "irdai_deadline") else None,
         "rejection_reason_raw": claim.rejection_reason_raw,
     }
 

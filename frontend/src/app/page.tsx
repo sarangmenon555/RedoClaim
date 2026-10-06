@@ -140,7 +140,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           {[
             { value: "₹50L",    label: "Ombudsman claim limit",  color: "#A78BFA" },
-            { value: "5 yrs",   label: "Moratorium period (2024)", color: "#22D3EE" },
+            { value: "60 mo",   label: "Moratorium period (2024)", color: "#22D3EE" },
             { value: "1 hr",    label: "Cashless TAT (IRDAI)",   color: "#4ADE80" },
             { value: "Health",  label: "Currently focused on Indian health insurance", color: "#FBBF24" },
           ].map((s) => (

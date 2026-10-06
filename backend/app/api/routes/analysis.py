@@ -29,6 +29,9 @@ from app.services.rag.rag_pipeline import (
     search_irdai_regulations, search_rejection_patterns, search_policy_chunks
 )
 from app.services.irdai.rules_engine import irdai_engine
+from app.services.irdai.evidence_assessment import assess_evidence, apply_insufficient_evidence
+from app.services.irdai.language_guard import soften_legal_language
+from app.services.irdai.timeline_model import current_deadline, naive as _naive_dt, CONSUMER_LAW_NOTE
 from app.services.irdai.motor_life_rules_engine import motor_engine, life_engine
 from app.services.irdai.payout_estimator import estimate_payout
 from app.services.irdai.waiting_period_calculator import calculate_waiting_periods
@@ -149,7 +152,7 @@ async def audit_claim_rejection(
     # ── Step 1: SLA Check ─────────────────────────────────────────
     gro_days_elapsed = 0
     if req.gro_filed and req.gro_filed_date:
-        gro_days_elapsed = (datetime.now() - req.gro_filed_date).days
+        gro_days_elapsed = (datetime.now() - _naive_dt(req.gro_filed_date)).days
 
     # ── Route by insurance type ───────────────────────────────────
     if req.insurance_type == InsuranceType.MOTOR:
@@ -266,6 +269,28 @@ async def audit_claim_rejection(
             cis_exclusions=cis_exclusions,
         )
 
+    # Evidence gate: INSUFFICIENT EVIDENCE comes before any legal classification.
+    audit_result = soften_legal_language(audit_result)
+    evidence = assess_evidence(
+        rejection_text=rejection_doc.ocr_text,
+        policy_clauses=policy_clauses,
+        audit_result=audit_result,
+        cis_provided=bool(cis_exclusions),
+    )
+    audit_result["evidence_assessment"] = evidence
+    audit_result = apply_insufficient_evidence(audit_result, evidence)
+
+    # Waiting-period review (health): run the exception stage so an accident
+    # exception is considered before any "waiting period applies" conclusion.
+    waiting_period_review = None
+    if req.insurance_type == InsuranceType.HEALTH and policy_clauses.get("waiting_periods"):
+        if rejection_category == "waiting_period" or audit_result.get("rejection_reason_category") == "waiting_period":
+            waiting_period_review = calculate_waiting_periods(
+                policy_clauses,
+                as_of=(_naive_dt(req.claim_date).date() if req.claim_date else None),
+                claim_context={"evidence_texts": [rejection_doc.ocr_text]},
+            )
+
     # ── Step 2: Deficiency in Service ─────────────────────────────
     all_irdai_violations = audit_result.get("step2_regulatory_violations", [])
     rejection_appears_arbitrary = (
@@ -276,6 +301,7 @@ async def audit_claim_rejection(
         sla_violations=sla_result["sla_violations"],
         irdai_violations=all_irdai_violations,
         rejection_appears_arbitrary=rejection_appears_arbitrary,
+        evidence_status=evidence["status"],
     )
 
     # ── Step 3: Escalation path ───────────────────────────────────
@@ -295,6 +321,8 @@ async def audit_claim_rejection(
                 "moratorium": moratorium,
                 "cis_check": cis_check,
                 "deficiency_in_service": deficiency,
+                "evidence_assessment": evidence,
+                "waiting_period_review": waiting_period_review,
             },
             "step3_redressal": escalation,
         },
@@ -382,12 +410,17 @@ async def audit_claim_rejection(
             "sla_violations": len(sla_result["sla_violations"]),
             "irdai_violations": len(all_irdai_violations),
             "strength_of_case": audit_result.get("strength_of_case"),
+            "evidence_status": evidence["status"],
+            "evidence_gaps": evidence["gaps"],
             "recommended_action": audit_result.get("step3_redressal", {}).get("recommended_action"),
             "moratorium_shield": moratorium.get("moratorium_applies", False),
             "deficiency_in_service": deficiency.get("deficiency_in_service", False),
             "cis_violation": cis_check.get("cis_violation", False),
             "interest_applicable": sla_result.get("interest_applicable", False),
-            "ejagriti_applicable": escalation["escalation_path"][2].get("ejagriti_now_applicable", False),
+            "ejagriti_applicable": (
+                escalation["escalation_path"][2].get("ejagriti_now_applicable", False)
+                and evidence["status"] != "insufficient"
+            ),
             **type_specific,
         },
     }
@@ -505,9 +538,10 @@ async def ejagriti_guide():
     return {
         "portal": "e-jagriti.gov.in",
         "when_to_use": (
-            "If your insurer has NOT responded to your complaint within 15 days, "
-            "OR if you are unsatisfied with their response, you can file directly "
-            "on the e-Jagriti Consumer Court portal."
+            "If your insurer has NOT responded to your complaint within the applicable grievance "
+            "timeline (approximately 15 days from receipt), OR if you are unsatisfied with their "
+            "response, you may be able to file on the e-Jagriti Consumer Court portal. Check "
+            "eligibility first."
         ),
         "legal_basis": "Consumer Protection Act, 2019, Section 2(11) — Deficiency in Service",
         "steps": [
@@ -567,7 +601,7 @@ async def ejagriti_guide():
             "Product liability damages if policy was mis-sold",
         ],
         "important_notes": [
-            "Limitation period: 2 years from the date of rejection",
+            CONSUMER_LAW_NOTE,
             "No lawyer required — you can represent yourself",
             "Insurer must appear and respond within 30 days of notice",
             "If insurer fails to appear: ex-parte order can be passed",
@@ -679,6 +713,10 @@ class WaitingPeriodRequest(BaseModel):
     document_id: str
     as_of_date: Optional[str] = None  # ISO date; defaults to today. Use the
     # treatment date to check whether a period had lapsed AT THAT TIME.
+    # --- exception-stage inputs (all optional) ---
+    accident_related: Optional[bool] = None   # True/False if known; None = unknown
+    accident_date: Optional[str] = None       # ISO date of the accident, if any
+    claim_document_ids: Optional[list[str]] = None  # claim docs scanned for accident evidence
 
 
 @router.post("/waiting-period-check")
@@ -688,10 +726,10 @@ async def waiting_period_check(
     current_user=Depends(get_current_user),
 ):
     """
-    Deterministic check of every waiting-period clause on a policy against
-    its inception date — tells you which conditions are still excluded and
-    which have lapsed. No LLM call; pure date arithmetic over already-
-    extracted clauses.
+    Waiting-period check with an explicit EXCEPTION STAGE: date arithmetic first,
+    then any policy exception (e.g. accident) is weighed against the evidence
+    before a status is given. No LLM call. A running waiting period is never
+    reported as "likely validly rejected".
     """
     from datetime import date as _date
 
@@ -708,7 +746,28 @@ async def waiting_period_check(
         except ValueError:
             raise HTTPException(400, "as_of_date must be YYYY-MM-DD")
 
-    return calculate_waiting_periods(doc.extracted_clauses, as_of=as_of)
+    accident_date = None
+    if body.accident_date:
+        try:
+            accident_date = _date.fromisoformat(body.accident_date)
+        except ValueError:
+            raise HTTPException(400, "accident_date must be YYYY-MM-DD")
+
+    evidence_texts = []
+    for did in (body.claim_document_ids or [])[:10]:
+        cdoc = await db.get(Document, did)
+        if cdoc and str(cdoc.owner_id) == str(current_user.id) and cdoc.ocr_text:
+            evidence_texts.append(cdoc.ocr_text[:8000])
+
+    return calculate_waiting_periods(
+        doc.extracted_clauses,
+        as_of=as_of,
+        claim_context={
+            "accident_related": body.accident_related,
+            "accident_date": accident_date,
+            "evidence_texts": evidence_texts,
+        },
+    )
 
 
 # ── 9. Policy Comparison Tool ───────────────────────────────────────
@@ -893,6 +952,7 @@ async def audit_settlement_route(
         settled_amount=body.settled_amount,
         irdai_context=irdai_context,
     )
+    result = soften_legal_language(result)
     result["disclaimer"] = (
         "AI-generated analysis for informational purposes only — not legal advice. Verify all figures "
         "and citations independently before relying on them."
@@ -905,6 +965,10 @@ class PreAuthCheckRequest(BaseModel):
     denial_document_id: str
     policy_document_id: Optional[str] = None
     treatment_amount: Optional[float] = None
+    # Optional documented times (ISO 8601). When both are given the cashless TAT
+    # is checked deterministically instead of relying on the model's reading.
+    preauth_request_time: Optional[datetime] = None
+    preauth_decision_time: Optional[datetime] = None
 
 
 @router.post("/preauth-check")
@@ -938,6 +1002,29 @@ async def preauth_check_route(
         policy_clauses=policy_clauses,
         irdai_context=irdai_context,
         treatment_amount=body.treatment_amount,
+    )
+    result = soften_legal_language(result)
+    # Deterministic cashless TAT check (1-hour pre-authorisation decision).
+    if body.preauth_request_time and body.preauth_decision_time:
+        tat = irdai_engine.check_sla_violations(
+            claim_date=None, rejection_date=None,
+            cashless_request_time=body.preauth_request_time,
+            cashless_decision_time=body.preauth_decision_time,
+        )["sla_violations"]
+        result["tat_check"] = {
+            "documented_request_time": body.preauth_request_time.isoformat(),
+            "documented_decision_time": body.preauth_decision_time.isoformat(),
+            "potential_non_compliance": bool(tat),
+            "detail": tat[0]["detail"] if tat else "The documented times are within the one-hour cashless pre-authorisation timeline.",
+        }
+        if tat:
+            result["tat_violated"] = True
+            result["tat_violation_detail"] = tat[0]["detail"]
+        else:
+            result["tat_violated"] = False
+    result["tat_note"] = (
+        "A missed turnaround time is a separate matter from the denial itself. "
+        "It does not by itself establish that the underlying cashless denial is invalid."
     )
     result["disclaimer"] = (
         "AI-generated analysis for informational purposes only — not legal advice. Verify all figures "
@@ -1043,26 +1130,39 @@ async def generate_followup_route(
     if not claim or str(claim.owner_id) != str(current_user.id):
         raise HTTPException(404, "Claim not found")
 
-    if body.deadline_type == "gro":
-        deadline_date = claim.gro_deadline
-        deadline_label = "GRO response"
-        escalation_target = "the Insurance Ombudsman"
-    elif body.deadline_type == "irdai":
-        deadline_date = claim.irdai_deadline
-        deadline_label = "IRDAI Ombudsman filing"
-        escalation_target = "a Consumer Disputes Redressal Commission"
-    else:
-        raise HTTPException(400, "deadline_type must be 'gro' or 'irdai'")
+    if body.deadline_type != "gro":
+        raise HTTPException(
+            400,
+            "A follow-up letter applies only to the insurer's grievance-response timeline "
+            "(deadline_type='gro'). The Ombudsman window is a time limit for you, not a "
+            "turnaround the insurer owes you, so there is nothing to chase.",
+        )
+    deadline_date = current_deadline(claim, "gro_deadline")
+    deadline_label = "grievance response"
+    escalation_target = "the Insurance Ombudsman, subject to eligibility"
 
     if not deadline_date:
-        raise HTTPException(400, f"No {deadline_label} deadline is on file for this claim.")
+        raise HTTPException(
+            400,
+            "No insurer grievance-response date is on file for this claim. Record the date you "
+            "filed the GRO grievance by re-running the audit with the GRO filing date.",
+        )
 
     today = _date.today()
     deadline_as_date = deadline_date.date() if hasattr(deadline_date, "date") else deadline_date
     if deadline_as_date >= today:
-        raise HTTPException(400, f"The {deadline_label} deadline hasn't passed yet — no follow-up needed.")
+        raise HTTPException(400, "The insurer's grievance-response timeline hasn't passed yet - no follow-up needed.")
 
-    filed_date = (claim.rejection_date or claim.claim_date)
+    # The letter refers to when the grievance was filed, not the claim rejection.
+    filed_date = None
+    try:
+        for item in claim.audit_report["hierarchy_of_evidence"]["step1_sla"]["timeline_items"]:
+            if item.get("key") == "gro_filed" and item.get("date"):
+                filed_date = datetime.fromisoformat(item["date"])
+                break
+    except (KeyError, TypeError):
+        filed_date = None
+    filed_date = filed_date or claim.rejection_date or claim.claim_date
     if not filed_date:
         raise HTTPException(400, "No original filing date on record for this claim.")
 

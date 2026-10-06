@@ -255,7 +255,7 @@ Non-life (Motor, Property):
 
 Internal Grievance (GRO):
 • Acknowledgement: Within 3 WORKING DAYS
-• Resolution by GRO: Within 15 DAYS of complaint receipt
+• Resolution by GRO: approximately 15 DAYS from complaint receipt (some IRDAI health-insurance FAQ text states 14 days for the decision; verify). This is the INSURER's turnaround - there is no established deadline for the policyholder to file a grievance
 • If unresolved in 15 days → insurer must auto-escalate to senior officer
 
 Interest on Delayed Claims (Para 7.4):
@@ -297,7 +297,7 @@ IRDAI (HEALTH INSURANCE) REGULATIONS 2024
 ════════════════════════════════════════════════════════
 
 [MORATORIUM PERIOD — Regulation 8(6)]
-After 5 CONTINUOUS YEARS of health insurance coverage:
+After 60 CONTINUOUS MONTHS (5 years) of health insurance coverage:
 • Insurer CANNOT reject claim on grounds of non-disclosure of Pre-Existing Disease (PED)
 • EXCEPTION: Only if the insurer can PROVE intentional fraudulent misrepresentation
 • Burden of proof is on the INSURER — not on the policyholder
@@ -320,6 +320,7 @@ After 5 CONTINUOUS YEARS of health insurance coverage:
 • Initial waiting period: Maximum 30 days (accidents always covered from Day 1)
 • Pre-existing disease (PED) waiting: Maximum 3 years (down from 4 years)
 • Specific named disease waiting: Maximum 2 years
+• Exception: specific-treatment and PED waiting periods generally do not apply where the treatment is required due to an accident - always check the policy's exception wording before concluding a waiting period applies
 • Maternity waiting period: As per policy (typically 9-12 months)
 
 ════════════════════════════════════════════════════════
@@ -330,7 +331,7 @@ INSURANCE OMBUDSMAN RULES 2017
 • Claim value: Up to ₹50,00,000 (Fifty Lakhs)
 • Applies to: Life, Health, Motor, Property insurance
 • Who can file: Policyholder, nominee, legal heir, assignee, authorised representative
-• Filing deadline: Within 1 YEAR of insurer's final decision
+• Filing window: eligibility and time limits depend on the Ombudsman rules - generally within 1 YEAR of the relevant rejection/decision or expiry of the applicable insurer-response period, subject to eligibility requirements (do NOT state a short fixed deadline such as 45 days)
 • Cost: COMPLETELY FREE for policyholders
 
 [WHEN TO APPROACH OMBUDSMAN]
@@ -362,7 +363,7 @@ Insurance claim rejection constitutes "Deficiency in Service" when:
 • Insurer provides false or misleading information to reject claim
 • Insurer fails to process documents within TAT
 • Policy was mis-sold (features misrepresented at time of sale)
-→ AI MUST use the exact legal term "Deficiency in Service" in all appeal letters
+• Where the evidence supports it, appeal letters may allege "Deficiency in Service" as an allegation, not as an established fact; where evidence is insufficient, do not allege it
 
 [PRODUCT LIABILITY — Section 2(34)]
 If the insurance product itself was:
@@ -387,7 +388,7 @@ Consumer Forums by claim amount:
 • State Consumer Disputes Redressal Commission: ₹50L to ₹2,00,00,000 (2 Crores)
 • National Consumer Disputes Redressal Commission: Above ₹2 Crores
 
-Limitation period: 2 years from the date of cause of action (rejection date)
+Limitation: consumer-law limitation may apply and depends on the cause of action and legal context - do not state a fixed period; obtain appropriate legal guidance
 
 Relief available from Consumer Courts:
 • Full claim amount

@@ -14,6 +14,11 @@ from datetime import datetime, timedelta
 from typing import Optional
 import logging
 
+from app.services.irdai.timeline_model import (
+    build_timeline, naive, TAT_BREACH_CAVEAT, GRO_RESPONSE_TAT_DAYS,
+    OMBUDSMAN_CONDITIONAL_NOTE, CONSUMER_LAW_NOTE, GRO_FILING_NOTE,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +31,7 @@ class IRDAIRulesEngine:
     TAT_GRO_ACK_DAYS            = 3     # GRO acknowledgement within 3 working days
     TAT_SURVEY_DAYS             = 3     # survey for claims >50k within 3 days
     MORATORIUM_YEARS            = 5     # 5 continuous years (2024 reform)
+    MORATORIUM_MONTHS           = 60    # the same period, as IRDAI material states it: 60 continuous months
     OMBUDSMAN_MAX_RUPEES        = 5_000_000   # ₹50 Lakhs
     INTEREST_RATE_BUFFER        = 2     # Bank Rate + 2% for delayed claims
     EJAGRITI_TRIGGER_DAYS       = 15    # if insurer silent for 15 days → e-Jagriti
@@ -71,56 +77,63 @@ class IRDAIRulesEngine:
                     "legal_citation": "IRDAI Master Circular on Health Insurance, 2024 — provisions on interest for delayed claim settlement (verify paragraph in primary source)",
                 })
 
-        # GRO 15-day TAT
-        if grievance_date and rejection_date:
-            days_since_grievance = (now - grievance_date).days
+        # Insurer grievance-resolution TAT (a turnaround the INSURER must meet).
+        # Note: the date the grievance was filed is an EVENT, not a deadline.
+        if grievance_date:
+            grievance_naive = naive(grievance_date)
+            days_since_grievance = (now - grievance_naive).days
             if days_since_grievance > self.TAT_GRO_DAYS:
                 violations.append({
                     "type": "gro_timeline_inconsistency",
                     "regulation": "IRDAI grievance redressal provisions (verify paragraph in primary source)",
-                    "applicable_timeline": f"{self.TAT_GRO_DAYS} days",
-                    "basis": "Grievance resolution timeline referenced in IRDAI grievance redressal provisions; verify the current period for your insurer and complaint channel.",
+                    "applicable_timeline": f"approximately {self.TAT_GRO_DAYS} days from receipt",
+                    "basis": "Grievance resolution timeline referenced in IRDAI / Bima Bharosa grievance material (some IRDAI text states 14 days for the decision); verify the current period for your insurer and complaint channel.",
                     "detail": (
                         f"The grievance was filed {days_since_grievance} days ago. "
-                        f"Applicable timeline: {self.TAT_GRO_DAYS} days. "
+                        f"Applicable insurer turnaround: approximately {self.TAT_GRO_DAYS} days from receipt. "
                         f"No resolution is documented within that timeline."
                     ),
                     "severity": "medium",
                     "ejagriti_trigger": days_since_grievance >= self.EJAGRITI_TRIGGER_DAYS,
-                    "legal_citation": "Consumer Protection Act, 2019 — e-Jagriti may be an available forum",
+                    "legal_citation": "Consumer Protection Act, 2019 - e-Jagriti may be an available forum",
                 })
 
-        # Cashless 1-hour TAT
+        # Cashless 1-hour pre-authorisation TAT.
+        # Reported as POTENTIAL TAT non-compliance - never as proof the cashless
+        # decision itself is invalid.
         if cashless_request_time and cashless_decision_time:
-            hours_taken = (cashless_decision_time - cashless_request_time).seconds / 3600
+            hours_taken = (naive(cashless_decision_time) - naive(cashless_request_time)).total_seconds() / 3600
             if hours_taken > self.TAT_CASHLESS_HOURS:
                 violations.append({
-                    "type": "cashless_timeline_inconsistency",
+                    "type": "cashless_tat_potential_non_compliance",
                     "regulation": "IRDAI Master Circular on Health Insurance, 2024 (cashless authorisation timeline)",
                     "applicable_timeline": f"{self.TAT_CASHLESS_HOURS} hour",
-                    "basis": "Cashless authorisation timeline referenced in the IRDAI Master Circular on Health Insurance, 2024; verify against the primary source.",
+                    "basis": "Cashless pre-authorisation timeline in IRDAI health-insurance material (decision immediately and not later than one hour); verify against the primary source.",
                     "detail": (
-                        f"The documented times show the cashless pre-authorisation took {hours_taken:.1f} hours. "
-                        f"Applicable timeline: {self.TAT_CASHLESS_HOURS} hour."
+                        f"Potential TAT non-compliance: the documented times show the cashless "
+                        f"pre-authorisation decision took {hours_taken:.1f} hours against an applicable "
+                        f"timeline of {self.TAT_CASHLESS_HOURS} hour. This may warrant clarification or "
+                        f"grievance escalation. {TAT_BREACH_CAVEAT}"
                     ),
                     "severity": "medium",
-                    "legal_citation": "IRDAI Master Circular on Health Insurance, 2024 — cashless treatment provisions",
+                    "does_not_establish_invalidity": True,
+                    "legal_citation": "IRDAI Master Circular on Health Insurance, 2024 - cashless treatment provisions",
                 })
 
-        # Compute deadlines from rejection date
-        deadlines = {}
-        if rejection_date:
-            deadlines["gro_deadline"]         = rejection_date + timedelta(days=15)
-            deadlines["ombudsman_deadline"]   = rejection_date + timedelta(days=45)
-            deadlines["ejagriti_trigger"]     = rejection_date + timedelta(days=15)
-            deadlines["consumer_court_limit"] = rejection_date + timedelta(days=365 * 2)
-            deadlines["days_left_for_gro"]    = max(0, (deadlines["gro_deadline"] - now).days)
-            deadlines["days_left_for_ombudsman"] = max(0, (deadlines["ombudsman_deadline"] - now).days)
+        # Timeline model: events, insurer TATs, conditional routes and limitation
+        # windows are kept separate. See timeline_model.py.
+        deadlines = build_timeline(
+            rejection_date=rejection_date,
+            grievance_date=grievance_date,
+            now=now,
+        )
 
         return {
             "sla_violations": violations,
             "violations_found": len(violations),
             "deadlines": deadlines,
+            "timeline_items": deadlines.get("timeline_items", []),
+            "timeline_model_version": deadlines.get("timeline_model_version"),
             "interest_applicable": any(v.get("interest_applicable") for v in violations),
         }
 
@@ -141,7 +154,9 @@ class IRDAIRulesEngine:
                 "recommendation": "Provide policy inception date for moratorium check.",
             }
 
+        policy_start_date = naive(policy_start_date)
         years_covered = (datetime.now() - policy_start_date).days / 365.25
+        months_covered = round(years_covered * 12, 1)
         ped_keywords = [
             "pre-existing", "pre existing", "ped", "non-disclosure",
             "undisclosed", "concealment", "material fact", "prior condition",
@@ -150,47 +165,52 @@ class IRDAIRulesEngine:
         ]
         rejection_lower = rejection_reason.lower()
         is_ped_rejection = any(kw in rejection_lower for kw in ped_keywords)
+        label = f"{self.MORATORIUM_MONTHS} continuous months"
 
         if years_covered >= self.MORATORIUM_YEARS and is_ped_rejection:
             return {
                 "moratorium_applies": True,
                 "years_covered": round(years_covered, 1),
+                "months_covered": months_covered,
+                "moratorium_period": label,
                 "regulation": "IRDAI (Health Insurance) Regulations 2024, Regulation 8(6)",
                 "argument": (
-                    f"The policyholder has {round(years_covered, 1)} years of continuous "
-                    f"health insurance coverage. Under IRDAI (Health Insurance) Regulations 2024, "
-                    f"Regulation 8(6), after {self.MORATORIUM_YEARS} continuous years, an insurer "
-                    f"CANNOT repudiate a claim on the grounds of non-disclosure of a pre-existing "
-                    f"disease, EXCEPT in cases of PROVEN fraudulent misrepresentation. "
-                    f"The burden of proving fraud lies entirely with the insurer. "
-                    f"Mere suspicion, medical opinion, or administrative inference does NOT "
-                    f"constitute proof of fraud. This rejection is therefore legally untenable."
+                    f"The policy records about {months_covered:.0f} months of coverage. IRDAI material describes "
+                    f"the moratorium as {label}. After that period, an insurer generally cannot "
+                    f"repudiate a claim on the grounds of non-disclosure of a pre-existing "
+                    f"disease, except in cases of proven fraudulent misrepresentation. "
+                    f"The burden of proving fraud lies with the insurer, and mere suspicion or "
+                    f"inference is generally not enough. If the coverage really has been continuous, "
+                    f"this rejection ground may warrant review. Confirm continuity and the exact "
+                    f"provision before relying on it."
                 ),
-                "strength": "very_strong",
+                "strength": "strong_if_verified",
                 "counter_to_insurer": (
-                    "If insurer claims fraud: demand they provide documentary proof of intentional "
+                    "If the insurer alleges fraud, you can ask for the documentary proof of intentional "
                     "concealment. A medical opinion that the condition 'may have existed before' "
-                    "is NOT sufficient proof of fraud under Regulation 8(6)."
+                    "is generally not proof of fraud - verify the provision."
                 ),
                 "portability_note": (
-                    "Years of coverage with previous insurers (via portability) count toward "
-                    "the 5-year moratorium calculation."
+                    f"Coverage with previous insurers (via portability) can count toward "
+                    f"the {label} - confirm continuity with your policy history."
                 ),
             }
 
         if years_covered < self.MORATORIUM_YEARS and is_ped_rejection:
-            remaining = self.MORATORIUM_YEARS - years_covered
+            remaining_months = max(0.0, self.MORATORIUM_MONTHS - months_covered)
             return {
                 "moratorium_applies": False,
                 "years_covered": round(years_covered, 1),
-                "years_remaining": round(remaining, 1),
+                "months_covered": months_covered,
+                "years_remaining": round(self.MORATORIUM_YEARS - years_covered, 1),
+                "moratorium_period": label,
                 "note": (
-                    f"Moratorium requires {self.MORATORIUM_YEARS} continuous years. "
-                    f"Current coverage: {round(years_covered, 1)} years. "
-                    f"Moratorium will activate in ~{round(remaining, 1)} more years."
+                    f"The moratorium requires {label}. "
+                    f"Coverage on record: about {months_covered:.0f} months. "
+                    f"About {remaining_months:.0f} more months would be needed."
                 ),
                 "recommendation": (
-                    "While moratorium does not yet apply, check if the waiting period "
+                    "While the moratorium does not yet apply, check whether the waiting period "
                     "for this specific condition has been served, and whether the CIS "
                     "clearly disclosed this exclusion."
                 ),
@@ -199,6 +219,8 @@ class IRDAIRulesEngine:
         return {
             "moratorium_applies": False,
             "years_covered": round(years_covered, 1),
+            "months_covered": months_covered,
+            "moratorium_period": label,
             "note": "Rejection does not appear to be PED-based; moratorium check not applicable.",
         }
 
@@ -246,11 +268,20 @@ class IRDAIRulesEngine:
         sla_violations: list,
         irdai_violations: list,
         rejection_appears_arbitrary: bool = False,
+        evidence_status: str = "sufficient",
     ) -> dict:
         """
         Consumer Protection Act, 2019, Section 2(11).
         Indicates whether a Deficiency in Service allegation could be considered.
         """
+        if evidence_status == "insufficient":
+            return {
+                "deficiency_in_service": False,
+                "withheld_reason": (
+                    "Insufficient evidence: no legal classification is made until the missing "
+                    "documents are obtained and reviewed."
+                ),
+            }
         reasons = []
         if sla_violations:
             reasons.append("Documented dates that appear inconsistent with the applicable timeline")
@@ -293,6 +324,7 @@ class IRDAIRulesEngine:
         Suggests a redressal route based on claim amount and status.
         """
         now = datetime.now()
+        rejection_date = naive(rejection_date)
         paths = []
 
         # Step 1: GRO (always first unless already filed)
@@ -300,7 +332,7 @@ class IRDAIRulesEngine:
             "step": 1,
             "route": "GRO — Grievance Redressal Officer",
             "regulation": "IRDAI Master Circular 2024, Para 10",
-            "deadline": "Applicable grievance timeline; verify with your insurer's grievance policy",
+            "deadline": "No specific filing deadline established from the information provided; the insurer's response turnaround is approximately 15 days from receipt (verify with your insurer's grievance policy)",
             "how": (
                 "Write to the insurer's GRO. The GRO name and address is on your policy document "
                 "and the insurer's website. Send by registered post AND email."
@@ -320,7 +352,7 @@ class IRDAIRulesEngine:
             "regulation": "Insurance Ombudsman Rules 2017",
             "eligible": is_ombudsman_eligible,
             "max_claim": "₹50,00,000 (50 Lakhs)",
-            "deadline": "Within 1 year of insurer's final decision",
+            "deadline": "Eligibility and time limits depend on the applicable Ombudsman rules - generally within one year of the relevant rejection/decision or expiry of the applicable insurer-response period, subject to eligibility requirements",
             "how": "Online at igms.irda.gov.in | Find your state ombudsman at ecoi.co.in",
             "cost": "Completely FREE",
             "expected_resolution": "3 months",
@@ -347,7 +379,7 @@ class IRDAIRulesEngine:
             "route": f"e-Jagriti — {forum}",
             "regulation": "Consumer Protection Act, 2019",
             "legal_basis": "Deficiency in Service — Section 2(11) CPA 2019",
-            "deadline": "Within 2 years of rejection date",
+            "deadline": "Consumer-law limitation may apply; it depends on the cause of action and legal context - obtain appropriate legal guidance rather than relying on an estimate",
             "how": (
                 "File online at e-jagriti.gov.in — register, fill complaint form, "
                 "upload all documents, pay minimal court fee online. "
@@ -393,6 +425,7 @@ class IRDAIRulesEngine:
         rejection_date: Optional[datetime],
     ) -> str:
         now = datetime.now()
+        rejection_date = naive(rejection_date)
         if not gro_filed:
             return (
                 "Consider filing a written grievance with the insurer's GRO soon. "
@@ -466,7 +499,7 @@ class IRDAIRulesEngine:
             "key_rights": [
                 "You can port your policy to any IRDAI-registered insurer",
                 "All waiting periods already served carry forward to new insurer",
-                f"Moratorium credit: {min(years_covered, 5):.1f} of 5 years served",
+                f"Moratorium credit: about {min(years_covered, 5) * 12:.0f} of {self.MORATORIUM_MONTHS} continuous months served",
                 f"PED waiting period remaining at new insurer: {ped_waiting_remaining:.1f} years",
                 "New insurer CANNOT impose fresh initial waiting period",
                 "Premium cannot be increased solely due to portability",

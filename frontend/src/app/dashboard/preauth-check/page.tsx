@@ -11,6 +11,8 @@ export default function PreauthCheckPage() {
   const [denialDocId, setDenialDocId] = useState("");
   const [policyDocId, setPolicyDocId] = useState("");
   const [treatmentAmount, setTreatmentAmount] = useState("");
+  const [reqTime, setReqTime] = useState("");
+  const [decTime, setDecTime] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
@@ -32,6 +34,8 @@ export default function PreauthCheckPage() {
         denial_document_id: denialDocId,
         policy_document_id: policyDocId || undefined,
         treatment_amount: treatmentAmount ? parseFloat(treatmentAmount) : undefined,
+        preauth_request_time: reqTime || undefined,
+        preauth_decision_time: decTime || undefined,
       });
       setResult(res.data);
     } catch (e: any) {
@@ -85,6 +89,17 @@ export default function PreauthCheckPage() {
           <input type="number" className="input w-48" value={treatmentAmount} onChange={(e) => setTreatmentAmount(e.target.value)} suppressHydrationWarning />
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="label">Pre-auth requested at (optional)</label>
+            <input type="datetime-local" className="input" value={reqTime} onChange={(e) => setReqTime(e.target.value)} suppressHydrationWarning />
+          </div>
+          <div>
+            <label className="label">Insurer responded at (optional)</label>
+            <input type="datetime-local" className="input" value={decTime} onChange={(e) => setDecTime(e.target.value)} suppressHydrationWarning />
+          </div>
+        </div>
+
         <button onClick={runCheck} disabled={loading} className="btn-primary w-full justify-center py-3" suppressHydrationWarning>
           {loading ? <><Loader2 size={16} className="animate-spin" /> Checking...</> : "Check this denial"}
         </button>
@@ -104,8 +119,11 @@ export default function PreauthCheckPage() {
 
           {result.tat_violated && (
             <div className="rounded-lg p-3" style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)" }}>
-              <p className="text-xs font-semibold" style={{ color: "#F87171" }}>Cashless timeline may not have been met</p>
+              <p className="text-xs font-semibold" style={{ color: "#F87171" }}>Potential TAT non-compliance</p>
               <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{result.tat_violation_detail}</p>
+              <p className="text-xs mt-1 italic" style={{ color: "var(--text-tertiary)" }}>
+                The timing issue may warrant clarification or grievance escalation. It does not by itself establish that the underlying cashless denial is invalid.
+              </p>
             </div>
           )}
 

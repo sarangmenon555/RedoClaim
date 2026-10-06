@@ -16,9 +16,9 @@ export const FAQ_ENTRIES: FaqEntry[] = [
       "Insurers can reject a claim on this ground only if you were actually diagnosed with, or had received " +
       "treatment/advice for, the condition BEFORE buying the policy — and if that fact was genuinely material " +
       "to underwriting. A rejection based on the condition merely appearing in your medical history without " +
-      "proof of pre-policy diagnosis is often successfully challenged. After 8 years (the moratorium period " +
-      "under IRDAI regulations), insurers generally cannot invoke non-disclosure at all, except in cases of " +
-      "proven fraud.",
+      "proof of pre-policy diagnosis is often successfully challenged. After 60 continuous months (the moratorium period " +
+      "described in IRDAI health-insurance material), insurers generally cannot invoke non-disclosure at all, except in cases of " +
+      "proven fraud. Verify the exact provision for your policy.",
     relatedTool: { label: "Check your waiting periods", href: "/dashboard/waiting-period" },
   },
   {

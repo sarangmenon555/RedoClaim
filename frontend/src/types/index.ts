@@ -107,6 +107,7 @@ export interface PolicyClauses {
 export interface WaitingPeriod {
   condition: string;
   duration: string;
+  exceptions?: string[];
   risk_level: "high" | "medium" | "low";
 }
 
@@ -123,10 +124,18 @@ export interface SubLimit {
   note: string;
 }
 
+export type ClauseCategory =
+  | "key_policy_condition"
+  | "financial_impact"
+  | "potential_inconsistency"
+  | "requires_verification";
+
 export interface RiskFlag {
   clause: string;
-  why_risky: string;
-  irdai_reference: string;
+  category?: ClauseCategory;
+  explanation?: string;
+  why_risky?: string; // legacy key on older analyses
+  irdai_reference?: string | null;
 }
 
 // ─── CLAIMS ────────────────────────────────────────────────────────────────
@@ -166,6 +175,8 @@ export interface AuditReport {
       moratorium: MoratoriumCheck;
       cis_check: CISCheck;
       deficiency_in_service: DeficiencyCheck;
+      evidence_assessment?: EvidenceAssessment;
+      waiting_period_review?: any;
     };
     step3_redressal: EscalationPaths;
   };
@@ -178,10 +189,12 @@ export interface AuditReport {
 export interface AuditResult {
   rejection_reason_category: string;
   rejection_reason_summary: string;
-  is_valid_rejection: boolean;
+  is_valid_rejection: boolean | null;
   step2_regulatory_violations: IRDAIViolation[];
   confidence: "high" | "medium" | "low";
-  strength_of_case: "strong" | "moderate" | "weak";
+  strength_of_case: "strong" | "moderate" | "weak" | "insufficient";
+  evidence_assessment?: EvidenceAssessment;
+  possible_issues_to_verify?: { issue: string; source?: string; note: string }[];
   key_arguments: string[];
   evidence_needed: string[];
   step3_redressal?: { recommended_action: string };
@@ -194,15 +207,35 @@ export interface IRDAIViolation {
   argument?: string;
 }
 
+export interface EvidenceAssessment {
+  status: "sufficient" | "partial" | "insufficient";
+  gaps: string[];
+  documents_to_obtain: string[];
+  summary: string;
+}
+
+export interface TimelineItem {
+  key: string;
+  kind: "event" | "tat" | "conditional" | "limitation" | "info";
+  label: string;
+  date: string | null;
+  note?: string | null;
+  overdue?: boolean;
+}
+
 export interface SLACheck {
   sla_violations: SLAViolation[];
   violations_found: number;
   interest_applicable: boolean;
+  timeline_items?: TimelineItem[];
+  timeline_model_version?: number;
   deadlines: {
-    gro_deadline?: string;
-    ombudsman_deadline?: string;
-    days_left_for_gro?: number;
-    days_left_for_ombudsman?: number;
+    timeline_model_version?: number;
+    gro_deadline?: string;        // insurer's grievance-response TAT date, not a filing deadline
+    ombudsman_deadline?: string;  // indicative, conservative window end
+    days_until_gro_response_due?: number;
+    days_left_for_ombudsman_window?: number;
+    timeline_items?: TimelineItem[];
   };
 }
 
@@ -219,6 +252,8 @@ export interface SLAViolation {
 export interface MoratoriumCheck {
   moratorium_applies: boolean;
   years_covered?: number;
+  months_covered?: number;
+  moratorium_period?: string;
   argument?: string;
   strength?: string;
   counter_to_insurer?: string;
@@ -301,11 +336,13 @@ export interface AuditResponse {
   };
   summary: {
     insurance_type: InsuranceType;
-    is_valid_rejection: boolean;
+    is_valid_rejection: boolean | null;
+    evidence_status?: "sufficient" | "partial" | "insufficient";
+    evidence_gaps?: string[];
     total_violations_found: number;
     sla_violations: number;
     irdai_violations: number;
-    strength_of_case: "strong" | "moderate" | "weak";
+    strength_of_case: "strong" | "moderate" | "weak" | "insufficient";
     recommended_action?: string;
     moratorium_shield: boolean;
     deficiency_in_service: boolean;

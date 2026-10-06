@@ -196,7 +196,7 @@ export default function DashboardPage() {
     const d = Math.ceil(
       (new Date(c.gro_deadline).getTime() - Date.now()) / 86400000
     );
-    return d >= 0 && d <= 5;
+    return d <= 5; // insurer's grievance-response TAT: due within 5 days or already passed
   });
 
   const stats = [
@@ -342,7 +342,7 @@ export default function DashboardPage() {
                 >
                   {t("db_gro_vs")} <strong>{c.insurer_name}</strong> —{" "}
                   <strong>
-                    {days} day{days !== 1 ? "s" : ""} left
+                    {days < 0 ? `response ${Math.abs(days)} day(s) past the insurer's turnaround` : `${days} day${days !== 1 ? "s" : ""} until the insurer's response date`}
                   </strong>
                 </p>
               );

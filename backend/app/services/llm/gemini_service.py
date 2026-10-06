@@ -273,6 +273,30 @@ async def call_with_regulation_search(prompt: str, system: str = "", model: str 
     return _parse_json(raw, "call_with_regulation_search")
 
 
+# Shared output rules appended to every legal-analysis system prompt. They encode the
+# product's global rules: TAT breach != invalid decision; waiting-period exceptions are
+# checked first; events vs deadlines vs TATs are kept apart; no hard-coded Ombudsman /
+# consumer-court / GRO-filing deadlines; INSUFFICIENT EVIDENCE is a valid outcome.
+TIMELINE_AND_LANGUAGE_RULES = (
+    "GLOBAL OUTPUT RULES. "
+    "(1) A missed turnaround time (TAT) is 'potential TAT non-compliance'. Never describe it as making a "
+    "claim decision, denial or rejection 'invalid', 'void' or 'procedurally invalid'; state that the timing "
+    "issue does not by itself establish that the underlying decision is invalid. "
+    "(2) Waiting periods: before concluding that a waiting period applies, check the policy and documents for "
+    "exceptions (especially an accident exception). Never say a claim 'is likely validly rejected'. "
+    "(3) Keep an EVENT date (for example the date a grievance was filed) separate from a DEADLINE and from the "
+    "insurer's resolution TAT. Do not state any deadline for filing a grievance with the insurer's GRO. Do not "
+    "state a 45-day Insurance Ombudsman deadline: Ombudsman eligibility and time limits depend on the Ombudsman "
+    "rules, and generally a complaint may be made within one year of the relevant rejection/decision or expiry "
+    "of the applicable insurer-response period, subject to eligibility requirements. Do not state a "
+    "consumer-court limitation period; say that limitation depends on the cause of action and that legal "
+    "guidance should be obtained. "
+    "(4) If the documents do not allow a judgement, say INSUFFICIENT EVIDENCE first and list what is missing "
+    "before mentioning any regulatory or legal angle. "
+    "(5) Ordinary contractual terms (a standard co-payment, sub-limit or waiting period) are not 'risky'; "
+    "do not present them as regulatory problems. "
+)
+
 # ── 1. Policy Clause Extractor ────────────────────────────────────
 async def extract_policy_clauses(policy_text: str) -> dict:
     system = (
@@ -288,6 +312,10 @@ async def extract_policy_clauses(policy_text: str) -> dict:
 DOCUMENT TEXT:
 {policy_text[:7000]}
 
+IMPORTANT FOR WAITING PERIODS: for every waiting period, also record any EXCEPTION to it in the "exceptions" list
+(for example "waived where the treatment is required due to an accident"). If the policy has an exception that applies to
+all waiting periods, also list it in "waiting_period_exceptions" with applies_to "all".
+
 IMPORTANT FOR CO-PAYMENT: Extract BOTH the percentage AND the exact age/condition it applies to.
 Example: if policy says "20% for age 60 and above, NIL for below 60", extract both parts.
 
@@ -302,7 +330,10 @@ Return ONLY this JSON structure. Start your response with {{ and end with }}. No
   "renewal_date": "YYYY-MM-DD or null",
   "is_cis": false,
   "waiting_periods": [
-    {{"condition": "...", "duration": "...", "risk_level": "high|medium|low"}}
+    {{"condition": "...", "duration": "...", "exceptions": ["exception text copied or closely paraphrased from the policy, or empty list"], "risk_level": "high|medium|low"}}
+  ],
+  "waiting_period_exceptions": [
+    {{"exception": "e.g. accident-related treatment is not subject to specific waiting periods", "applies_to": "all or a specific condition"}}
   ],
   "exclusions": [
     {{"clause": "...", "description": "...", "risk_level": "high|medium|low"}}
@@ -321,7 +352,7 @@ Return ONLY this JSON structure. Start your response with {{ and end with }}. No
     "note": "any additional note e.g. does not apply to accidents"
   }},
   "pre_existing_disease_waiting": "...",
-  "moratorium_period": "5 years per IRDAI Health Regulations 2024",
+  "moratorium_period": "60 continuous months per IRDAI Health Regulations 2024",
   "claim_restrictions": ["..."],
   "network_hospitals": "cashless|reimbursement|both",
   "portability_allowed": true,
@@ -330,10 +361,12 @@ Return ONLY this JSON structure. Start your response with {{ and end with }}. No
   "risky_clauses": [
     {{
       "clause": "...",
-      "why_risky": "...",
-      "irdai_reference": "IRDAI Master Circular 2024, Para X or Regulation Y"
+      "category": "key_policy_condition|financial_impact|potential_inconsistency|requires_verification",
+      "explanation": "what this clause means for the policyholder, in neutral wording",
+      "irdai_reference": "IRDAI Master Circular 2024, Para X or Regulation Y, or null"
     }}
   ],
+  "risky_clauses_note": "Ordinary contractual terms such as a standard co-payment, sub-limit or waiting period are NOT risky: classify them as key_policy_condition or financial_impact. Use potential_inconsistency only if a clause appears to conflict with an IRDAI provision, and requires_verification if the wording is ambiguous or incomplete.",
   "plain_english_summary": "3-4 sentence summary a non-expert can understand"
 }}"""
 
@@ -421,7 +454,9 @@ async def audit_rejection(
         "Insurance Ombudsman Rules 2017, Consumer Protection Act, 2019. "
         "You perform a structured evidence-based analysis in three stages: "
         "Step 1: timeline and TAT analysis. Step 2: potential regulatory inconsistencies. Step 3: redressal route. "
+        "Before any of these, decide whether the documents are sufficient to judge anything at all. "
         "Never state that an insurer has violated a law, regulation or policy term. "
+        + TIMELINE_AND_LANGUAGE_RULES +
         "Describe each finding as a potential inconsistency or an apparent inconsistency for the user to review. "
         "For each finding identify the source, the specific provision, and the supporting text from the uploaded documents. "
         "Do not assume one universal deadline. State the applicable timeline together with its basis, "
@@ -433,6 +468,9 @@ async def audit_rejection(
 
     prompt = f"""CLAIM REJECTION ANALYSIS — structured evidence-based analysis.
 Use cautious wording such as "potential inconsistency" or "appears inconsistent". Do not use the words "violated" or "violation" in any value you write.
+EVIDENCE FIRST: if the policy clauses are missing or incomplete, or the rejection does not name the specific provision or exclusion relied on, set "evidence_status" to "insufficient", list the gaps, and leave "step2_regulatory_violations" empty, "deficiency_in_service" false and "strength_of_case" as "weak". Do not invent a regulatory problem to fill the gap.
+WAITING PERIODS: if the rejection relies on a waiting period, check the policy clauses for an exception (for example accident) and whether the documents show the treatment falls within it, before judging the rejection.
+TAT: report a missed turnaround as "potential TAT non-compliance", never as making the decision invalid.
 
 REJECTION LETTER TEXT:
 {rejection_text[:3500]}
@@ -450,6 +488,8 @@ Return ONLY this JSON object. Start with {{ and end with }}. Nothing before or a
 {{
   "rejection_reason_category": "pre_existing_disease|waiting_period|exclusion|documentation|cashless_denial|fraud|procedure_not_covered|sub_limit|other",
   "rejection_reason_summary": "1-2 sentence summary of what insurer claims",
+  "evidence_status": "sufficient|partial|insufficient",
+  "evidence_gaps": ["what is missing, e.g. the rejection does not name the exclusion relied on"],
   "is_valid_rejection": false,
   "confidence": "high|medium|low",
 
@@ -565,6 +605,7 @@ async def generate_appeal_letter(
         f"Phrase concerns as apparent or potential inconsistencies and do not assert that a violation has been established. "
         f"Cite specific IRDAI regulations with paragraph numbers where they are supplied in the analysis. "
         f"Follow correct Indian legal letter format. "
+        + TIMELINE_AND_LANGUAGE_RULES +
         f"Insurance type: {insurance_type.upper()}. {type_context}"
     )
 
@@ -840,6 +881,7 @@ async def audit_life_rejection(
         "review a claim rejection against IRDAI regulations and Insurance Act 1938. "
         "You are NOT a lawyer. Output is NOT legal advice and is NOT an official determination. "
         "Describe findings as potential inconsistencies and never state that a violation has been established. "
+        + TIMELINE_AND_LANGUAGE_RULES +
         "You reference IRDAI Life Regs 2023, Insurance Act 1938 S.45, "
         "IRDAI Master Circular 2024, Ombudsman Rules 2017, CPA 2019. "
         "CRITICAL: Return ONLY a valid JSON object. "
@@ -950,7 +992,7 @@ async def extract_motor_life_policy_clauses(policy_text: str, insurance_type: st
   "deductibles": {"compulsory": "...", "voluntary": "...", "note": "..."},
   "ncb_percentage": "No Claim Bonus percentage if applicable",
   "cashless_garages": "number or description",
-  "risky_clauses": [{"clause": "...", "why_risky": "...", "irdai_reference": "..."}],
+  "risky_clauses": [{"clause": "...", "category": "key_policy_condition|financial_impact|potential_inconsistency|requires_verification", "explanation": "neutral wording; ordinary contractual terms are not risky", "irdai_reference": "... or null"}],
   "plain_english_summary": "3-4 sentence summary"
 }"""
     else:
@@ -972,7 +1014,7 @@ async def extract_motor_life_policy_clauses(policy_text: str, insurance_type: st
   "suicide_clause": "...",
   "revival_clause": "...",
   "incontestability_period": "3 years per IRDAI Life Regulations 2023",
-  "risky_clauses": [{"clause": "...", "why_risky": "...", "irdai_reference": "..."}],
+  "risky_clauses": [{"clause": "...", "category": "key_policy_condition|financial_impact|potential_inconsistency|requires_verification", "explanation": "neutral wording; ordinary contractual terms are not risky", "irdai_reference": "... or null"}],
   "plain_english_summary": "3-4 sentence summary"
 }"""
 
@@ -1141,6 +1183,11 @@ async def audit_settlement(
         "review whether a PARTIAL settlement amount appears consistent with the terms of their policy. "
         "You are NOT a lawyer. Your output is NOT legal advice and is NOT an official determination. "
         "Reference IRDAI Master Circular 2024, IRDAI Health Regs 2024, Insurance Ombudsman Rules 2017. "
+        + TIMELINE_AND_LANGUAGE_RULES +
+        "A deduction that is supported by a policy clause (for example a stated co-payment) is a justified "
+        "contractual deduction, not a regulatory problem; compute a co-payment on the admissible amount and "
+        "check the arithmetic. Do not manufacture a regulatory issue merely because the amount paid is less "
+        "than the amount billed. "
         "CRITICAL: Return ONLY a valid JSON object. Output MUST start with { and end with }. "
         "No markdown fences, no preamble, no text before { or after }."
     )
@@ -1212,6 +1259,7 @@ async def audit_preauth_denial(
         "is NOT legal advice. Reference IRDAI Master Circular on cashless facility TAT "
         "(1 hour for initial pre-auth, 3 hours for final discharge authorization), IRDAI "
         "Health Insurance Regulations 2024. "
+        + TIMELINE_AND_LANGUAGE_RULES +
         "CRITICAL: Return ONLY a valid JSON object. Output MUST start with { and end with }. "
         "No markdown fences, no preamble, no text before { or after }."
     )
@@ -1231,8 +1279,10 @@ ESTIMATED TREATMENT COST: {f"₹{treatment_amount:,.0f}" if treatment_amount els
 
 A pre-auth denial is NOT a final claim rejection — the patient can still pay out of pocket and
 file for reimbursement under the same policy. Analyze whether the denial reason itself is valid,
-and whether the insurer met the cashless TAT (1 hour initial response, 3 hours for discharge
-authorization once complete documents were submitted).
+and, separately, whether the insurer appears to have met the cashless TAT (1 hour for the pre-authorisation
+decision, 3 hours for final authorisation after the discharge request). If the letter or the user states when the
+request was made and when the insurer responded, compute the elapsed time. A missed TAT is "potential TAT
+non-compliance" and does not by itself establish that the underlying cashless denial is invalid.
 
 Return ONLY this JSON object:
 {{
@@ -1241,7 +1291,7 @@ Return ONLY this JSON object:
   "is_valid_denial": false,
   "confidence": "high|medium|low",
   "tat_violated": false,
-  "tat_violation_detail": "documented timing that appears inconsistent with the applicable cashless timeline and its basis, if any, else null",
+  "tat_violation_detail": "if timing appears to exceed the applicable cashless timeline: 'Potential TAT non-compliance: ...' with the documented times, the timeline and its basis, ending by stating the timing issue does not by itself establish the denial is invalid; else null",
   "immediate_recommendation": "pay_and_reimburse|escalate_to_gro_first|challenge_before_admission",
   "reimbursement_path_note": "brief note on the fact that paying out-of-pocket and claiming reimbursement afterward is still available regardless of this denial",
   "key_arguments": ["argument 1", "argument 2"],

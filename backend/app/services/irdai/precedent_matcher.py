@@ -29,18 +29,18 @@ PRECEDENTS = [
         "how_to_use": "Cite when a motor claim is rejected purely for a licence technicality with no proven link to the accident cause.",
     },
     {
-        "id": "moratorium-8-year",
+        "id": "moratorium-60-months",
         "category": "health",
         "case_name": "IRDAI Health Insurance Regulations — Moratorium Provision",
         "court": "IRDAI (Regulatory, applied consistently in Ombudsman awards)",
-        "keywords": ["non-disclosure", "pre-existing disease", "8 years", "moratorium", "concealment"],
+        "keywords": ["non-disclosure", "pre-existing disease", "60 months", "5 years", "moratorium", "concealment"],
         "summary": (
-            "Multiple Ombudsman awards have consistently held that once a health policy has been continuously "
-            "renewed for 8 years, a claim cannot be repudiated for non-disclosure or misrepresentation except "
+            "IRDAI health-insurance material describes a moratorium of 60 continuous months. Once a health policy has been continuously "
+            "renewed for that period, a claim cannot be repudiated for non-disclosure or misrepresentation except "
             "in cases of clearly established, deliberate fraud — mere non-disclosure alone does not suffice "
             "after the moratorium period."
         ),
-        "how_to_use": "Cite when a rejection for non-disclosure/PED comes after 8+ years of continuous policy renewal.",
+        "how_to_use": "Consider when a rejection for non-disclosure/PED comes after 60+ continuous months of coverage; verify the provision and the continuity of cover first.",
     },
     {
         "id": "incontestability-3-year",
