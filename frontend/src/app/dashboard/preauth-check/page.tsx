@@ -137,6 +137,20 @@ export default function PreauthCheckPage() {
             )}
           </div>
 
+          {result.policy_evidence?.length > 0 && (
+            <div className="rounded-lg p-3" style={{ background: "var(--surface-2)", border: "1px solid var(--surface-5)" }}>
+              <p className="text-xs font-semibold mb-1.5" style={{ color: "var(--text-tertiary)" }}>Policy evidence</p>
+              {result.policy_evidence.map((e: any, i: number) => (
+                <p key={i} className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
+                  {e.point && <span>{e.point} &mdash; </span>}
+                  <strong>{e.clause_ref ? `Clause ${e.clause_ref}` : "Clause number not shown"}</strong>
+                  {e.excerpt && <span className="italic"> &ldquo;{e.excerpt}&rdquo;</span>}
+                  {e.excerpt_verified === false && " (excerpt not found verbatim in the supplied policy - verify)"}
+                </p>
+              ))}
+            </div>
+          )}
+
           {result.key_arguments?.length > 0 && (
             <div>
               <p className="text-xs font-semibold mb-1.5" style={{ color: "var(--text-tertiary)" }}>Key arguments</p>

@@ -14,6 +14,9 @@ import pytesseract
 
 logger = logging.getLogger(__name__)
 
+MAX_OCR_PAGES = int(os.getenv("MAX_OCR_PAGES", "40"))        # pages processed per PDF
+TESSERACT_TIMEOUT_S = int(os.getenv("TESSERACT_TIMEOUT_S", "45"))  # per page
+
 PADDLEOCR_ENABLED = os.getenv("PADDLEOCR_ENABLED", "false").lower() == "true"
 
 _paddle_ocr = None
@@ -48,7 +51,9 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
 
     try:
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
-            for page_num, page in enumerate(pdf.pages):
+            if len(pdf.pages) > MAX_OCR_PAGES:
+                logger.warning(f"PDF has {len(pdf.pages)} pages; only the first {MAX_OCR_PAGES} are processed")
+            for page_num, page in enumerate(pdf.pages[:MAX_OCR_PAGES]):
 
                 page_text = page.extract_text()
                 if page_text and len(page_text.strip()) > 50:
@@ -95,6 +100,7 @@ def _ocr_image(img: Image.Image) -> str:
             img,
             lang="eng+hin", 
             config="--oem 3 --psm 6",
+            timeout=TESSERACT_TIMEOUT_S,
         )
         return text
     except Exception as e:

@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useDropzone } from "react-dropzone";
 import { useSearchParams } from "next/navigation";
 import { documentsApi, analysisApi, languageApi } from "@/lib/api";
+import { pollDocument, type PollHandle } from "@/lib/poll";
 import { useLanguageStore } from "@/store/language";
 import { SUPPORTED_LANGUAGES } from "@/lib/i18n/languages";
 import toast from "react-hot-toast";
@@ -17,6 +18,9 @@ import Link from "next/link";
 type Step = "upload" | "form" | "analyzing" | "result";
 
 function AuditorPageInner() {
+  const pollRef = useRef<PollHandle | null>(null);
+  // Stop any document polling when leaving the page.
+  useEffect(() => () => pollRef.current?.cancel(), []);
   const searchParams = useSearchParams();
   const language = useLanguageStore((s) => s.language);
 
@@ -83,26 +87,17 @@ function AuditorPageInner() {
           setLoadingDoc(false);
         } else {
           toast("Document is still processing, waiting...", { icon: "⏳" });
-          const interval = setInterval(async () => {
-            try {
-              const r = await documentsApi.get(docId);
-              if (r.data.ocr_status === "done") {
-                setRejectionDoc(r.data);
-                setStep("form");
-                clearInterval(interval);
-                setLoadingDoc(false);
-                toast.success("Ready. Fill in claim details to start the analysis.");
-              } else if (r.data.ocr_status === "failed") {
-                clearInterval(interval);
-                setLoadingDoc(false);
-                toast.error("Document OCR failed. Please re-upload.");
-              }
-            } catch {
-              clearInterval(interval);
+          pollRef.current = pollDocument(docId, {
+            onDone: (d) => {
+              setRejectionDoc(d);
+              setStep("form");
               setLoadingDoc(false);
-            }
-          }, 3000);
-          setTimeout(() => { clearInterval(interval); setLoadingDoc(false); }, 120000);
+              toast.success("Ready. Fill in claim details to start the analysis.");
+            },
+            onFailed: () => { setLoadingDoc(false); toast.error("Document OCR failed. Please re-upload."); },
+            onTimeout: () => { setLoadingDoc(false); toast.error("Processing is taking unusually long. Check the Documents page later."); },
+            onAuthError: () => setLoadingDoc(false),
+          });
         }
       } catch {
         toast.error("Could not load document. Please re-upload.");
@@ -130,21 +125,16 @@ function AuditorPageInner() {
         } else {
           toast.success("Rejection letter uploaded. OCR processing...");
         }
-        const interval = setInterval(async () => {
-          try {
-            const docRes = await documentsApi.get(docId);
-            if (docRes.data.ocr_status === "done") {
-              setRejectionDoc(docRes.data);
-              clearInterval(interval);
-              setStep("form");
-              toast.success("Ready. Fill in claim details to start the analysis.");
-            } else if (docRes.data.ocr_status === "failed") {
-              clearInterval(interval);
-              toast.error("OCR failed. Please try a clearer image or PDF.");
-            }
-          } catch { /* keep polling */ }
-        }, 3000);
-        setTimeout(() => clearInterval(interval), 120000);
+        pollRef.current?.cancel();
+        pollRef.current = pollDocument(docId, {
+          onDone: (d) => {
+            setRejectionDoc(d);
+            setStep("form");
+            toast.success("Ready. Fill in claim details to start the analysis.");
+          },
+          onFailed: () => toast.error("OCR failed. Please try a clearer image or PDF."),
+          onTimeout: () => toast.error("Processing is taking unusually long. Check the Documents page later."),
+        });
       } catch (e: any) {
         toast.error(e?.response?.data?.detail || "Upload failed");
       } finally {
@@ -626,6 +616,26 @@ function AuditResultView({
           </span>
         </div>
       </div>}
+
+      {/* Policy evidence: exact clause numbers and excerpts traced to the supplied policy */}
+      {reg?.policy_evidence?.length > 0 && (
+        <div className="card p-5 border-l-4 border-blue-500 bg-surface-2">
+          <p className="font-semibold style-text-primary text-sm mb-2">Policy evidence</p>
+          {reg.policy_evidence.map((e: any, i: number) => (
+            <p key={i} className="text-xs style-text-secondary mt-1.5">
+              {e.point && <span>{e.point} &mdash; </span>}
+              <strong>{e.clause_ref ? `Clause ${e.clause_ref}` : "Clause number not shown"}</strong>
+              {e.excerpt && <span className="italic"> &ldquo;{e.excerpt}&rdquo;</span>}
+              {e.excerpt_verified === false && <span className="text-amber-500"> (excerpt not found verbatim in the supplied policy - verify)</span>}
+            </p>
+          ))}
+          {reg?.citation_check?.unverified?.length > 0 && (
+            <p className="text-xs text-amber-500 mt-2">
+              Clause number(s) {reg.citation_check.unverified.join(", ")} in the AI output were not found in the supplied policy text and are marked for verification.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Waiting-period review (exception stage already applied) */}
       {wpReview?.waiting_periods?.length > 0 && (

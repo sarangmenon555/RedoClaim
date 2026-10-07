@@ -55,7 +55,7 @@ async def test_qdrant():
     from app.services.rag.rag_pipeline import ensure_collections, client
     try:
         await ensure_collections()
-        collections = [c.name for c in client.get_collections().collections]
+        collections = [c.name for c in (await client.get_collections()).collections]
         ok(f"Qdrant connected. Collections: {collections}")
         return True
     except Exception as e:

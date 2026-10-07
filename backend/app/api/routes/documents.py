@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Backgro
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
+import asyncio
 import os
 import re
 import uuid
@@ -25,6 +26,9 @@ from app.api.deps.auth import get_current_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# At most 2 documents are OCR-processed at once, so a few uploads cannot exhaust CPU/RAM.
+_PROCESSING_SLOTS = asyncio.Semaphore(2)
 
 
 # ── Upload hardening ──────────────────────────────────────────────────────────
@@ -117,10 +121,10 @@ async def upload_document(
     # and before the user acts on a confidently-wrong analysis.
     page_count = 1
     if content_type == "application/pdf":
-        quality = check_pdf_quality(file_bytes)
+        quality = await asyncio.to_thread(check_pdf_quality, file_bytes)
         page_count = quality.get("page_count", 1) or 1
     else:
-        quality = check_image_quality(file_bytes)
+        quality = await asyncio.to_thread(check_image_quality, file_bytes)
     quality_ok = quality["ok"]
     quality_issues = quality["issues"]
 
@@ -186,7 +190,7 @@ async def process_document_async(
     extract clauses. Runs in-process on the web service (see the /upload
     docstring for the Celery-vs-BackgroundTasks trade-off).
     """
-    async with AsyncSessionLocal() as db:
+    async with _PROCESSING_SLOTS, AsyncSessionLocal() as db:
         doc = None
         try:
             doc = await db.get(Document, doc_id)
@@ -199,9 +203,9 @@ async def process_document_async(
             await db.commit()
 
             if mime_type == "application/pdf":
-                text = extract_text_from_pdf(file_bytes)
+                text = await asyncio.to_thread(extract_text_from_pdf, file_bytes)
             else:
-                text = extract_text_from_image(file_bytes, mime_type)
+                text = await asyncio.to_thread(extract_text_from_image, file_bytes, mime_type)
 
             logger.info(f"OCR complete for {doc_id}: {len(text or '')} chars extracted")
 
@@ -213,7 +217,7 @@ async def process_document_async(
             # letters). Sanitize it and flag — but don't block on — anything
             # that looks like a prompt-injection attempt, since we still
             # want to process the user's own real document.
-            text = sanitize_user_input(text or "", max_length=200_000)
+            text = await asyncio.to_thread(sanitize_user_input, text or "", 200_000)
             injection_detected = check_prompt_injection(text) if text else False
             if injection_detected:
                 logger.warning(f"Possible prompt-injection pattern detected in document {doc_id}")
@@ -235,7 +239,7 @@ async def process_document_async(
             doc.quality_issues = issues
 
             # Step 2: Chunk + embed
-            chunks = chunk_text(text)
+            chunks = await asyncio.to_thread(chunk_text, text)
             await upsert_document_chunks(
                 document_id=doc_id,
                 user_id=str(doc.owner_id),
@@ -261,6 +265,24 @@ async def process_document_async(
                     await db.commit()
             except Exception as commit_err:
                 logger.error(f"Failed to mark {doc_id} as failed: {commit_err}")
+
+
+@router.get("/{document_id}/status")
+async def get_document_status(
+    document_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Lightweight status for polling (no OCR text / clauses in the payload)."""
+    doc = await db.get(Document, document_id)
+    if not doc or str(doc.owner_id) != str(current_user.id):
+        raise HTTPException(404, "Document not found")
+    return {
+        "id": str(doc.id),
+        "ocr_status": doc.ocr_status,
+        "embedding_status": doc.embedding_status,
+        "has_clauses": bool(doc.extracted_clauses),
+    }
 
 
 @router.get("/{document_id}")

@@ -150,6 +150,7 @@ export const documentsApi = {
   },
   list: () => api.get("/documents/"),
   get: (id: string) => api.get(`/documents/${id}`),
+  status: (id: string) => api.get(`/documents/${id}/status`),
   getPolicySummary: (id: string) => api.get(`/analysis/policy/${id}/summary`),
 };
 

@@ -177,6 +177,8 @@ export interface AuditReport {
       deficiency_in_service: DeficiencyCheck;
       evidence_assessment?: EvidenceAssessment;
       waiting_period_review?: any;
+      policy_evidence?: { point?: string; clause_ref?: string | null; excerpt?: string; excerpt_verified?: boolean }[];
+      citation_check?: { verified: string[]; unverified: string[]; insurer_cited?: string[] };
     };
     step3_redressal: EscalationPaths;
   };

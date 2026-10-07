@@ -1,4 +1,5 @@
 """File storage service using boto3 (S3-compatible — works with Supabase Storage)."""
+import asyncio
 import boto3
 from botocore.client import Config
 import logging
@@ -41,7 +42,9 @@ async def upload_file(
     content_type: str = "application/octet-stream",
 ) -> str:
     client = get_storage_client()
-    client.put_object(
+    # boto3 is synchronous: run it in a worker thread so the event loop stays free.
+    await asyncio.to_thread(
+        client.put_object,
         Bucket=bucket,
         Key=path,
         Body=data,
@@ -52,13 +55,14 @@ async def upload_file(
 
 async def download_file(bucket: str, path: str) -> bytes:
     client = get_storage_client()
-    response = client.get_object(Bucket=bucket, Key=path)
-    return response["Body"].read()
+    def _get() -> bytes:
+        return client.get_object(Bucket=bucket, Key=path)["Body"].read()
+    return await asyncio.to_thread(_get)
 
 
 async def delete_file(bucket: str, path: str):
     client = get_storage_client()
-    client.delete_object(Bucket=bucket, Key=path)
+    await asyncio.to_thread(client.delete_object, Bucket=bucket, Key=path)
 
 
 def get_file_url(bucket: str, path: str, expires_seconds: int = 3600) -> str:

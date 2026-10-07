@@ -295,6 +295,15 @@ TIMELINE_AND_LANGUAGE_RULES = (
     "before mentioning any regulatory or legal angle. "
     "(5) Ordinary contractual terms (a standard co-payment, sub-limit or waiting period) are not 'risky'; "
     "do not present them as regulatory problems. "
+    "(6) CITATIONS: cite a policy clause only by a number that appears in the POLICY CLAUSE REFERENCE supplied, "
+    "together with a short verbatim excerpt (policy_evidence: clause_ref + excerpt). Never generate, guess or "
+    "renumber a clause number. If the number is not shown, write 'clause number not shown in the supplied text' "
+    "and quote the wording instead. "
+    "(7) INFERENCE VS FINDING: keep what the documents establish separate from what you infer. If a conclusion "
+    "depends on policy wording that was not supplied (for example which charges a proportionate deduction "
+    "applies to), do not call a deduction, rejection or settlement 'justified' or 'correct'; say the arithmetic is "
+    "consistent but the basis must be verified, and name the clause or document to check. Use 'appears', 'may' or "
+    "'is consistent with' for inferences. "
 )
 
 # ── 1. Policy Clause Extractor ────────────────────────────────────
@@ -310,11 +319,19 @@ async def extract_policy_clauses(policy_text: str) -> dict:
     prompt = f"""Analyze this Indian insurance policy document and extract ALL clauses.
 
 DOCUMENT TEXT:
-{policy_text[:7000]}
+{policy_text[:20000]}
 
 IMPORTANT FOR WAITING PERIODS: for every waiting period, also record any EXCEPTION to it in the "exceptions" list
 (for example "waived where the treatment is required due to an accident"). If the policy has an exception that applies to
 all waiting periods, also list it in "waiting_period_exceptions" with applies_to "all".
+
+IMPORTANT FOR TRACEABILITY: for every waiting period, exclusion, inclusion, sub-limit, room-rent cap, co-payment,
+deductible, notification condition and proportionate deduction, record "clause_ref" EXACTLY as printed in the document
+(for example "3.4"), or null if no number is printed - never invent or renumber one - and a short verbatim "excerpt"
+(max 200 characters) copied from the policy.
+IMPORTANT FOR PROPORTIONATE DEDUCTION / ROOM RENT: record in "proportionate_deduction" whether the policy applies a
+proportionate deduction, and whether the policy ITSELF lists which charges it applies to ("scope_specified" true only if
+the wording names the charges or says all charges; a phrase such as "as specified in the policy" is NOT a scope).
 
 IMPORTANT FOR CO-PAYMENT: Extract BOTH the percentage AND the exact age/condition it applies to.
 Example: if policy says "20% for age 60 and above, NIL for below 60", extract both parts.
@@ -330,21 +347,31 @@ Return ONLY this JSON structure. Start your response with {{ and end with }}. No
   "renewal_date": "YYYY-MM-DD or null",
   "is_cis": false,
   "waiting_periods": [
-    {{"condition": "...", "duration": "...", "exceptions": ["exception text copied or closely paraphrased from the policy, or empty list"], "risk_level": "high|medium|low"}}
+    {{"clause_ref": "as printed or null", "excerpt": "verbatim, max 200 chars", "condition": "...", "duration": "...", "exceptions": ["exception text copied or closely paraphrased from the policy, or empty list"], "risk_level": "high|medium|low"}}
   ],
   "waiting_period_exceptions": [
     {{"exception": "e.g. accident-related treatment is not subject to specific waiting periods", "applies_to": "all or a specific condition"}}
   ],
   "exclusions": [
-    {{"clause": "...", "description": "...", "risk_level": "high|medium|low"}}
+    {{"clause_ref": "as printed or null", "excerpt": "verbatim, max 200 chars", "clause": "...", "description": "...", "risk_level": "high|medium|low"}}
   ],
   "inclusions": [
-    {{"benefit": "...", "limit": "...", "note": "..."}}
+    {{"clause_ref": "as printed or null", "excerpt": "verbatim, max 200 chars", "benefit": "...", "limit": "...", "note": "..."}}
   ],
   "sub_limits": [
-    {{"item": "...", "limit": "...", "note": "..."}}
+    {{"clause_ref": "as printed or null", "excerpt": "verbatim, max 200 chars", "item": "...", "limit": "...", "note": "..."}}
   ],
-  "room_rent_cap": {{"limit": "...", "type": "per_day|percentage|none", "note": "..."}},
+  "room_rent_cap": {{"clause_ref": "as printed or null", "excerpt": "verbatim, max 200 chars", "limit": "...", "type": "per_day|percentage|none", "note": "..."}},
+  "proportionate_deduction": {{
+    "applies": false,
+    "basis": "how the percentage is computed, as the policy states it",
+    "scope_specified": false,
+    "charges_affected": ["only charges the policy itself names; empty if it does not"],
+    "clause_ref": "as printed or null",
+    "excerpt": "verbatim, max 200 chars"
+  }},
+  "deductible": {{"amount": "...", "type": "per_claim|annual|none", "clause_ref": "as printed or null", "excerpt": "verbatim, max 200 chars"}},
+  "claim_notification": {{"days": "...", "condonation_for_reasonable_cause": false, "clause_ref": "as printed or null", "excerpt": "verbatim, max 200 chars"}},
   "co_payment": {{
     "percentage": "exact percentage e.g. 20% or NIL",
     "applies_to": "exact age/condition e.g. applicable only if insured age >= 60 years, NIL for age below 60",
@@ -376,7 +403,7 @@ Return ONLY this JSON structure. Start your response with {{ and end with }}. No
         prompt=prompt,
         system=system,
         temperature=0.05,
-        max_tokens=3500,
+        max_tokens=5000,
     )
     ms = int((time.time() - start) * 1000)
     logger.info(f"Policy extraction: {ms}ms")
@@ -445,6 +472,7 @@ async def audit_rejection(
     policy_clauses: dict,
     irdai_context: str,
     rejection_patterns: str = "",
+    policy_reference: str = "",
 ) -> dict:
     system = (
         "You are an AI research assistant helping Indian health insurance policyholders "
@@ -476,7 +504,9 @@ REJECTION LETTER TEXT:
 {rejection_text[:3500]}
 
 POLICY CLAUSES ON RECORD:
-{json.dumps(policy_clauses, indent=2)[:2000] if policy_clauses else "Not provided"}
+{json.dumps(policy_clauses, indent=2)[:3500] if policy_clauses else "Not provided"}
+
+{policy_reference or "POLICY CLAUSE REFERENCE: not available. Do NOT cite any clause number."}
 
 IRDAI REGULATIONS (from RAG knowledge base):
 {irdai_context[:2500]}
@@ -490,6 +520,9 @@ Return ONLY this JSON object. Start with {{ and end with }}. Nothing before or a
   "rejection_reason_summary": "1-2 sentence summary of what insurer claims",
   "evidence_status": "sufficient|partial|insufficient",
   "evidence_gaps": ["what is missing, e.g. the rejection does not name the exclusion relied on"],
+  "policy_evidence": [
+    {{"point": "what this policy text shows", "clause_ref": "number from the POLICY CLAUSE REFERENCE, or null", "excerpt": "verbatim, max 200 chars"}}
+  ],
   "is_valid_rejection": false,
   "confidence": "high|medium|low",
 
@@ -1170,6 +1203,7 @@ async def audit_settlement(
     claim_amount: float,
     settled_amount: float,
     irdai_context: str = "",
+    policy_reference: str = "",
 ) -> dict:
     """
     For PARTIAL settlements (not outright rejections) — audits whether the
@@ -1188,6 +1222,10 @@ async def audit_settlement(
         "contractual deduction, not a regulatory problem; compute a co-payment on the admissible amount and "
         "check the arithmetic. Do not manufacture a regulatory issue merely because the amount paid is less "
         "than the amount billed. "
+        "PROPORTIONATE DEDUCTION (room rent): checking the arithmetic is not the same as establishing the deduction. "
+        "Only call it justified if the supplied policy text states which charges the percentage applies to. If it says "
+        "something vague such as 'associated charges as specified in the policy', report the arithmetic as consistent "
+        "but the scope as unverified, and say exactly which clause and charge list must be verified. "
         "CRITICAL: Return ONLY a valid JSON object. Output MUST start with { and end with }. "
         "No markdown fences, no preamble, no text before { or after }."
     )
@@ -1204,7 +1242,9 @@ INSURER'S SETTLEMENT LETTER / DEDUCTION EXPLANATION:
 {settlement_text[:3500]}
 
 POLICY CLAUSES ON RECORD:
-{json.dumps(policy_clauses, indent=2)[:2000] if policy_clauses else "Not provided"}
+{json.dumps(policy_clauses, indent=2)[:3500] if policy_clauses else "Not provided"}
+
+{policy_reference or "POLICY CLAUSE REFERENCE: not available. Do NOT cite any clause number."}
 
 IRDAI REGULATIONS (from RAG knowledge base):
 {irdai_context[:2000] if irdai_context else "Not available"}
@@ -1214,9 +1254,19 @@ record. Return ONLY this JSON object:
 {{
   "deductions_reviewed": [
     {{"stated_reason": "...", "amount_deducted": 0, "justified_by_policy": true,
-      "explanation": "why this deduction does or doesn't match the policy clauses",
+      "explanation": "why this deduction does or doesn't match the policy clauses (use null for justified_by_policy if the policy wording needed to decide was not supplied)",
+      "policy_evidence": {{"clause_ref": "number from the POLICY CLAUSE REFERENCE or null", "excerpt": "verbatim, max 200 chars"}},
       "regulation_reference": "citation if a regulation is relevant, else null"}}
   ],
+  "proportionate_deduction_review": {{
+    "present": false,
+    "actual_room_rent": null,
+    "eligible_room_rent": null,
+    "amount_base_applied": null,
+    "insurer_deduction": null,
+    "charges_in_scope_per_policy": ["ONLY charges the policy text itself names; empty list if it does not say"],
+    "policy_evidence": {{"clause_ref": "number or null", "excerpt": "verbatim wording of the proportionate-deduction clause, max 200 chars"}}
+  }},
   "total_questionable_deduction": 0,
   "is_settlement_likely_correct": true,
   "confidence": "high|medium|low",
@@ -1231,7 +1281,7 @@ Return ONLY the JSON object."""
         prompt=prompt,
         system=system,
         temperature=0.05,
-        max_tokens=2500,
+        max_tokens=3500,
     )
     return _parse_json(raw, context="audit_settlement")
 
@@ -1242,6 +1292,7 @@ async def audit_preauth_denial(
     policy_clauses: dict,
     irdai_context: str,
     treatment_amount: float | None = None,
+    policy_reference: str = "",
 ) -> dict:
     """
     Separate from a post-discharge claim rejection: a cashless PRE-AUTH
@@ -1270,7 +1321,9 @@ INSURER'S PRE-AUTH DENIAL / QUERY LETTER:
 {denial_text[:3500]}
 
 POLICY CLAUSES ON RECORD:
-{json.dumps(policy_clauses, indent=2)[:2000] if policy_clauses else "Not provided"}
+{json.dumps(policy_clauses, indent=2)[:3500] if policy_clauses else "Not provided"}
+
+{policy_reference or "POLICY CLAUSE REFERENCE: not available. Do NOT cite any clause number."}
 
 IRDAI REGULATIONS (from RAG knowledge base):
 {irdai_context[:2500] if irdai_context else "Not available"}
@@ -1294,6 +1347,9 @@ Return ONLY this JSON object:
   "tat_violation_detail": "if timing appears to exceed the applicable cashless timeline: 'Potential TAT non-compliance: ...' with the documented times, the timeline and its basis, ending by stating the timing issue does not by itself establish the denial is invalid; else null",
   "immediate_recommendation": "pay_and_reimburse|escalate_to_gro_first|challenge_before_admission",
   "reimbursement_path_note": "brief note on the fact that paying out-of-pocket and claiming reimbursement afterward is still available regardless of this denial",
+  "policy_evidence": [
+    {{"point": "what this policy text shows", "clause_ref": "number from the POLICY CLAUSE REFERENCE, or null", "excerpt": "verbatim, max 200 chars"}}
+  ],
   "key_arguments": ["argument 1", "argument 2"],
   "reasoning": "one paragraph summary"
 }}

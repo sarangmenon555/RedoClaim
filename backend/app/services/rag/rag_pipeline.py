@@ -11,6 +11,7 @@ Collections:
   - redoclaim_rejection_patterns: known unfair rejection tactics
   - redoclaim_cis_chunks        : Customer Information Sheet chunks
 """
+import asyncio
 import logging
 import uuid
 from typing import Optional
@@ -25,10 +26,29 @@ from app.services.llm.gemini_service import generate_embeddings
 logger = logging.getLogger(__name__)
 EMBEDDING_DIM = 768  # Gemini gemini-embedding-001 / OpenAI text-embedding-3-small, truncated to 768
 
-client = QdrantClient(
+class _AsyncQdrant:
+    """
+    The Qdrant client is synchronous. Calling it directly inside async code blocks
+    the whole event loop (every other request, including login, waits). This proxy
+    runs each call in a worker thread; usage is `await client.search(...)`.
+    """
+    def __init__(self, sync_client):
+        self._c = sync_client
+
+    def __getattr__(self, name):
+        fn = getattr(self._c, name)
+
+        async def run(*args, **kwargs):
+            return await asyncio.to_thread(fn, *args, **kwargs)
+        return run
+
+
+client = _AsyncQdrant(QdrantClient(
     url=settings.QDRANT_URL,
     api_key=getattr(settings, "QDRANT_API_KEY", None),
-)
+    timeout=30,
+))
+_collections_ready = False
 
 COLLECTIONS = {
     "policy":     settings.QDRANT_POLICY_COLLECTION,
@@ -44,14 +64,18 @@ def _is_valid_vector(vector: list) -> bool:
 
 
 async def ensure_collections():
-    existing = {c.name for c in client.get_collections().collections}
+    global _collections_ready
+    if _collections_ready:
+        return
+    existing = {c.name for c in (await client.get_collections()).collections}
     for name in COLLECTIONS.values():
         if name not in existing:
-            client.create_collection(
+            await client.create_collection(
                 collection_name=name,
                 vectors_config=VectorParams(size=EMBEDDING_DIM, distance=Distance.COSINE),
             )
             logger.info(f"Created Qdrant collection: {name}")
+    _collections_ready = True
 
 
 async def upsert_document_chunks(
@@ -68,29 +92,35 @@ async def upsert_document_chunks(
     points = []
     skipped = 0
 
-    for chunk in chunks:
-        try:
-            vector = await generate_embeddings(chunk["text"])
+    sem = asyncio.Semaphore(5)  # embed a few chunks at a time instead of one-by-one
 
-            # Skip chunks with empty vectors — happens when embedding API is unavailable
-            if not _is_valid_vector(vector):
-                skipped += 1
-                logger.debug(f"Skipping chunk {chunk['chunk_index']} — empty embedding")
-                continue
+    async def _embed(chunk):
+        async with sem:
+            try:
+                return chunk, await generate_embeddings(chunk["text"]), None
+            except Exception as e:  # noqa: BLE001
+                return chunk, None, e
 
-            points.append(PointStruct(
-                id=str(uuid.uuid4()),
-                vector=vector,
-                payload={
-                    "document_id": document_id,
-                    "user_id": user_id,
-                    "text": chunk["text"],
-                    "chunk_index": chunk["chunk_index"],
-                },
-            ))
-        except Exception as e:
+    for chunk, vector, err in await asyncio.gather(*[_embed(c) for c in chunks]):
+        if err is not None:
             skipped += 1
-            logger.warning(f"Embed chunk {chunk['chunk_index']} failed: {e}")
+            logger.warning(f"Embed chunk {chunk['chunk_index']} failed: {err}")
+            continue
+        # Skip chunks with empty vectors - happens when the embedding API is unavailable
+        if not _is_valid_vector(vector):
+            skipped += 1
+            logger.debug(f"Skipping chunk {chunk['chunk_index']} - empty embedding")
+            continue
+        points.append(PointStruct(
+            id=str(uuid.uuid4()),
+            vector=vector,
+            payload={
+                "document_id": document_id,
+                "user_id": user_id,
+                "text": chunk["text"],
+                "chunk_index": chunk["chunk_index"],
+            },
+        ))
 
     if skipped > 0:
         logger.warning(
@@ -100,7 +130,7 @@ async def upsert_document_chunks(
         )
 
     if points:
-        client.upsert(collection_name=collection, points=points)
+        await client.upsert(collection_name=collection, points=points)
         logger.info(f"Stored {len(points)} chunks → {collection}")
     else:
         logger.warning(
@@ -126,7 +156,7 @@ async def search_irdai_regulations(query: str, top_k: int = 6) -> str:
             logger.info("Embeddings unavailable — using hardcoded IRDAI context")
             return _get_hardcoded_irdai_context()
 
-        results = client.search(
+        results = await client.search(
             collection_name=COLLECTIONS["irdai"],
             query_vector=vector,
             limit=top_k,
@@ -152,7 +182,7 @@ async def search_rejection_patterns(rejection_text: str, top_k: int = 4) -> str:
         if not _is_valid_vector(vector):
             return ""
 
-        results = client.search(
+        results = await client.search(
             collection_name=COLLECTIONS["rejections"],
             query_vector=vector,
             limit=top_k,
@@ -173,7 +203,7 @@ async def search_policy_chunks(query: str, document_id: str, top_k: int = 5) -> 
         if not _is_valid_vector(vector):
             return []
 
-        results = client.search(
+        results = await client.search(
             collection_name=COLLECTIONS["policy"],
             query_vector=vector,
             query_filter=Filter(must=[
@@ -196,7 +226,7 @@ async def search_cis_chunks(query: str, document_id: str, top_k: int = 4) -> lis
         if not _is_valid_vector(vector):
             return []
 
-        results = client.search(
+        results = await client.search(
             collection_name=COLLECTIONS["cis"],
             query_vector=vector,
             query_filter=Filter(must=[
@@ -213,7 +243,7 @@ async def search_cis_chunks(query: str, document_id: str, top_k: int = 4) -> lis
 async def delete_document_chunks(document_id: str, collection_key: str = "policy"):
     """Delete all vectors for a document (GDPR right-to-erasure)."""
     col = COLLECTIONS.get(collection_key, COLLECTIONS["policy"])
-    client.delete(
+    await client.delete(
         collection_name=col,
         points_selector=FilterSelector(
             filter=Filter(must=[

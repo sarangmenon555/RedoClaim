@@ -31,6 +31,8 @@ from app.services.rag.rag_pipeline import (
 from app.services.irdai.rules_engine import irdai_engine
 from app.services.irdai.evidence_assessment import assess_evidence, apply_insufficient_evidence
 from app.services.irdai.language_guard import soften_legal_language
+from app.services.irdai.citation_guard import build_clause_index, format_reference_block, verify_citations
+from app.services.irdai.settlement_checks import review_settlement
 from app.services.irdai.timeline_model import current_deadline, naive as _naive_dt, CONSUMER_LAW_NOTE
 from app.services.irdai.motor_life_rules_engine import motor_engine, life_engine
 from app.services.irdai.payout_estimator import estimate_payout
@@ -133,15 +135,24 @@ async def audit_claim_rejection(
     # Fetch policy clauses
     policy_clauses = {}
     policy_doc = None
+    policy_text = ""
     if req.policy_document_id:
         policy_doc = await db.get(Document, req.policy_document_id)
+        if policy_doc and str(policy_doc.owner_id) != str(current_user.id):
+            policy_doc = None  # never read another user's document
         if policy_doc and policy_doc.extracted_clauses:
             policy_clauses = policy_doc.extracted_clauses
+        if policy_doc and policy_doc.ocr_text:
+            policy_text = policy_doc.ocr_text
+    clause_index = build_clause_index(policy_text)
+    policy_reference = format_reference_block(clause_index)
 
     # Fetch CIS if provided
     cis_exclusions = []
     if req.cis_document_id:
         cis_doc = await db.get(Document, req.cis_document_id)
+        if cis_doc and str(cis_doc.owner_id) != str(current_user.id):
+            cis_doc = None
         if cis_doc and cis_doc.extracted_clauses:
             cis_data = cis_doc.extracted_clauses
             cis_exclusions = [
@@ -242,6 +253,7 @@ async def audit_claim_rejection(
             policy_clauses=policy_clauses,
             irdai_context=irdai_context,
             rejection_patterns=rejection_patterns,
+            policy_reference=policy_reference,
         )
 
         moratorium = {"moratorium_applies": False}
@@ -271,6 +283,11 @@ async def audit_claim_rejection(
 
     # Evidence gate: INSUFFICIENT EVIDENCE comes before any legal classification.
     audit_result = soften_legal_language(audit_result)
+    # Every "Clause N" the model wrote must exist in the supplied policy text.
+    audit_result, citation_report = verify_citations(
+        audit_result, policy_text, clause_index, extra_text=rejection_doc.ocr_text
+    )
+    audit_result["citation_check"] = citation_report
     evidence = assess_evidence(
         rejection_text=rejection_doc.ocr_text,
         policy_clauses=policy_clauses,
@@ -323,6 +340,8 @@ async def audit_claim_rejection(
                 "deficiency_in_service": deficiency,
                 "evidence_assessment": evidence,
                 "waiting_period_review": waiting_period_review,
+                "policy_evidence": audit_result.get("policy_evidence") or [],
+                "citation_check": audit_result.get("citation_check"),
             },
             "step3_redressal": escalation,
         },
@@ -937,10 +956,13 @@ async def audit_settlement_route(
         raise HTTPException(400, "This document hasn't finished OCR yet.")
 
     policy_clauses = {}
+    policy_text = ""
     if body.policy_document_id:
         policy_doc = await db.get(Document, body.policy_document_id)
         if policy_doc and str(policy_doc.owner_id) == str(current_user.id):
             policy_clauses = policy_doc.extracted_clauses or {}
+            policy_text = policy_doc.ocr_text or ""
+    clause_index = build_clause_index(policy_text)
 
     rag_query = f"partial settlement deduction claim shortfall {settlement_doc.ocr_text[:300]}"
     irdai_context = await search_irdai_regulations(rag_query)
@@ -951,8 +973,15 @@ async def audit_settlement_route(
         claim_amount=body.claim_amount,
         settled_amount=body.settled_amount,
         irdai_context=irdai_context,
+        policy_reference=format_reference_block(clause_index),
     )
     result = soften_legal_language(result)
+    result, citation_report = verify_citations(
+        result, policy_text, clause_index, extra_text=settlement_doc.ocr_text
+    )
+    result["citation_check"] = citation_report
+    # Arithmetic consistency is not the same as the policy establishing the deduction.
+    result = review_settlement(result, policy_clauses, body.claim_amount, body.settled_amount)
     result["disclaimer"] = (
         "AI-generated analysis for informational purposes only — not legal advice. Verify all figures "
         "and citations independently before relying on them."
@@ -989,10 +1018,13 @@ async def preauth_check_route(
         raise HTTPException(400, "This document hasn't finished OCR yet.")
 
     policy_clauses = {}
+    policy_text = ""
     if body.policy_document_id:
         policy_doc = await db.get(Document, body.policy_document_id)
         if policy_doc and str(policy_doc.owner_id) == str(current_user.id):
             policy_clauses = policy_doc.extracted_clauses or {}
+            policy_text = policy_doc.ocr_text or ""
+    clause_index = build_clause_index(policy_text)
 
     rag_query = f"cashless pre-authorization denial TAT {denial_doc.ocr_text[:300]}"
     irdai_context = await search_irdai_regulations(rag_query)
@@ -1002,8 +1034,13 @@ async def preauth_check_route(
         policy_clauses=policy_clauses,
         irdai_context=irdai_context,
         treatment_amount=body.treatment_amount,
+        policy_reference=format_reference_block(clause_index),
     )
     result = soften_legal_language(result)
+    result, citation_report = verify_citations(
+        result, policy_text, clause_index, extra_text=denial_doc.ocr_text
+    )
+    result["citation_check"] = citation_report
     # Deterministic cashless TAT check (1-hour pre-authorisation decision).
     if body.preauth_request_time and body.preauth_decision_time:
         tat = irdai_engine.check_sla_violations(
