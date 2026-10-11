@@ -23,6 +23,7 @@ from app.services.documents.quality_check import (
 )
 from app.core.middleware import sanitize_user_input, check_prompt_injection
 from app.api.deps.auth import get_current_user
+from app.services.assistant.doc_classifier import classify_document
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -81,6 +82,7 @@ async def upload_document(
     file: UploadFile = File(...),
     doc_type: DocumentType = DocumentType.POLICY,
     insurance_type: Optional[InsuranceType] = None,
+    auto_detect: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -166,6 +168,7 @@ async def upload_document(
         content_type,
         doc_type,
         page_count,
+        auto_detect,
     )
 
     return {
@@ -175,6 +178,7 @@ async def upload_document(
         "message": "Document uploaded. OCR processing started in background.",
         "quality_ok": quality_ok,
         "quality_issues": quality_issues,
+        "auto_detect": auto_detect,
     }
 
 
@@ -184,6 +188,7 @@ async def process_document_async(
     mime_type: str,
     doc_type: DocumentType,
     page_count: int = 1,
+    auto_detect: bool = False,
 ):
     """
     Background task: OCR -> sanitize -> chunk -> embed -> (for policies)
@@ -247,9 +252,19 @@ async def process_document_async(
             )
             doc.embedding_status = "done"
 
+            detected_cis = False
+            if auto_detect and text:
+                detected = await classify_document(text)
+                doc_type = detected["doc_type"]
+                detected_cis = detected["is_cis"]
+                doc.doc_type = doc_type
+                doc.insurance_type = detected["insurance_type"]
+
             # Step 3: For policies, extract clauses
             if doc_type == DocumentType.POLICY and text:
                 clauses = await extract_policy_clauses(text)
+                if detected_cis and isinstance(clauses, dict):
+                    clauses["is_cis"] = True
                 doc.extracted_clauses = clauses
                 doc.summary = clauses.get("plain_english_summary", "")
                 doc.risk_flags = clauses.get("risky_clauses", [])

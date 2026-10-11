@@ -1,5 +1,6 @@
 import axios, { AxiosError } from "axios";
 import { getCurrentLanguage } from "@/store/language";
+import type { AssistantContext, AssistantReply } from "@/types/assistant";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://redoclaim-backend.onrender.com";
 
@@ -148,6 +149,15 @@ export const documentsApi = {
       timeout: 300000,
     });
   },
+  uploadAuto: (file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post("/documents/upload", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+      params: { doc_type: "other", auto_detect: true },
+      timeout: 300000,
+    });
+  },
   list: () => api.get("/documents/"),
   get: (id: string) => api.get(`/documents/${id}`),
   status: (id: string) => api.get(`/documents/${id}/status`),
@@ -284,6 +294,16 @@ export const analysisApi = {
   // Curated precedent library matched by category/keywords. No LLM call.
   matchPrecedents: (data: { claim_id?: string; rejection_category?: string; fact_pattern?: string }) =>
     api.post("/analysis/match-precedents", data),
+};
+
+export const assistantApi = {
+  ask: (data: {
+    message: string;
+    document_ids: string[];
+    new_document_ids: string[];
+    context: AssistantContext;
+    history: { role: string; content: string }[];
+  }) => api.post<AssistantReply>("/assistant/ask", data),
 };
 
 export const networkHospitalsApi = {

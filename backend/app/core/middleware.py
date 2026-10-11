@@ -90,7 +90,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 # enough for normal use (was 10, which is far too tight).
                 if "/upload" in request.url.path:
                     limit = 30   # 30 uploads/min per user is plenty
-                elif "/audit-rejection" in request.url.path:
+                elif "/audit-rejection" in request.url.path or "/assistant/ask" in request.url.path:
                     limit = 20   # LLM-heavy; protect the Ollama instance
                 elif "/analyze" in request.url.path:
                     limit = 20

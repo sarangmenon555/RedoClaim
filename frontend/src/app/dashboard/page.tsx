@@ -1,670 +1,340 @@
 "use client";
-import { useEffect, useState } from "react";
-import { claimsApi, documentsApi } from "@/lib/api";
-import { useAuthStore } from "@/store/auth";
-import {
-  FileSearch, AlertTriangle, FileText, Clock, ArrowRight,
-  ShieldCheck, AlertCircle, Heart, Car, TrendingUp, Sparkles,
-  Lock, ChevronRight, Bell, User
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import type { Claim, Document } from "@/types";
-import { format } from "date-fns";
-import { DisclaimerBanner } from "@/components/shared/DisclaimerBanner";
+import { Paperclip, Mic, Send, Loader2, X, AlertCircle, Plus } from "lucide-react";
+import toast from "react-hot-toast";
+import { assistantApi, claimsApi, documentsApi } from "@/lib/api";
+import { pollDocument } from "@/lib/poll";
+import { useAuthStore } from "@/store/auth";
+import { useLanguageStore } from "@/store/language";
+import { useAssistantStore } from "@/store/assistant";
 import { useT } from "@/lib/i18n/useT";
+import MessageView from "@/components/assistant/MessageView";
+import type { ChatMessage } from "@/types/assistant";
+import type { Claim } from "@/types";
 
-/* ─── Insurance Category Tabs ─────────────────────────────────────── */
-type InsuranceCategory = "health" | "motor" | "life";
+const MAX_FILES = 6;
+const MAX_FILE_MB = 20;
+const ACCEPTED = ".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff";
+const SPEECH_LANG: Record<string, string> = {
+  en: "en-IN", hi: "hi-IN", ml: "ml-IN", ta: "ta-IN", te: "te-IN", kn: "kn-IN",
+};
 
-const CATEGORIES: {
-  id: InsuranceCategory;
-  label: string;
-  icon: React.ElementType;
-  color: string;
-  live: boolean;
-  accent: string;
-}[] = [
-  {
-    id: "health",
-    label: "Health",  // fallback label; display uses t(db_health)
-    icon: Heart,
-    color: "#F87171",
-    accent: "rgba(248,113,113,",
-    live: true,
-  },
-  {
-    id: "motor",
-    label: "Motor",
-    icon: Car,
-    color: "#60A5FA",
-    accent: "rgba(96,165,250,",
-    live: true,
-  },
-  {
-    id: "life",
-    label: "Life",
-    icon: TrendingUp,
-    color: "#4ADE80",
-    accent: "rgba(74,222,128,",
-    live: true,
-  },
-];
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const newId = () => Math.random().toString(36).slice(2);
 
-/* ─── Coming Soon Overlay ──────────────────────────────────────────── */
-function ComingSoonBadge({ color }: { color: string }) {
-  return (
-    <span
-      className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest"
-      style={{
-        background: `${color}18`,
-        color,
-        border: `1px solid ${color}40`,
-        letterSpacing: "0.12em",
-      }}
-    >
-      <Lock size={8} />
-      Soon
-    </span>
-  );
+function waitForDocument(id: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    pollDocument(id, {
+      onDone: () => resolve(),
+      onFailed: () => reject(new Error("read_failed")),
+      onTimeout: () => reject(new Error("timeout")),
+      onAuthError: () => reject(new Error("auth")),
+    });
+  });
 }
 
-function LiveBadge() {
-  const liveLabel = useT()("db_live_badge");
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest"
-      style={{
-        background: "rgba(74,222,128,0.12)",
-        color: "#4ADE80",
-        border: "1px solid rgba(74,222,128,0.3)",
-        letterSpacing: "0.12em",
-      }}
-    >
-      <span
-        className="w-1.5 h-1.5 rounded-full animate-pulse"
-        style={{ background: "#4ADE80" }}
-      />
-      {liveLabel}
-    </span>
-  );
-}
-
-/* ─── Coming Soon Panel ────────────────────────────────────────────── */
-function ComingSoonPanel({
-  category,
-}: {
-  category: (typeof CATEGORIES)[number];
-}) {
-  const Icon = category.icon;
-  return (
-    <div
-      className="rounded-2xl p-10 flex flex-col items-center justify-center text-center gap-4 min-h-[340px]"
-      style={{
-        background: `${category.accent}0.04)`,
-        border: `1px dashed ${category.accent}0.25)`,
-      }}
-    >
-      {/* Icon ring */}
-      <div
-        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-1"
-        style={{
-          background: `${category.accent}0.1)`,
-          border: `1px solid ${category.accent}0.2)`,
-          boxShadow: `0 0 40px ${category.accent}0.1)`,
-        }}
-      >
-        <Icon size={34} style={{ color: category.color, opacity: 0.85 }} />
-      </div>
-
-      <div>
-        <h3
-          className="text-xl font-bold mb-1"
-          style={{ color: "var(--text-primary)" }}
-        >
-          {category.label} Insurance
-        </h3>
-        <p
-          className="text-sm max-w-xs mx-auto"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          AI-powered {category.label.toLowerCase()} insurance analysis is being
-          built. Policy auditing, claim tracking &amp; appeal drafting — coming
-          soon.
-        </p>
-      </div>
-
-      {/* Feature chips */}
-      <div className="flex flex-wrap gap-2 justify-center mt-1">
-        {["Policy Analyzer", "Rejection Audit", "Appeal Drafts", "Timeline"].map(
-          (f) => (
-            <span
-              key={f}
-              className="text-xs px-3 py-1 rounded-full"
-              style={{
-                background: `${category.accent}0.06)`,
-                color: `${category.color}`,
-                border: `1px solid ${category.accent}0.15)`,
-              }}
-            >
-              {f}
-            </span>
-          )
-        )}
-      </div>
-
-      {/* Notify CTA */}
-      <button
-        className="mt-2 flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-150"
-        style={{
-          background: `${category.accent}0.1)`,
-          color: category.color,
-          border: `1px solid ${category.accent}0.25)`,
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.background = `${category.accent}0.18)`;
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.background = `${category.accent}0.1)`;
-        }}
-      >
-        <Bell size={14} />
-        Notify me when live
-      </button>
-    </div>
-  );
-}
-
-/* ─── Main Dashboard ───────────────────────────────────────────────── */
 export default function DashboardPage() {
-  const { user } = useAuthStore();
   const t = useT();
-  const [claims, setClaims] = useState<Claim[]>([]);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] =
-    useState<InsuranceCategory>("health");
+  const { user } = useAuthStore();
+  const language = useLanguageStore((s) => s.language);
+  const { messages, busy, addMessage, addDocuments, setContext, setBusy, reset } = useAssistantStore();
+
+  const [text, setText] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [stage, setStage] = useState<"idle" | "reading" | "thinking">("idle");
+  const [listening, setListening] = useState(false);
+  const [canSpeak, setCanSpeak] = useState(false);
+  const [urgent, setUrgent] = useState<Claim[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const bottom = useRef<HTMLDivElement>(null);
+  const recognition = useRef<any>(null);
 
   useEffect(() => {
-    Promise.all([
-      claimsApi.list().then((r) => setClaims(r.data)).catch(() => {}),
-      documentsApi.list().then((r) => setDocuments(r.data)).catch(() => {}),
-    ]).finally(() => setLoading(false));
+    const w = window as any;
+    setCanSpeak(Boolean(w.SpeechRecognition || w.webkitSpeechRecognition));
+    claimsApi
+      .list()
+      .then((r) => {
+        const soon = (r.data as Claim[]).filter((c) => {
+          if (!c.gro_deadline) return false;
+          return Math.ceil((new Date(c.gro_deadline).getTime() - Date.now()) / 86400000) <= 5;
+        });
+        setUrgent(soon);
+      })
+      .catch(() => {});
   }, []);
 
-  const urgentClaims = claims.filter((c) => {
-    if (!c.gro_deadline) return false;
-    const d = Math.ceil(
-      (new Date(c.gro_deadline).getTime() - Date.now()) / 86400000
-    );
-    return d <= 5; // insurer's grievance-response TAT: due within 5 days or already passed
-  });
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, busy]);
 
-  const stats = [
-    {
-      label: t("db_stat_documents"),
-      value: loading ? "—" : documents.length,
-      icon: FileSearch,
-      color: "#22D3EE",
-      bg: "rgba(34,211,238,0.08)",
-      border: "rgba(34,211,238,0.15)",
-      href: "/dashboard/documents",
-    },
-    {
-      label: t("db_stat_claims"),
-      value: loading ? "—" : claims.length,
-      icon: AlertTriangle,
-      color: "#F87171",
-      bg: "rgba(248,113,113,0.08)",
-      border: "rgba(248,113,113,0.15)",
-      href: "/dashboard/auditor",
-    },
-    {
-      label: t("db_stat_violations"),
-      value: loading ? "—" : claims.filter((c) => c.irdai_violation).length,
-      icon: ShieldCheck,
-      color: "#FBBF24",
-      bg: "rgba(251,191,36,0.08)",
-      border: "rgba(251,191,36,0.15)",
-      href: "/dashboard/auditor",
-    },
-    {
-      label: t("db_stat_deadlines"),
-      value: loading ? "—" : urgentClaims.length,
-      icon: Clock,
-      color: "#4ADE80",
-      bg: "rgba(74,222,128,0.08)",
-      border: "rgba(74,222,128,0.15)",
-      href: "/dashboard/timeline",
-    },
-  ];
+  const addFiles = (list: FileList | null) => {
+    if (!list) return;
+    const incoming = Array.from(list);
+    const tooBig = incoming.find((f) => f.size > MAX_FILE_MB * 1024 * 1024);
+    if (tooBig) {
+      toast.error(`${tooBig.name} is larger than ${MAX_FILE_MB} MB`);
+      return;
+    }
+    setFiles((prev) => [...prev, ...incoming].slice(0, MAX_FILES));
+    if (fileInput.current) fileInput.current.value = "";
+  };
 
-  const quickActions = [
-    {
-      href: "/dashboard/analyzer",
-      label: t("db_qa_analyze"),
-      icon: FileSearch,
-      color: "#22D3EE",
-      desc: t("db_qa_analyze_desc"),
-    },
-    {
-      href: "/dashboard/auditor",
-      label: t("db_qa_audit"),
-      icon: AlertTriangle,
-      color: "#F87171",
-      desc: t("db_qa_audit_desc"),
-    },
-    {
-      href: "/dashboard/cis",
-      label: t("db_qa_cis"),
-      icon: FileText,
-      color: "#A78BFA",
-      desc: t("db_qa_cis_desc"),
-    },
-    {
-      href: "/dashboard/appeals",
-      label: t("db_qa_appeal"),
-      icon: FileText,
-      color: "#4ADE80",
-      desc: t("db_qa_appeal_desc"),
-    },
-    {
-      href: "/dashboard/e-jagriti",
-      label: t("nav_ejagriti"),
-      icon: Clock,
-      color: "#FBBF24",
-      desc: t("db_qa_ejagriti_desc"),
-    },
-    {
-      href: "/dashboard/settings",
-      label: t("settings"),
-      icon: User,
-      color: "#f97dcc",
-      desc: t("db_qa_settings_desc"),
-    },
-  ];
+  const toggleMic = () => {
+    const w = window as any;
+    const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Recognition) return;
+    if (listening && recognition.current) {
+      recognition.current.stop();
+      return;
+    }
+    const rec = new Recognition();
+    rec.lang = SPEECH_LANG[language] || "en-IN";
+    rec.interimResults = false;
+    rec.continuous = false;
+    rec.onresult = (event: any) => {
+      const spoken = Array.from(event.results).map((r: any) => r[0].transcript).join(" ");
+      setText((prev) => (prev ? `${prev} ${spoken}` : spoken));
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recognition.current = rec;
+    setListening(true);
+    rec.start();
+  };
 
-  const activeCat = CATEGORIES.find((c) => c.id === activeCategory)!;
+  const send = async (override?: string) => {
+    const state = useAssistantStore.getState();
+    if (state.busy) return;
+    const message = (override ?? text).trim();
+    const attached = override ? [] : files;
+    if (!message && attached.length === 0) return;
 
-  return (
-    <div className="space-y-6 animate-fade-in">
-      {/* ── Welcome ── */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h2
-            className="text-2xl font-bold"
-            style={{ color: "var(--text-primary)" }}
-          >
-            Hey, {user?.full_name?.split(" ")[0]}
-          </h2>
-          <p className="text-sm mt-1" style={{ color: "var(--text-secondary)" }}>
-            {t("db_greeting_sub")}
-          </p>
-        </div>
-        <Sparkles
-          size={20}
-          style={{ color: "#A78BFA", opacity: 0.6, marginTop: 4 }}
-        />
-      </div>
+    const history = state.messages.slice(-6).map((m) => ({ role: m.role, content: m.content }));
+    const userMessage: ChatMessage = {
+      id: newId(),
+      role: "user",
+      content: message,
+      files: attached.map((f) => ({ name: f.name })),
+    };
+    addMessage(userMessage);
+    if (!override) {
+      setText("");
+      setFiles([]);
+    }
+    setBusy(true);
 
-      {/* ── Disclaimer ── */}
-      <DisclaimerBanner variant="banner" context="general" />
+    try {
+      const newIds: string[] = [];
+      if (attached.length > 0) {
+        setStage("reading");
+        for (const file of attached) {
+          const res = await documentsApi.uploadAuto(file);
+          const id = res.data.document_id as string;
+          await waitForDocument(id);
+          newIds.push(id);
+        }
+        addDocuments(newIds);
+      }
 
-      {/* ── Urgent alerts ── */}
-      {urgentClaims.length > 0 && (
-        <div
-          className="rounded-xl p-4 flex items-start gap-3"
-          style={{
-            background: "rgba(248,113,113,0.08)",
-            border: "1px solid rgba(248,113,113,0.2)",
-          }}
-        >
-          <AlertCircle
-            size={17}
-            style={{ color: "#F87171" }}
-            className="shrink-0 mt-0.5"
-          />
-          <div>
-            <p
-              className="font-semibold text-sm"
-              style={{ color: "#FCA5A5" }}
+      setStage("thinking");
+      const current = useAssistantStore.getState();
+      let reply = null;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const res = await assistantApi.ask({
+            message,
+            document_ids: current.documentIds,
+            new_document_ids: newIds,
+            context: current.context,
+            history,
+          });
+          reply = res.data;
+          break;
+        } catch (e: any) {
+          if (e?.response?.status === 409 && attempt < 3) {
+            await sleep(3000);
+            continue;
+          }
+          throw e;
+        }
+      }
+      if (reply) {
+        setContext(reply.context);
+        addMessage({ id: newId(), role: "assistant", content: reply.answer, reply });
+      }
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail;
+      const fallback =
+        e?.message === "read_failed"
+          ? "I could not read one of your documents. Please try a clearer photo or a PDF."
+          : e?.message === "timeout"
+          ? "Reading your document is taking longer than expected. Please try again in a moment."
+          : "Something went wrong. Please try again.";
+      addMessage({
+        id: newId(),
+        role: "assistant",
+        content: typeof detail === "string" ? detail : fallback,
+        error: true,
+      });
+    } finally {
+      setBusy(false);
+      setStage("idle");
+    }
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  };
+
+  const composer = (
+    <div
+      className="rounded-2xl w-full"
+      style={{ background: "var(--surface-1)", border: "1px solid var(--surface-5)" }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        addFiles(e.dataTransfer.files);
+      }}
+    >
+      {files.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-4 pt-3">
+          {files.map((f, i) => (
+            <span
+              key={`${f.name}-${i}`}
+              className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-md"
+              style={{ background: "var(--surface-2)", color: "var(--text-secondary)", border: "1px solid var(--surface-4)" }}
             >
-              {t("db_urgent_title")}
-            </p>
-            {urgentClaims.map((c) => {
-              const days = Math.ceil(
-                (new Date(c.gro_deadline!).getTime() - Date.now()) / 86400000
-              );
-              return (
-                <p
-                  key={c.id}
-                  className="text-xs mt-1"
-                  style={{ color: "#F87171" }}
-                >
-                  {t("db_gro_vs")} <strong>{c.insurer_name}</strong> —{" "}
-                  <strong>
-                    {days < 0 ? `response ${Math.abs(days)} day(s) past the insurer's turnaround` : `${days} day${days !== 1 ? "s" : ""} until the insurer's response date`}
-                  </strong>
-                </p>
-              );
-            })}
-            <p
-              className="text-xs mt-1.5"
-              style={{ color: "rgba(248,113,113,0.6)" }}
-            >
-              {t("db_ai_estimate")}
-            </p>
-            <Link
-              href="/dashboard/timeline"
-              className="text-xs font-medium mt-1 inline-block"
-              style={{ color: "#F87171", textDecoration: "underline" }}
-            >
-              {t("db_view_timeline")}
-            </Link>
-          </div>
+              {f.name}
+              <button
+                aria-label={t("as_remove")}
+                title={t("as_remove")}
+                onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+              >
+                <X size={11} />
+              </button>
+            </span>
+          ))}
         </div>
       )}
-
-      {/* ── Insurance Category Switcher ── */}
-      <div
-        className="card p-1.5"
-        style={{
-          background: "var(--surface-1)",
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "6px",
-        }}
-      >
-        {CATEGORIES.map((cat) => {
-          const Icon = cat.icon;
-          const isActive = activeCategory === cat.id;
-          return (
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={onKeyDown}
+        rows={3}
+        placeholder={t("as_placeholder")}
+        className="w-full bg-transparent resize-none px-4 py-3 text-sm outline-none"
+        style={{ color: "var(--text-primary)" }}
+      />
+      <div className="flex items-center justify-between px-3 py-2.5 border-t" style={{ borderColor: "var(--surface-4)" }}>
+        <div className="flex items-center gap-1">
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            accept={ACCEPTED}
+            className="hidden"
+            onChange={(e) => addFiles(e.target.files)}
+          />
+          <button
+            onClick={() => fileInput.current?.click()}
+            aria-label={t("as_attach")}
+            title={t("as_attach")}
+            className="w-9 h-9 flex items-center justify-center rounded-lg transition"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            <Paperclip size={16} />
+          </button>
+          {canSpeak && (
             <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl transition-all duration-200 relative"
+              onClick={toggleMic}
+              aria-label={t("as_mic")}
+              title={t("as_mic")}
+              className="w-9 h-9 flex items-center justify-center rounded-lg transition"
               style={{
-                background: isActive
-                  ? `${cat.accent}0.1)`
-                  : "transparent",
-                border: isActive
-                  ? `1px solid ${cat.accent}0.3)`
-                  : "1px solid transparent",
-                boxShadow: isActive
-                  ? `0 0 16px ${cat.accent}0.12)`
-                  : "none",
+                color: listening ? "#F87171" : "var(--text-secondary)",
+                background: listening ? "rgba(248,113,113,0.12)" : "transparent",
               }}
             >
-              <Icon
-                size={18}
-                style={{
-                  color: isActive ? cat.color : "var(--text-tertiary)",
-                  transition: "color 0.2s",
-                }}
-              />
-              <span
-                className="text-xs font-semibold"
-                style={{
-                  color: isActive ? cat.color : "var(--text-tertiary)",
-                  transition: "color 0.2s",
-                }}
-              >
-                {t(`db_${cat.id}`)}
-              </span>
-              <div className="absolute top-2 right-2">
-                {cat.live ? <LiveBadge /> : <ComingSoonBadge color={cat.color} />}
-              </div>
+              <Mic size={16} />
             </button>
-          );
-        })}
+          )}
+        </div>
+        <button
+          onClick={() => send()}
+          disabled={busy || (!text.trim() && files.length === 0)}
+          className="btn-primary text-sm px-4 py-2 flex items-center gap-2 disabled:opacity-50"
+        >
+          {busy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+          {t("as_send")}
+        </button>
       </div>
+    </div>
+  );
 
-      {/* ── Category Content ── */}
-      <>
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {stats.map(({ label, value, icon: Icon, color, bg, border, href }) => (
-              <Link
-                key={label}
-                href={href}
-                className="card p-5 group"
-                style={{ transition: "all 0.2s" }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor =
-                    border.replace("0.15", "0.5");
-                  (e.currentTarget as HTMLElement).style.boxShadow = `0 0 20px ${bg.replace("0.08", "0.15")}`;
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor =
-                    "var(--surface-4)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "";
-                }}
-              >
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center mb-3"
-                  style={{ background: bg, border: `1px solid ${border}` }}
-                >
-                  <Icon size={16} style={{ color }} />
-                </div>
-                <div
-                  className="text-2xl font-bold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {value}
-                </div>
-                <div
-                  className="text-xs mt-0.5"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {label}
-                </div>
-              </Link>
-            ))}
-          </div>
+  const urgentBanner = urgent.length > 0 && (
+    <div
+      className="rounded-xl p-3 flex items-start gap-3 w-full"
+      style={{ background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)" }}
+    >
+      <AlertCircle size={16} style={{ color: "#F87171" }} className="shrink-0 mt-0.5" />
+      <div className="text-xs" style={{ color: "#FCA5A5" }}>
+        <p className="font-semibold">{t("db_urgent_title")}</p>
+        {urgent.map((c) => (
+          <p key={c.id} className="mt-0.5">{t("db_gro_vs")} {c.insurer_name}</p>
+        ))}
+        <Link href="/dashboard/timeline" className="underline inline-block mt-1">{t("db_view_timeline")}</Link>
+      </div>
+    </div>
+  );
 
-          {/* {t("db_quick_actions")} */}
-          <div
-            className="card p-5"
-            style={{ background: "var(--surface-1)" }}
+  if (messages.length === 0) {
+    return (
+      <div className="min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center gap-6 max-w-3xl mx-auto animate-fade-in">
+        {urgentBanner}
+        <div className="text-center space-y-3">
+          <h2 className="text-3xl font-light tracking-tight" style={{ color: "var(--text-primary)" }}>
+            {user?.full_name ? `${user.full_name.split(" ")[0]}, ` : ""}
+            {t("as_title")}
+          </h2>
+          <p className="text-sm max-w-xl mx-auto" style={{ color: "var(--text-secondary)" }}>{t("as_sub")}</p>
+        </div>
+        {composer}
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto flex flex-col min-h-[calc(100vh-8rem)] animate-fade-in">
+      <div className="flex-1 space-y-6 pb-6">
+        <div className="flex justify-end">
+          <button
+            onClick={reset}
+            disabled={busy}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
+            style={{ color: "#C4B5FD", border: "1px solid rgba(139,92,246,0.25)", background: "rgba(139,92,246,0.08)" }}
           >
-            <h3
-              className="text-sm font-semibold mb-4"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              {t("db_quick_actions")}
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {quickActions.map(({ href, label, icon: Icon, color, desc }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="flex items-center gap-3 p-3 rounded-xl transition-all duration-150"
-                  style={{ border: "1px solid var(--surface-5)" }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.background =
-                      "var(--surface-2)";
-                    (e.currentTarget as HTMLElement).style.borderColor =
-                      "rgba(139,92,246,0.3)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.background =
-                      "transparent";
-                    (e.currentTarget as HTMLElement).style.borderColor =
-                      "var(--surface-5)";
-                  }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                    style={{
-                      background: `rgba(${
-                        color === "#22D3EE"
-                          ? "34,211,238"
-                          : color === "#F87171"
-                          ? "248,113,113"
-                          : color === "#A78BFA"
-                          ? "167,139,250"
-                          : color === "#4ADE80"
-                          ? "74,222,128"
-                          : "251,191,36"
-                      },0.1)`,
-                    }}
-                  >
-                    <Icon size={14} style={{ color }} />
-                  </div>
-                  <div>
-                    <p
-                      className="text-xs font-semibold"
-                      style={{ color: "var(--text-primary)" }}
-                    >
-                      {label}
-                    </p>
-                    <p
-                      className="text-xs"
-                      style={{ color: "var(--text-tertiary)" }}
-                    >
-                      {desc}
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <Plus size={12} />
+            {t("as_new_chat")}
+          </button>
+        </div>
+        {urgentBanner}
+        {messages.map((m) => (
+          <MessageView key={m.id} message={m} onSuggest={(s) => send(s)} disabled={busy} />
+        ))}
+        {busy && (
+          <div className="flex items-center gap-2 text-sm" style={{ color: "var(--text-secondary)" }}>
+            <Loader2 size={14} className="animate-spin" />
+            {stage === "reading" ? t("as_reading") : t("as_thinking")}
           </div>
-
-          {/* {t("db_recent_claims")} */}
-          {claims.length > 0 && (
-            <div
-              className="card overflow-hidden"
-              style={{ background: "var(--surface-1)" }}
-            >
-              <div
-                className="p-5 flex items-center justify-between border-b"
-                style={{ borderColor: "var(--surface-4)" }}
-              >
-                <h3
-                  className="text-sm font-semibold"
-                  style={{ color: "var(--text-primary)" }}
-                >
-                  {t("db_recent_claims")}
-                </h3>
-                <Link
-                  href="/dashboard/auditor"
-                  className="text-xs"
-                  style={{ color: "#A78BFA" }}
-                >
-                  {t("view_all")}
-                </Link>
-              </div>
-              <div
-                className="divide-y"
-                style={{ borderColor: "var(--surface-4)" }}
-              >
-                {claims.slice(0, 5).map((claim) => (
-                  <div
-                    key={claim.id}
-                    className="p-4 flex items-center justify-between transition-colors"
-                    onMouseEnter={(e) =>
-                      ((e.currentTarget as HTMLElement).style.background =
-                        "var(--surface-2)")
-                    }
-                    onMouseLeave={(e) =>
-                      ((e.currentTarget as HTMLElement).style.background =
-                        "transparent")
-                    }
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{
-                          background: claim.irdai_violation
-                            ? "#F87171"
-                            : "#4ADE80",
-                        }}
-                      />
-                      <div>
-                        <p
-                          className="text-sm font-medium"
-                          style={{ color: "var(--text-primary)" }}
-                        >
-                          {claim.insurer_name}
-                        </p>
-                        <p
-                          className="text-xs"
-                          style={{ color: "var(--text-tertiary)" }}
-                        >
-                          {claim.rejection_date
-                            ? format(
-                                new Date(claim.rejection_date),
-                                "dd MMM yyyy"
-                              )
-                            : t("db_date_unknown")}
-                          {claim.claim_amount
-                            ? ` • ₹${(claim.claim_amount / 100000).toFixed(1)}L`
-                            : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {claim.irdai_violation && (
-                        <span className="badge-high">{t("db_ai_violation_tag")}</span>
-                      )}
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full font-medium"
-                        style={{
-                          background:
-                            claim.status === "rejected"
-                              ? "rgba(248,113,113,0.12)"
-                              : claim.status === "appealing"
-                              ? "rgba(251,191,36,0.12)"
-                              : "rgba(74,222,128,0.12)",
-                          color:
-                            claim.status === "rejected"
-                              ? "#FCA5A5"
-                              : claim.status === "appealing"
-                              ? "#FCD34D"
-                              : "#86EFAC",
-                        }}
-                      >
-                        {claim.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Empty state */}
-          {!loading && claims.length === 0 && documents.length === 0 && (
-            <div
-              className="card p-14 text-center"
-              style={{ background: "var(--surface-1)" }}
-            >
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                style={{
-                  background: "rgba(139,92,246,0.1)",
-                  border: "1px solid rgba(139,92,246,0.2)",
-                }}
-              >
-                <ShieldCheck size={28} style={{ color: "#A78BFA" }} />
-              </div>
-              <h3
-                className="font-semibold mb-2"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {t("db_empty_title")}
-              </h3>
-              <p
-                className="text-sm mb-5"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {t("db_empty_desc")}
-              </p>
-              <Link href="/dashboard/analyzer" className="btn-primary">
-                {t("db_upload_first_doc")} <ArrowRight size={14} />
-              </Link>
-            </div>
-          )}
-        </>
+        )}
+        <div ref={bottom} />
+      </div>
+      <div className="sticky bottom-4">{composer}</div>
     </div>
   );
 }
