@@ -49,7 +49,7 @@ const APPEAL_TYPES = [
     icon: Shield,
     activeColor: "border-amber-500 bg-surface-2",
     borderColor: "border-surface-4 hover:border-amber-300",
-    step: "File at igms.irda.gov.in",
+    step: "File at bimabharosa.irdai.gov.in",
     regulation: "IRDAI Bima Bharosa system",
   },
   {

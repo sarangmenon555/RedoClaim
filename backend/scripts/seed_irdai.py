@@ -35,6 +35,10 @@ from qdrant_client.http.models import VectorParams, Distance, PointStruct
 
 # ── Config ────────────────────────────────────────────────────────
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_EMBEDDING_MODEL = os.environ.get("GEMINI_EMBEDDING_MODEL", "gemini-embedding-001")
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+EMBED_PROVIDER = "gemini" if GEMINI_API_KEY else ("openai" if OPENAI_API_KEY else None)
 QDRANT_URL    = os.environ.get("QDRANT_URL", "")
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", "")
 COLLECTION    = os.environ.get("QDRANT_IRDAI_COLLECTION", "irdai_regulations")
@@ -207,7 +211,7 @@ IRDAI_CHUNKS = [
             "policyholders. The Ombudsman can award the full claim amount plus up to Rs. 5,000 "
             "as costs. The policyholder can approach the Ombudsman if: the insurer rejects the "
             "grievance, or the GRO does not resolve within 30 days, or the policyholder is "
-            "unsatisfied with GRO resolution. File online at www.igms.irda.gov.in. "
+            "unsatisfied with GRO resolution. File online at bimabharosa.irdai.gov.in. "
             "The award is binding on the insurer if the policyholder accepts it. "
             "Eligibility and time limits depend on the Ombudsman rules; generally within 1 year of the relevant rejection/decision or expiry of the insurer-response period, subject to eligibility requirements."
         ),
@@ -289,6 +293,15 @@ IRDAI_CHUNKS = [
 
 # ── Embedding Function ────────────────────────────────────────────
 async def embed_text(text: str, client: "AsyncOpenAI") -> list[float]:
+    if EMBED_PROVIDER == "gemini":
+        resp = await client.embeddings.create(
+            model=GEMINI_EMBEDDING_MODEL,
+            input=text,
+            dimensions=EMBEDDING_DIM,
+        )
+        vector = list(resp.data[0].embedding)
+        norm = sum(x * x for x in vector) ** 0.5
+        return [x / norm for x in vector] if norm else vector
     resp = await client.embeddings.create(
         model=EMBEDDING_MODEL,
         input=text,
@@ -300,9 +313,10 @@ async def embed_text(text: str, client: "AsyncOpenAI") -> list[float]:
 # ── Main Seeding Function ─────────────────────────────────────────
 async def seed():
     # Validate config
-    if not OPENAI_API_KEY:
-        logger.error("OPENAI_API_KEY not set.")
+    if EMBED_PROVIDER is None:
+        logger.error("Set GEMINI_API_KEY (preferred, same as the app) or OPENAI_API_KEY in .env")
         sys.exit(1)
+    logger.info(f"Embedding provider: {EMBED_PROVIDER}")
     if not QDRANT_URL:
         logger.error("QDRANT_URL not set.")
         sys.exit(1)
@@ -331,7 +345,10 @@ async def seed():
     # Embed and upsert each chunk
     from openai import AsyncOpenAI
     points = []
-    openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    if EMBED_PROVIDER == "gemini":
+        openai_client = AsyncOpenAI(api_key=GEMINI_API_KEY, base_url=GEMINI_BASE_URL)
+    else:
+        openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
     for i, chunk in enumerate(IRDAI_CHUNKS):
             try:
                 logger.info(f"Embedding chunk {i+1}/{len(IRDAI_CHUNKS)}: {chunk['title']}")
@@ -356,10 +373,24 @@ async def seed():
                 logger.error(f"Failed to embed chunk {i+1} ({chunk['title']}): {e}")
 
     if not points:
-        logger.error("No points to upsert — check your OpenAI API key")
+        logger.error(f"No points to upsert — check your {EMBED_PROVIDER} API key")
         sys.exit(1)
 
     # Upsert all points in one batch
+    from qdrant_client.http.models import Filter, FieldCondition, MatchValue, FilterSelector
+    try:
+        qdrant.create_payload_index(collection_name=COLLECTION, field_name="source", field_schema="keyword")
+    except Exception as e:
+        logger.warning(f"Could not create payload index on 'source': {e}")
+    try:
+        qdrant.delete(
+            collection_name=COLLECTION,
+            points_selector=FilterSelector(
+                filter=Filter(must=[FieldCondition(key="source", match=MatchValue(value="seed_irdai.py"))])
+            ),
+        )
+    except Exception as e:
+        logger.warning(f"Could not clear earlier seed points (fine on a fresh collection): {e}")
     qdrant.upsert(collection_name=COLLECTION, points=points)
     logger.info(f"Successfully seeded {len(points)} regulation chunks into '{COLLECTION}'")
     logger.info("RAG is now active — rejection audits will use vector search instead of hardcoded fallback.")

@@ -284,7 +284,7 @@ async def _get_insurer_details(args: dict, db) -> dict:
         "note": "RedoClaim has no separate insurer master table — these are stats derived from claims logged in this system, not an official IRDAI insurer registry.",
         "standard_escalation_contacts": {
             "gro": "Insurer's Grievance Redressal Officer — contact listed on policy document / insurer website",
-            "irdai_igms": "https://igms.irda.gov.in",
+            "irdai_igms": "https://bimabharosa.irdai.gov.in",
             "ombudsman": "https://www.cioins.co.in",
             "consumer_ejagriti": "https://e-jagriti.gov.in",
         },

@@ -371,8 +371,8 @@ Policyholder can approach Ombudsman if:
 3. Policyholder is unsatisfied with GRO resolution
 
 [HOW TO FILE]
-• Online: www.igms.irda.gov.in (IRDAI Integrated Grievance Management System)
-• Find ombudsman: search by state at www.ecoi.co.in
+• Online: bimabharosa.irdai.gov.in (IRDAI Integrated Grievance Management System)
+• Find ombudsman: search by state at www.cioins.co.in
 • Physical offices in all major Indian cities
 
 [OMBUDSMAN POWERS]

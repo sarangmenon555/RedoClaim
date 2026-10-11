@@ -117,7 +117,7 @@ WHO CAN FILE:
 - Can authorise representative to file on their behalf
 
 HOW TO FILE:
-- Online: www.igms.irda.gov.in (Integrated Grievance Management System)
+- Online: bimabharosa.irdai.gov.in (Integrated Grievance Management System)
 - Physical: Contact nearest Insurance Ombudsman office
 - Find ombudsman by state on IRDAI website
 

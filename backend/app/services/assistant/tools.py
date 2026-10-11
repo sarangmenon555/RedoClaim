@@ -815,7 +815,13 @@ async def run_general_question(ctx: Ctx) -> dict:
         "insurance claims, rejections and grievances. You are NOT a lawyer; nothing you say is legal advice. "
         "Use the available tools to look up real data (claim status, policy clauses, IRDAI regulations, deadlines) "
         "instead of guessing. Cite specific regulations and dates when you use them. Keep answers concise and "
-        "actionable, in plain text with short paragraphs."
+        "actionable, in plain text with short paragraphs. "
+        "Never write phone numbers, email addresses, street addresses or website addresses from memory: "
+        "contact details change and a wrong one can send the user to the wrong place. Only give web addresses that "
+        "a tool returned, or these verified ones: bimabharosa.irdai.gov.in (IRDAI grievance portal), irdai.gov.in, and "
+        "cioins.co.in (Council for Insurance Ombudsmen). For the address, phone or email of a specific Ombudsman "
+        "office, tell the user to open the Ombudsman finder in this app (/dashboard/ombudsman-finder) and confirm on "
+        "cioins.co.in. If you are not sure of a fact, say so instead of guessing."
     )
     parts = []
     if ctx.claim_id:

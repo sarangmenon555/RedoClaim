@@ -353,7 +353,7 @@ class IRDAIRulesEngine:
             "eligible": is_ombudsman_eligible,
             "max_claim": "₹50,00,000 (50 Lakhs)",
             "deadline": "Eligibility and time limits depend on the applicable Ombudsman rules - generally within one year of the relevant rejection/decision or expiry of the applicable insurer-response period, subject to eligibility requirements",
-            "how": "Online at igms.irda.gov.in | Find your state ombudsman at ecoi.co.in",
+            "how": "Online at bimabharosa.irdai.gov.in | Find your state ombudsman at cioins.co.in",
             "cost": "Completely FREE",
             "expected_resolution": "3 months",
             "powers": "Can award full claim + ₹5,000 costs. Binding on insurer.",

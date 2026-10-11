@@ -673,7 +673,7 @@ async def generate_appeal_letter(
         },
         "bima_bharosa": {
             "to": "The Grievance Cell",
-            "org": "IRDAI — Bima Bharosa Portal (igms.irda.gov.in)",
+            "org": "IRDAI — Bima Bharosa Portal (bimabharosa.irdai.gov.in)",
             "context": (
                 "IRDAI portal complaint. Concise, factual, regulatory-focused. "
                 "List each IRDAI provision the rejection appears inconsistent with, with paragraph numbers. "
