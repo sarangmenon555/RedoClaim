@@ -16,7 +16,7 @@ DATE_KEYS = {
 TEXT_KEYS = {
     "insurer_name", "policy_number", "insurance_type", "patient_name",
     "patient_relationship", "reason_for_porting", "term", "city_tier",
-    "appeal_type", "fact_pattern",
+    "appeal_type", "fact_pattern", "state",
 }
 LIST_KEYS = {"family_ages"}
 

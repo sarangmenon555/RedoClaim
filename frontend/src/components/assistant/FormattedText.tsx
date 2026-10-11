@@ -11,6 +11,7 @@ const INLINE = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)\s]+\)|https?:\/\/[^\s)<]+
 
 function safeHref(url: string): string | null {
   if (/^(https?:|mailto:|tel:)/i.test(url)) return url;
+  if (/^\/(?!\/)/.test(url)) return url;
   return null;
 }
 
@@ -38,7 +39,14 @@ function inline(text: string, keyBase: string): React.ReactNode[] {
       const href = safeHref(token.slice(split + 2, -1));
       nodes.push(
         href ? (
-          <a key={key} href={href} target="_blank" rel="noopener noreferrer" style={linkStyle}>{label}</a>
+          <a
+            key={key}
+            href={href}
+            {...(href.startsWith("/") ? {} : { target: "_blank", rel: "noopener noreferrer" })}
+            style={linkStyle}
+          >
+            {label}
+          </a>
         ) : (
           label
         )

@@ -45,7 +45,7 @@ def _fallback(results: dict, order: list) -> str:
 
 async def compose_answer(ctx: Ctx, results: dict, order: list) -> str:
     only = [results[n] for n in order if n in results]
-    if len(only) == 1 and order[0] == "general_question" and only[0]["status"] == "ok":
+    if len(only) == 1 and only[0]["status"] == "ok":
         answer = (only[0].get("data") or {}).get("answer")
         if answer:
             return str(answer)

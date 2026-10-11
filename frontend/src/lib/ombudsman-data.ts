@@ -16,6 +16,7 @@ export const OMBUDSMAN_OFFICES: OmbudsmanOffice[] = [
     statesCovered: ["Gujarat", "Dadra & Nagar Haveli", "Daman & Diu"],
     address: "Jeevan Prakash Building, 6th Floor, Tilak Marg, Relief Road, Ahmedabad – 380001",
     email: "bimalokpal.ahmedabad@cioins.co.in",
+    phone: "079 - 25501201 / 02 / 05 / 06",
   },
   {
     center: "Bengaluru",

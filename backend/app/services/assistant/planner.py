@@ -30,6 +30,7 @@ INTENT_CATALOG = {
     "cost_benefit": "Help the user decide whether pursuing the claim is worth the time and effort. Needs an audited claim.",
     "followup_letter": "Reminder letter when the insurer has missed its grievance response timeline. Needs an audited claim.",
     "precedents": "Find similar past Ombudsman or consumer-forum case patterns.",
+    "ombudsman_contact": "Address, phone and email of the Insurance Ombudsman office for a state, union territory or city. Put the place in params.state.",
     "ejagriti_guide": "Step-by-step guide to filing a consumer commission complaint on e-Jagriti.",
     "general_question": "Any other question about Indian insurance rights, claims, grievance process or Ombudsman, and the fallback when no other tool fits.",
 }
@@ -38,7 +39,7 @@ PRIORITY = [
     "audit_rejection", "preauth_check", "audit_settlement", "scan_cis", "analyze_policy",
     "waiting_period", "estimate_payout", "copay_breakdown", "compare_policies", "renewal_check",
     "portability", "ncb_check", "sum_insured_check", "precedents", "cost_benefit",
-    "draft_appeal", "followup_letter", "explain_term", "ejagriti_guide", "general_question",
+    "draft_appeal", "followup_letter", "ombudsman_contact", "explain_term", "ejagriti_guide", "general_question",
 ]
 
 KIND_DEFAULT_INTENT = {
@@ -56,11 +57,12 @@ PARAM_GUIDE = (
     "gro_filed (true|false: user already complained to the insurer), accident_related (true|false), years_covered (number), "
     "reason_for_porting (text), term (the insurance term to explain), claim_free_years (integer), od_premium_before_ncb (rupees), "
     "ncb_applied_by_insurer (percent), had_claim_this_year (true|false), sum_insured (rupees), city_tier (metro|tier1|tier2), "
-    "family_ages (list of integers), appeal_type (gro|insurer_escalation|ombudsman|bima_bharosa|consumer_court)"
+    "family_ages (list of integers), state (state, union territory or city for Ombudsman lookups), appeal_type (gro|insurer_escalation|ombudsman|bima_bharosa|consumer_court)"
 )
 
 _KEYWORDS = [
-    (r"appeal|complaint|draft|letter|grievance|write to|ombudsman|bima bharosa", "draft_appeal"),
+    (r"ombudsman.*(address|contact|phone|email|office|where|number)|(address|contact|phone|email|office|number).*ombudsman", "ombudsman_contact"),
+    (r"appeal|complaint|draft|letter|grievance|write to", "draft_appeal"),
     (r"worth|should i (fight|pursue|go ahead)|is it worth", "cost_benefit"),
     (r"similar case|precedent|past case|judg(e)?ment|won (a )?case", "precedents"),
     (r"waiting period", "waiting_period"),
@@ -73,6 +75,12 @@ _KEYWORDS = [
     (r"e-?jagriti|consumer (court|commission|forum)", "ejagriti_guide"),
     (r"room rent|co-?pay", "copay_breakdown"),
 ]
+
+
+OMBUDSMAN_CONTACT_PATTERN = re.compile(
+    r"ombudsman.*(address|contact|phone|email|office|where|number)|(address|contact|phone|email|office|number).*ombudsman",
+    re.IGNORECASE,
+)
 
 
 def _keyword_intents(message: str, has_docs: bool) -> list:
@@ -144,6 +152,7 @@ AN AUDITED CLAIM ALREADY EXISTS IN THIS CONVERSATION: {claim_flag}
 Choose at most {MAX_INTENTS} tools, most important first. Rules:
 - If a rejection letter is attached with this message, include audit_rejection.
 - If the user asks for a letter, complaint or appeal, include draft_appeal.
+- If the user asks for the address, phone or email of an Ombudsman office, use ombudsman_contact and set params.state to the place they name.
 - If the user only asks a general question, use explain_term for a single term or clause, otherwise general_question.
 - If the message answers a question about missing details, include the tools that were waiting.
 - Never choose a tool just because a document exists; choose it because the user's goal needs it.
@@ -179,6 +188,9 @@ async def build_plan(ctx: Ctx, pending: list) -> list:
         for name in _keyword_intents(ctx.message, bool(ctx.docs)):
             if name not in intents:
                 intents.append(name)
+
+    if OMBUDSMAN_CONTACT_PATTERN.search(ctx.message or "") and "ombudsman_contact" not in intents:
+        intents.append("ombudsman_contact")
 
     for item in pending:
         if not isinstance(item, dict) or item.get("intent") not in EXECUTORS:

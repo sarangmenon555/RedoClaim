@@ -13,6 +13,7 @@ from app.services.assistant.context import (
 from app.services.assistant.doc_classifier import (
     KIND_LABELS, extract_basic_facts, extract_bill_total, guess_insurance_type,
 )
+from app.services.assistant.ombudsman_lookup import find_offices
 from app.services.assistant.params import as_lines, inr, to_float, to_text
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ INTENT_LABELS = {
     "followup_letter": "Follow-up letter",
     "precedents": "Similar past cases",
     "ejagriti_guide": "Consumer commission guide",
+    "ombudsman_contact": "Insurance Ombudsman office",
     "general_question": "Answer",
 }
 
@@ -808,6 +810,39 @@ async def run_ejagriti_guide(ctx: Ctx) -> dict:
     })
 
 
+async def run_ombudsman_contact(ctx: Ctx) -> dict:
+    label = INTENT_LABELS["ombudsman_contact"]
+    query = " ".join(x for x in [ctx.text("state"), ctx.message] if x)
+    found = find_offices(query)
+    offices = found["offices"]
+    if not offices:
+        return need(label, "Which state, union territory or city are you in? The Ombudsman office depends on where you live.",
+                    [value_field("state", "Your state, union territory or city", "for example Gujarat")])
+
+    place = found["matched"][0] if found["matched"] else "your area"
+    lines = [f"Here are the Insurance Ombudsman details for {place}:"]
+    cards = []
+    for office in offices:
+        if len(offices) > 1:
+            lines.append(f"**{office['center']} office**")
+        lines.append(f"- Office: Insurance Ombudsman, {office['center']}")
+        lines.append(f"- Address: {office['address']}")
+        if office.get("phone"):
+            lines.append(f"- Phone: {office['phone']}")
+        lines.append(f"- Email: {office['email']}")
+        lines.append(f"- Covers: {', '.join(office['statesCovered'])}")
+        cards.append(office)
+    for note in found["notes"][:2]:
+        lines.append(note)
+    lines.append(
+        "Please confirm these details on cioins.co.in before you file, because offices and jurisdictions are occasionally revised. "
+        "You can also use the [Ombudsman finder](/dashboard/ombudsman-finder) in this app."
+    )
+    lines.append("If you would like, I can draft your complaint letter to this office.")
+
+    return ok(label, [], {"answer": "\n".join(lines), "offices": cards}, [{"label": "Open Ombudsman finder", "href": "/dashboard/ombudsman-finder"}])
+
+
 async def run_general_question(ctx: Ctx) -> dict:
     label = INTENT_LABELS["general_question"]
     system = (
@@ -819,9 +854,8 @@ async def run_general_question(ctx: Ctx) -> dict:
         "Never write phone numbers, email addresses, street addresses or website addresses from memory: "
         "contact details change and a wrong one can send the user to the wrong place. Only give web addresses that "
         "a tool returned, or these verified ones: bimabharosa.irdai.gov.in (IRDAI grievance portal), irdai.gov.in, and "
-        "cioins.co.in (Council for Insurance Ombudsmen). For the address, phone or email of a specific Ombudsman "
-        "office, tell the user to open the Ombudsman finder in this app (/dashboard/ombudsman-finder) and confirm on "
-        "cioins.co.in. If you are not sure of a fact, say so instead of guessing."
+        "cioins.co.in (Council for Insurance Ombudsmen). Do not describe how any page in this app works or where its "
+        "data comes from. If you are not sure of a fact, say so instead of guessing."
     )
     parts = []
     if ctx.claim_id:
@@ -861,5 +895,6 @@ EXECUTORS = {
     "followup_letter": run_followup_letter,
     "precedents": run_precedents,
     "ejagriti_guide": run_ejagriti_guide,
+    "ombudsman_contact": run_ombudsman_contact,
     "general_question": run_general_question,
 }
