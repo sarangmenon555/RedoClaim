@@ -30,6 +30,10 @@ def _has(norm: str, phrase: str) -> bool:
     return f" {_norm(phrase).strip()} " in norm
 
 
+MERGED_UT = "Dadra and Nagar Haveli and Daman and Diu"
+MERGED_UT_WORDS = re.compile(r"\b(dadra|nagar haveli|daman|diu|silvassa)\b")
+
+
 def find_offices(query: str) -> dict:
     norm = _norm(query)
     centers: list = []
@@ -58,6 +62,11 @@ def find_offices(query: str) -> dict:
             if office["center"] not in matched:
                 matched.append(office["center"])
             add_center(office["center"])
+
+    if MERGED_UT_WORDS.search(norm):
+        if MERGED_UT not in matched:
+            matched.append(MERGED_UT)
+        add_center("Ahmedabad")
 
     if isinstance(CITIES, dict):
         for city, center in CITIES.items():

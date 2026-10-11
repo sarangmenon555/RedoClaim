@@ -3,8 +3,7 @@ OFFICES = [
         "center": "Ahmedabad",
         "statesCovered": [
             "Gujarat",
-            "Dadra & Nagar Haveli",
-            "Daman & Diu"
+            "Dadra and Nagar Haveli and Daman and Diu"
         ],
         "address": "Jeevan Prakash Building, 6th Floor, Tilak Marg, Relief Road, Ahmedabad – 380001",
         "email": "bimalokpal.ahmedabad@cioins.co.in",
