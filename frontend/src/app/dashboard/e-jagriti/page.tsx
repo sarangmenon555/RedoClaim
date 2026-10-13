@@ -28,7 +28,7 @@ export default function EJagritiPage() {
           <div>
             <p className="font-semibold text-red-800">{t("ej_when_title")}</p>
             <p className="text-sm text-red-700 mt-1">
-              {guide?.when_to_use || "If your insurer has not responded within 15 days of your complaint, you can file directly on e-Jagriti Consumer Court portal under Section 2(11) of the Consumer Protection Act, 2019 — Deficiency in Service."}
+              {guide?.when_to_use || "If your insurer has not responded within 14 days of your complaint, you can file directly on e-Jagriti Consumer Court portal under Section 2(11) of the Consumer Protection Act, 2019 — Deficiency in Service."}
             </p>
             <div className="flex gap-3 mt-3 flex-wrap">
               <a href="https://e-jagriti.gov.in" target="_blank" rel="noopener noreferrer"

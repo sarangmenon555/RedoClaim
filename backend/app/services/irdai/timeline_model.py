@@ -32,10 +32,10 @@ from typing import Optional
 # `current_deadline()` so those stale values are never shown as deadlines.
 TIMELINE_MODEL_VERSION = 2
 
-# Insurer grievance-resolution turnaround. Bima Bharosa material: resolve
-# within 15 days of receipt; some IRDAI health-insurance FAQ text lists 14
-# days for the decision. We show ~15 days and tell the user to verify.
-GRO_RESPONSE_TAT_DAYS = 15
+# Insurer grievance-resolution turnaround: acknowledge immediately and resolve within
+# 14 days of receipt (Master Circular on Protection of Policyholders' Interests, 2024;
+# Master Circular on Operations and Allied Matters of Insurers, 2024, clause 24).
+GRO_RESPONSE_TAT_DAYS = 14
 
 # Conservative, INDICATIVE outer date for the Ombudsman window, counted from
 # the claim rejection. The actual window runs from the relevant
@@ -128,13 +128,12 @@ def build_timeline(
         out["days_until_gro_response_due"] = (response_due - now).days
         items.append({
             "key": "gro_response_tat", "kind": "tat",
-            "label": "Insurer grievance-resolution TAT (approx. 15 days from receipt)",
+            "label": "Insurer grievance-resolution TAT (14 days from receipt)",
             "date": _iso(response_due),
             "overdue": response_due < now,
             "note": (
                 "This is the time the insurer has to respond, not a deadline for you. "
-                "Subject to the applicable framework - some IRDAI material states 14 days "
-                "for the decision; verify the period for your insurer and complaint channel."
+                "IRDAI's master circulars require grievances to be resolved within 14 days of receipt."
             ),
         })
     else:

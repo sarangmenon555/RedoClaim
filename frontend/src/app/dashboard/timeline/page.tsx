@@ -9,7 +9,7 @@ import { DisclaimerBanner } from "@/components/shared/DisclaimerBanner";
 import { useT } from "@/lib/i18n/useT";
 
 // Events, insurer TATs, eligibility-dependent routes and time limits are shown
-// separately. A GRO filing date is an EVENT; the insurer's ~15-day response is a
+// separately. A GRO filing date is an EVENT; the insurer's 14-day response is a
 // TAT owed BY the insurer; no filing deadline is invented for the GRO, the
 // Ombudsman window is conditional/indicative, and consumer-law limitation is not
 // calculated.
@@ -60,7 +60,7 @@ export default function TimelinePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: t("tl_cashless"), value: "1 hour", color: "#22D3EE" },
-            { label: t("tl_gro_resolution"), value: "~15 days", color: "#4ADE80" },
+            { label: t("tl_gro_resolution"), value: "14 days", color: "#4ADE80" },
             { label: t("tl_final_settlement"), value: "Varies", color: "#FBBF24" },
             { label: t("tl_ombudsman_filing"), value: "1 year*", color: "#A78BFA" },
           ].map(({ label, value, color }) => (

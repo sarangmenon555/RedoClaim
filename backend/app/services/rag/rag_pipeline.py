@@ -274,53 +274,45 @@ user to review, not official determinations.
 Health Insurance:
 • Cashless pre-authorisation: WITHIN 1 HOUR of receiving complete documents
 • Cashless final discharge authorisation: Within 3 hours of discharge request
-• Reimbursement claim settlement: Within 30 DAYS of last document received
+• Reimbursement claim settlement: Within 15 DAYS of submission of the claim (IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part B)
 • Claim repudiation (rejection): Must cite specific policy clause + specific IRDAI regulation
-• Acknowledgement of claim intimation: Within 15 MINUTES (digital/email)
+• No claim shall be rejected or closed for want of documents or for delayed intimation of claim
 
 Non-life (Motor, Property):
-• Survey for claims >₹50,000: Within 3 WORKING DAYS of intimation
-• Survey report to insurer: Within 15 days of survey completion
-• Settlement after survey approval: Within 30 DAYS
+• Surveyor allocation: Within 24 HOURS of the claim report
+• Survey report to insurer: Within 15 days of surveyor allocation
+• Insurer decision on the claim: Within 7 DAYS of receiving the survey report, or after expiry of 15 days from surveyor allocation, whichever is earlier (IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C)
+• Survey is mandatory for a motor loss of Rs. 50,000 or more (Rs. 1 lakh or more for other retail general policies); if the surveyor is late, Rs. 500 per day is payable to the claimant
 
 Internal Grievance (GRO):
-• Acknowledgement: Within 3 WORKING DAYS
-• Resolution by GRO: approximately 15 DAYS from complaint receipt (some IRDAI health-insurance FAQ text states 14 days for the decision; verify). This is the INSURER's turnaround - there is no established deadline for the policyholder to file a grievance
-• If unresolved in 15 days → insurer must auto-escalate to senior officer
+• Acknowledgement: IMMEDIATELY on receipt of the complaint
+• Resolution by GRO: 14 DAYS from complaint receipt, with reasons and reference to the specific policy terms if the complaint is not accepted. This is the INSURER's turnaround - there is no established deadline for the policyholder to file a grievance
+• If you are not satisfied with the insurer's resolution, you can escalate to the Insurance Ombudsman (claim amount up to Rs. 50 lakh)
 
-Interest on Delayed Claims (Para 7.4):
-If the insurer's delay in settlement beyond the applicable timeline is attributable to the insurer:
-→ Interest at Bank Rate + 2% per annum on the pending amount may apply (verify the provision)
+Interest on Delayed Claims (IRDAI Master Circular on Protection of Policyholders' Interests, 2024):
+If a claim is not settled within the specified timelines:
+• The claimant is entitled to interest at Bank Rate + 2% per annum from the date of receipt of the claim intimation until the date of payment, paid by the insurer on its own (suo moto)
 → The policyholder may request this interest in an appeal or court filing
 
 [SECTION B — CASHLESS TREATMENT RIGHTS]
-• Insurer CANNOT refuse cashless and ask for reimbursement if network hospital exists
-• Pre-authorisation CANNOT be denied without citing a specific policy exclusion
-• Hospital cannot demand upfront cash if cashless pre-auth is active
-• Insurer/TPA CANNOT demand documents that the hospital/treating doctor must provide
-• Rejection cannot cite "insufficient documents" without specifying EXACTLY which documents
-  are missing and WHY they are required
-• All cashless decisions must be communicated in writing
-• Verbal denials of cashless appear inconsistent with the Master Circular's requirement of written communication
+• Insurers must decide on a cashless request immediately and within one hour of receiving it (IRDAI Master Circular on Health Insurance Business, 2024, Para 15)
+• Insurers must give final authorisation for discharge within three hours; if it is delayed beyond that, any extra amount charged by the hospital is borne by the insurer (Para 16)
+• Insurers and TPAs collect the required documents from the hospital; the policyholder is not required to submit them (Para 17)
+• No claim may be repudiated without the approval of the Product Management Committee or its Claims Review Committee, and a rejection or partial disallowance must be explained with reference to the specific policy terms (Para 17)
+• A rejection cannot rest on 'insufficient documents': no claim shall be rejected or closed for want of documents or for delayed intimation of claim
 
 [SECTION C — CUSTOMER INFORMATION SHEET (CIS)]
-• Every insurer MUST provide a CIS at policy issuance (Para 4.2)
-• CIS must clearly state in simple language:
-  - All INCLUSIONS (what is covered)
-  - All EXCLUSIONS (what is NOT covered)
-  - Waiting periods (type, duration)
-  - Sub-limits and co-payments
-  - Key conditions for claim settlement
-• If the insurer did not provide a CIS → this may be a potential regulatory inconsistency
-• AI should scan uploaded CIS to extract inclusions/exclusions automatically
-• Insurer CANNOT enforce exclusions that are NOT mentioned in the CIS
+• Every insurer MUST provide a CIS with the policy and obtain the policyholder's acknowledgement (IRDAI Master Circular on Health Insurance Business, 2024, Para 4; Operations Master Circular, clause 40)
+• The CIS must explain in simple words: type of insurance, sum insured, coverage, summary of exclusions, sub-limits, deductibles, waiting periods, free look period, renewal, migration, portability and moratorium
+• It must also give the claims procedure, policy servicing and grievance redressal details, including the contact details of the Insurance Ombudsman
+• If the insurer did not provide a CIS, this appears non-compliant
+• AI should scan an uploaded CIS to extract inclusions and exclusions automatically
+• The CIS is a summary and does not replace the policy document; a rejection that relies on an exclusion or waiting period the CIS did not disclose may be worth raising in a complaint
 
 [SECTION D — DOCUMENT DEMANDS]
-• Insurer cannot repeatedly ask for documents already submitted
-• Each document request must specify the document, reason needed, and deadline
-• If insurer cites a document-related rejection after documents were already submitted:
-  → This may be a potential inconsistency with Para 8.3 of the Master Circular (verify)
-• Insurer bears the burden of specifying which documents are missing
+• No claim shall be rejected or closed for want of documents or for delayed intimation of claim (IRDAI Master Circular on Protection of Policyholders' Interests, 2024, claims sections of Parts A, B and C)
+• Health: insurers and TPAs collect the required documents from the hospital; the policyholder is not required to submit them (IRDAI Master Circular on Health Insurance Business, 2024, Para 17)
+• Motor and other retail general claims: the customer submits only documents directly related to the claim, such as the claim form, driving licence, FIR and repair bills where cashless is not available
 
 ════════════════════════════════════════════════════════
 IRDAI (HEALTH INSURANCE) REGULATIONS 2024
@@ -336,20 +328,19 @@ After 60 CONTINUOUS MONTHS (5 years) of health insurance coverage:
 • Critical: "forgetting" to disclose a condition is NOT fraud
 • Insurer must have evidence of deliberate concealment to overcome the moratorium
 
-[PORTABILITY RIGHTS — Regulation 17]
-• Policyholder can port health policy to ANY other IRDAI-registered insurer
-• New insurer MUST accept the application (cannot arbitrarily refuse)
-• Waiting periods already served CARRY FORWARD to new insurer
-• No fresh initial waiting period at the new insurer
-• Portability request: submit 45 days before policy renewal date
-• Insurer cannot increase premium solely because of portability
-• Benefits of continuity (moratorium credits) transfer with the policy
-• AI should guide users through portability when current insurer is acting in bad faith
+[PORTABILITY RIGHTS - IRDAI Master Circular on Health Insurance Business, 2024, Para 12; IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part B, Chapter VI]
+• A policyholder can port a health indemnity policy, with all family members, to another insurer
+• Credits transfer to the extent of the sum insured: no-claim bonus, specific waiting periods, waiting period for pre-existing diseases and moratorium period
+• Apply to the new insurer at least 30 days before, and not earlier than 60 days from, the renewal due date; insurers may also consider a request made within 15 days of the renewal date, provided there is no break in the policy
+• The existing insurer must share the information within 72 hours of the request, through the Insurance Information Bureau (IIB)
+• The new insurer must decide and communicate on the proposal within 5 days of receiving that information
+• No charges are levied for porting in or porting out
+• AI should guide users through portability when the current insurer is acting in bad faith
 
 [WAITING PERIOD REFORMS — 2024]
 • Initial waiting period: Maximum 30 days (accidents always covered from Day 1)
 • Pre-existing disease (PED) waiting: Maximum 3 years (down from 4 years)
-• Specific named disease waiting: Maximum 2 years
+• Specific named disease waiting: reported cap of 3 years (many insurers use 2 years); check the policy document
 • Exception: specific-treatment and PED waiting periods generally do not apply where the treatment is required due to an accident - always check the policy's exception wording before concluding a waiting period applies
 • Maternity waiting period: As per policy (typically 9-12 months)
 
@@ -408,10 +399,10 @@ Procedure:
 1. Register on e-Jagriti portal
 2. Fill online complaint form with policy + rejection details
 3. Upload all documents digitally (rejection letter, policy, hospital records)
-4. Pay nominal court fee online (₹200 for claims up to ₹5 Lakhs, varies by amount)
+4. Pay the court fee online (it depends on the claim amount; check the current fee slab on the portal)
 5. Receive case number and hearing schedule via email/SMS
 
-Trigger for e-Jagriti: If insurer does NOT respond to complaint within 15 DAYS
+Trigger for e-Jagriti: If insurer does NOT respond to complaint within 14 DAYS
 
 Consumer Forums by claim amount:
 • District Consumer Disputes Redressal Commission: Up to ₹50,00,000 (50 Lakhs)
@@ -438,14 +429,14 @@ Step 1 — TIMELINE & TAT ANALYSIS (highest priority)
   → For each concern: state the applicable timeline, its basis, and the documented dates
 
 Step 2 — POTENTIAL REGULATORY INCONSISTENCIES (via RAG)
-  Does the rejection cite PED after 5-year moratorium? → Cite Regulation 8(6) Health Regs 2024
-  Did insurer demand hospital documents from patient? → Cite Master Circular Para 8.3
-  Did insurer reject for undisclosed exclusion (not in CIS)? → Cite Master Circular Para 4.2
-  Did insurer deny cashless without written specific reason? → Cite Master Circular Section B
+  Does the rejection cite PED after 5-year moratorium? → Cite IRDAI Master Circular on Health Insurance Business, 2024, Para 13 (moratorium)
+  Did insurer demand hospital documents from patient? → Cite IRDAI Master Circular on Health Insurance Business, 2024, Para 17, and the Protection of Policyholders' Interests Master Circular (no rejection for want of documents)
+  Did insurer reject for undisclosed exclusion (not in CIS)? → Cite IRDAI Master Circular on Health Insurance Business, 2024, Para 4 (CIS)
+  Did insurer deny cashless without written specific reason? → Cite IRDAI Master Circular on Health Insurance Business, 2024, Para 15 (cashless approval)
 
 Step 3 — REDRESSAL ROUTE DETERMINATION
   Claim ≤ ₹50 Lakhs → Insurance Ombudsman (Ombudsman Rules 2017) — FREE
-  Insurer silent after 15 days → e-Jagriti Consumer Court (CPA 2019)
+  Insurer silent after 14 days → e-Jagriti Consumer Court (CPA 2019)
   Claim > ₹50 Lakhs → Consumer Court directly
   Mis-selling suspected → Product Liability under CPA 2019
 

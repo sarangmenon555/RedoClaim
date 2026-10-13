@@ -31,13 +31,12 @@ logger = logging.getLogger(__name__)
 # no short hard-coded Ombudsman deadline, and no consumer-court limitation date.
 DEADLINE_RULES = {
     "gro_response_tat": {
-        "days": 15,
+        "days": 14,
         "kind": "tat",
         "start_is": "the date the grievance was filed with the insurer's GRO",
         "note": (
-            "Approximate insurer turnaround (about 15 days from receipt; some IRDAI material states 14 "
-            "days for the decision). This is the time the insurer has to respond, not a deadline for the "
-            "policyholder. Verify the period for the insurer and complaint channel."
+            "Insurer turnaround: 14 days from receipt of the grievance (IRDAI Master Circular on Protection of Policyholders' Interests, 2024). "
+            "This is the time the insurer has to respond, not a deadline for the policyholder."
         ),
     },
     "ombudsman_window_indicative": {

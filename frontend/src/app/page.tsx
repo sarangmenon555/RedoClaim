@@ -192,7 +192,7 @@ export default function HomePage() {
             },
             {
               icon: Scale, label: "Portability Advisor",
-              desc: "IRDAI Regulation 17 portability rights — waiting period credits, moratorium transfer, step-by-step guide.",
+              desc: "Portability rights under the IRDAI Master Circular on Health Insurance Business, 2024 — waiting period credits, moratorium transfer, step-by-step guide.",
               color: "#A78BFA", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.15)",
             },
           ].map(({ icon: Icon, label, desc, color, bg, border }) => (

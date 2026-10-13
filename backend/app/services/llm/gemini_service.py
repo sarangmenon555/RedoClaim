@@ -537,7 +537,7 @@ Return ONLY this JSON object. Start with {{ and end with }}. Nothing before or a
   "step2_regulatory_violations": [
     {{
       "violation": "Description of the potential inconsistency, in cautious wording",
-      "regulation": "Exact citation e.g. IRDAI Master Circular on Health Insurance, 2024, Para 8.3",
+      "regulation": "Exact citation e.g. IRDAI Master Circular on Health Insurance Business, 2024, Para 17(b). Cite a paragraph or clause number only if it appears in the source text provided; otherwise name the document only",
       "source": "Name of the source document e.g. IRDAI Master Circular on Health Insurance, 2024",
       "provision": "Specific section or paragraph",
       "evidence_from_document": "Short extract or paraphrase from the uploaded rejection letter or policy that supports this finding",
@@ -800,9 +800,9 @@ Provide:
 5. Documents needed
 6. How to choose a better insurer
 7. What to watch out for at the new insurer
-8. Timeline (apply 45 days before renewal)
+8. Timeline (apply at least 30 days before renewal, and not earlier than 60 days before)
 
-Be specific, practical, and reference IRDAI (Health Insurance) Regulations 2024, Regulation 17."""
+Be specific, practical, and reference the IRDAI Master Circular on Health Insurance Business, 2024 (Para 12)."""
 
     return await gemini.generate(
         model=settings.MODEL_EXTRACTION,

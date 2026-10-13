@@ -27,10 +27,10 @@ class MotorInsuranceRulesEngine:
     """
 
     # ── TATs from IRDAI Master Circular 2024 ──────────────────────
-    TAT_SURVEY_HOURS = 48           # Surveyor appointment within 48 hours of intimation
-    TAT_SURVEY_REPORT_DAYS = 30     # Final survey report within 30 days
-    TAT_CLAIM_SETTLEMENT_DAYS = 30  # Final settlement within 30 days of survey report
-    TAT_GRO_DAYS = 15
+    TAT_SURVEY_HOURS = 24           # Surveyor allocation within 24 hours of the claim report
+    TAT_SURVEY_REPORT_DAYS = 15     # Survey report within 15 days of surveyor allocation
+    TAT_CLAIM_SETTLEMENT_DAYS = 7   # Insurer decision within 7 days of receiving the survey report
+    TAT_GRO_DAYS = 14
     OMBUDSMAN_MAX_RUPEES = 5_000_000
 
     # ── Step 1: Timeline & TAT Analysis (Motor) ──────────────────
@@ -49,58 +49,63 @@ class MotorInsuranceRulesEngine:
         violations = []
         now = datetime.now()
 
-        # 48-hour surveyor appointment TAT
+        # Surveyor allocation TAT
         if claim_intimation_date and survey_appointment_date:
             hours = (survey_appointment_date - claim_intimation_date).total_seconds() / 3600
             if hours > self.TAT_SURVEY_HOURS:
                 violations.append({
                     "type": "surveyor_appointment_delayed",
-                    "regulation": "IRDAI (Surveyors and Loss Assessors) Regulations 2015, Regulation 13",
+                    "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C (surveyor allocation)",
                     "detail": (
                         f"Surveyor was appointed {hours:.0f} hours after claim intimation. "
-                        f"Applicable timeline: {self.TAT_SURVEY_HOURS} hours (basis: IRDAI Surveyors and Loss Assessors Regulations 2015; verify in the primary source)."
+                        f"Applicable timeline: {self.TAT_SURVEY_HOURS} hours (basis: IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C; verify in the primary source)."
                     ),
                     "severity": "high",
-                    "legal_citation": "IRDAI Motor Guidelines 2017 — Surveyor Appointment TAT",
+                    "legal_citation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C - Surveyor Allocation TAT",
                 })
 
-        # 30-day survey report TAT
+        # Survey report TAT
         if survey_appointment_date and survey_report_date:
             days = (survey_report_date - survey_appointment_date).days
             if days > self.TAT_SURVEY_REPORT_DAYS:
                 excess = days - self.TAT_SURVEY_REPORT_DAYS
                 violations.append({
                     "type": "survey_report_delayed",
-                    "regulation": "IRDAI (Surveyors and Loss Assessors) Regulations 2015, Regulation 19",
+                    "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C (survey report timeline)",
                     "detail": (
                         f"Survey report submitted {days} days after appointment. "
-                        f"Applicable timeline: {self.TAT_SURVEY_REPORT_DAYS} days (basis: IRDAI Surveyors and Loss Assessors Regulations 2015; verify in the primary source). "
-                        f"This appears to be {excess} days longer."
+                        f"Applicable timeline: {self.TAT_SURVEY_REPORT_DAYS} days (basis: IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C; verify in the primary source). "
+                        f"This appears to be {excess} days longer. The circular provides for Rs. 500 per day of surveyor delay to be paid to the claimant."
                     ),
                     "severity": "medium",
-                    "legal_citation": "IRDAI Surveyor Regulations 2015, Regulation 19 — Survey Report Timeline",
+                    "legal_citation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C - Survey Report Timeline",
                 })
 
-        # 30-day final settlement TAT after survey
+        # Claim decision TAT after survey report
         if survey_report_date and rejection_date:
-            days = (rejection_date - survey_report_date).days
-            if days > self.TAT_CLAIM_SETTLEMENT_DAYS:
-                excess = days - self.TAT_CLAIM_SETTLEMENT_DAYS
+            allowed_until = survey_report_date + timedelta(days=self.TAT_CLAIM_SETTLEMENT_DAYS)
+            if survey_appointment_date:
+                allowed_until = min(allowed_until, survey_appointment_date + timedelta(days=self.TAT_SURVEY_REPORT_DAYS))
+            if rejection_date - allowed_until >= timedelta(days=1):
+                excess = (rejection_date - allowed_until).days
+                days = (rejection_date - survey_report_date).days
                 violations.append({
                     "type": "settlement_delayed_post_survey",
-                    "regulation": "IRDAI Master Circular 2024, Para 7.3",
+                    "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C (claim decision after survey)",
                     "detail": (
-                        f"Claim took {days} days to settle after survey report. "
-                        f"Applicable timeline: {self.TAT_CLAIM_SETTLEMENT_DAYS} days (basis: IRDAI motor claim settlement provisions; verify in the primary source). "
-                        f"This appears to be {excess} days longer."
+                        f"The claim decision came {days} days after the survey report. "
+                        f"Applicable timeline: within {self.TAT_CLAIM_SETTLEMENT_DAYS} days of receipt of the survey report, or after expiry of "
+                        f"{self.TAT_SURVEY_REPORT_DAYS} days from surveyor allocation, whichever is earlier (basis: IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C; verify in the primary source). "
+                        f"This appears to be {excess} days later than that."
                     ),
                     "severity": "high",
                     "interest_applicable": True,
                     "interest_note": (
-                        "If the delay is confirmed, interest may be claimable at Bank Rate + 2% per annum "
-                        f"for the {excess} excess days. Verify the current provision."
+                        "If the delay is confirmed, the claimant may be entitled to interest at Bank Rate + 2% per annum "
+                        "from the date of receipt of the claim intimation until payment, to be paid by the insurer on its own. "
+                        "Verify the current provision."
                     ),
-                    "legal_citation": "IRDAI Master Circular 2024, Para 7.4 — Interest on Delayed Claims",
+                    "legal_citation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C - interest on delayed claims",
                 })
 
         # GRO overdue check
@@ -109,11 +114,11 @@ class MotorInsuranceRulesEngine:
             if days_since > self.TAT_GRO_DAYS:
                 violations.append({
                     "type": "gro_resolution_overdue",
-                    "regulation": "IRDAI Master Circular 2024, Para 10.2",
+                    "regulation": "IRDAI Master Circular on Operations and Allied Matters of Insurers, 2024, clause 24 (grievance timelines)",
                     "detail": (
                         f"GRO complaint filed {days_since} days ago. "
-                        f"Applicable insurer turnaround: approximately {self.TAT_GRO_DAYS} days from receipt "
-                        f"(verify the current period for your insurer). No resolution is documented within that timeline."
+                        f"Applicable insurer turnaround: {self.TAT_GRO_DAYS} days from receipt "
+                        f"(IRDAI Master Circular on Protection of Policyholders' Interests, 2024). No resolution is documented within that timeline."
                     ),
                     "severity": "medium",
                     "ejagriti_trigger": True,
@@ -183,7 +188,7 @@ class MotorInsuranceRulesEngine:
             arguments.append({
                 "ground": "policy_lapse",
                 "insurer_claim": "Policy was not in force at time of loss",
-                "regulation": "IRDAI Master Circular 2024, Para 5 — Policy Continuity",
+                "regulation": "Policy terms and the IRDAI Master Circular on Protection of Policyholders' Interests, 2024 (verify the provision)",
                 "policyholder_argument": (
                     "Check the exact policy expiry date and time vs. the accident date/time. "
                     "If within the grace period, demand the insurer honour the claim. "
@@ -269,9 +274,9 @@ class LifeInsuranceRulesEngine:
     """
 
     # ── TATs from IRDAI Life Regulations 2023 ────────────────────
-    TAT_CLAIM_SETTLEMENT_DAYS = 30     # Settlement within 30 days of documents
-    TAT_INVESTIGATION_DAYS = 90        # Investigation (early claims) max 90 days
-    TAT_GRO_DAYS = 15
+    TAT_CLAIM_SETTLEMENT_DAYS = 15     # Death claim: settlement within 15 days of claim intimation
+    TAT_INVESTIGATION_DAYS = 45        # Death claim warranting investigation: within 45 days of intimation
+    TAT_GRO_DAYS = 14
     OMBUDSMAN_MAX_RUPEES = 5_000_000
 
     # Early claim threshold (within 3 years = enhanced scrutiny is permitted)
@@ -295,26 +300,31 @@ class LifeInsuranceRulesEngine:
         violations = []
         now = datetime.now()
 
-        # 30-day settlement after complete documents
-        if documents_complete_date and rejection_date:
-            days = (rejection_date - documents_complete_date).days
+        # Death claim settlement timeline
+        start = claim_submission_date or documents_complete_date
+        if start and rejection_date:
+            days = (rejection_date - start).days
             if days > self.TAT_CLAIM_SETTLEMENT_DAYS:
-                excess = days - self.TAT_CLAIM_SETTLEMENT_DAYS
+                beyond_investigation = days > self.TAT_INVESTIGATION_DAYS
+                limit = self.TAT_INVESTIGATION_DAYS if beyond_investigation else self.TAT_CLAIM_SETTLEMENT_DAYS
+                excess = days - limit
                 violations.append({
                     "type": "settlement_delayed",
-                    "regulation": "IRDAI (Life Insurance) Regulations 2023, Regulation 23(5)",
+                    "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part A (life: processing of claims and turnaround time)",
                     "detail": (
-                        f"Claim took {days} days post complete documentation. "
-                        f"Applicable timeline: {self.TAT_CLAIM_SETTLEMENT_DAYS} days (basis: IRDAI Life Insurance Regulations 2023; verify in the primary source). "
-                        f"This appears to be {excess} days longer."
+                        f"The documented dates show {days} days from claim intimation to the decision. "
+                        f"The circular provides {self.TAT_CLAIM_SETTLEMENT_DAYS} days for a death claim that needs no investigation and "
+                        f"{self.TAT_INVESTIGATION_DAYS} days for one that warrants investigation (basis: IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part A; verify in the primary source). "
+                        + ("This is beyond both periods." if beyond_investigation else "This is beyond the shorter period; check whether an investigation was warranted.")
                     ),
-                    "severity": "high",
+                    "severity": "high" if beyond_investigation else "medium",
                     "interest_applicable": True,
                     "interest_note": (
-                        "If the delay is confirmed, interest may be claimable at prevailing bank rate + 2% "
-                        f"for {excess} excess days. Verify the current provision."
+                        "If the delay is confirmed, the claimant may be entitled to interest at Bank Rate + 2% per annum "
+                        "from the date of receipt of the claim intimation until payment, to be paid by the insurer on its own. "
+                        "Verify the current provision."
                     ),
-                    "legal_citation": "IRDAI Master Circular 2024, Para 7.4 — Interest on Delayed Claims",
+                    "legal_citation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part A - interest on delayed claims",
                 })
 
         # GRO overdue check
@@ -323,11 +333,11 @@ class LifeInsuranceRulesEngine:
             if days_since > self.TAT_GRO_DAYS:
                 violations.append({
                     "type": "gro_resolution_overdue",
-                    "regulation": "IRDAI Master Circular 2024, Para 10.2",
+                    "regulation": "IRDAI Master Circular on Operations and Allied Matters of Insurers, 2024, clause 24 (grievance timelines)",
                     "detail": (
                         f"GRO complaint filed {days_since} days ago. "
-                        f"Applicable insurer turnaround: approximately {self.TAT_GRO_DAYS} days from receipt "
-                        f"(verify the current period for your insurer). No resolution is documented within that timeline."
+                        f"Applicable insurer turnaround: {self.TAT_GRO_DAYS} days from receipt "
+                        f"(IRDAI Master Circular on Protection of Policyholders' Interests, 2024). No resolution is documented within that timeline."
                     ),
                     "severity": "medium",
                     "ejagriti_trigger": True,

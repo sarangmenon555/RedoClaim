@@ -485,8 +485,9 @@ async def scan_cis(
         "cis_analysis": cis_analysis,
         "ai_disclaimer": AI_DISCLAIMER,
         "irdai_note": (
-            "Under IRDAI Master Circular 2024, Para 4.2, your insurer CANNOT enforce "
-            "any exclusion that is not clearly stated in this CIS."
+            "Under the IRDAI Master Circular on Health Insurance Business, 2024 (Para 4), your insurer must give you a CIS "
+            "that summarises the exclusions and waiting periods. If a rejection relies on a term this CIS does not disclose, "
+            "that may be worth raising in your complaint."
         ),
     }
 
@@ -558,7 +559,7 @@ async def ejagriti_guide():
         "portal": "e-jagriti.gov.in",
         "when_to_use": (
             "If your insurer has NOT responded to your complaint within the applicable grievance "
-            "timeline (approximately 15 days from receipt), OR if you are unsatisfied with their "
+            "timeline (14 days from receipt), OR if you are unsatisfied with their "
             "response, you may be able to file on the e-Jagriti Consumer Court portal. Check "
             "eligibility first."
         ),

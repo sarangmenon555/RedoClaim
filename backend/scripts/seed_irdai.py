@@ -53,152 +53,184 @@ IRDAI_CHUNKS = [
     {
         "title": "TAT - Cashless Pre-Authorisation",
         "text": (
-            "IRDAI Master Circular on Protection of Policyholders Interests 2024, Para 7.1: "
-            "Cashless pre-authorisation must be granted or denied within 1 HOUR of receiving "
-            "complete documents from the network hospital. Any delay beyond 1 hour constitutes "
-            "a TAT violation and grounds for regulatory complaint."
+            "IRDAI Master Circular on Health Insurance Business, 2024, Para 15: An insurer must "
+            "decide on a request for cashless authorisation immediately, and not later than one "
+            "hour from receiving it. Insurers must also provide pre-authorisation to the "
+            "policyholder in digital mode, and may arrange dedicated help desks at hospitals. A "
+            "decision that comes later than one hour appears inconsistent with the circular."
         ),
-        "regulation": "IRDAI Master Circular 2024, Para 7.1",
+        "regulation": "IRDAI Master Circular on Health Insurance Business, 2024, Para 15",
         "category": "tat_sla",
     },
     {
         "title": "TAT - Cashless Final Discharge",
         "text": (
-            "IRDAI Master Circular 2024, Para 7.2: Final discharge authorisation for cashless "
-            "treatment must be granted within 3 hours of the hospital submitting the discharge "
-            "request with complete documents. Delays cause the patient to be held at hospital "
-            "and constitute deficiency in service under CPA 2019 Section 2(11)."
+            "IRDAI Master Circular on Health Insurance Business, 2024, Para 16: The insurer "
+            "must grant final authorisation within three hours of receiving the hospital's "
+            "discharge authorisation request, and the policyholder must not be made to wait to "
+            "be discharged. If there is a delay beyond three hours, any additional amount "
+            "charged by the hospital is borne by the insurer from the shareholders' fund. If "
+            "the policyholder dies during treatment, the insurer must immediately process the "
+            "claim settlement and get the mortal remains released from the hospital "
+            "immediately."
         ),
-        "regulation": "IRDAI Master Circular 2024, Para 7.2",
+        "regulation": "IRDAI Master Circular on Health Insurance Business, 2024, Para 16",
         "category": "tat_sla",
     },
     {
         "title": "TAT - Reimbursement Settlement",
         "text": (
-            "IRDAI Master Circular 2024, Para 7.3: Reimbursement claims must be settled within "
-            "30 DAYS of receipt of the last necessary document. If the insurer fails to settle "
-            "within 30 days due to reasons attributable to the insurer, interest at Bank Rate "
-            "plus 2% per annum must be paid on the pending amount."
+            "IRDAI Master Circular on Protection of Policyholders' Interests, 2024 (Part B, "
+            "health insurance): Claims other than cashless must be settled within fifteen days "
+            "from submission of the claim. If a claim is not settled within the specified "
+            "timelines, the claimant is entitled to interest at Bank Rate plus 2% per annum "
+            "from the date of receipt of the claim intimation until the date of payment, and "
+            "the insurer must pay this interest on its own (suo moto)."
         ),
-        "regulation": "IRDAI Master Circular 2024, Para 7.3",
+        "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part B",
         "category": "tat_sla",
     },
     {
         "title": "Interest on Delayed Claims",
         "text": (
-            "IRDAI Master Circular 2024, Para 7.4: When an insurer delays claim settlement "
-            "beyond the mandated 30-day period due to reasons attributable to the insurer, "
-            "interest at Bank Rate plus 2% per annum is compulsorily payable. The policyholder "
-            "must demand this interest in all appeal letters and ombudsman complaints. "
-            "This interest demand is separate from and in addition to the claim amount."
+            "IRDAI Master Circular on Protection of Policyholders' Interests, 2024: For health, "
+            "retail general and life insurance claims, if a claim is not settled within the "
+            "specified timelines, the claimant is entitled to interest at Bank Rate plus 2% per "
+            "annum from the date of receipt of the claim intimation until the date of payment. "
+            "The insurer must pay it on its own (suo moto). Ask for this interest in appeal "
+            "letters and Ombudsman complaints; it is in addition to the claim amount."
         ),
-        "regulation": "IRDAI Master Circular 2024, Para 7.4",
+        "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024 (claims sections of Parts A, B and C)",
         "category": "interest_delay",
     },
     {
         "title": "GRO Resolution Timeline",
         "text": (
-            "IRDAI Master Circular 2024: The Grievance Redressal Officer (GRO) must acknowledge "
-            "complaints within 3 working days and resolve them within 15 days of receipt. "
-            "If unresolved in 15 days, the insurer must auto-escalate to a senior officer. "
-            "After 30 days without resolution, the policyholder may approach the Insurance "
-            "Ombudsman without waiting further."
+            "IRDAI Master Circular on Protection of Policyholders' Interests, 2024 and IRDAI "
+            "Master Circular on Operations and Allied Matters of Insurers, 2024 (clause 24): An "
+            "insurer must acknowledge a grievance immediately. It may seek further details from "
+            "the complainant only once, within one week. It must resolve the grievance and "
+            "issue its final letter of resolution within two weeks (14 days), giving reasons "
+            "and reference to the specific policy terms if the complaint is not accepted, and "
+            "including the contact details of the concerned Insurance Ombudsman. A grievance "
+            "may be closed if the complainant does not reply within eight weeks. Under the "
+            "Insurance Ombudsman Rules, 2017 (Rule 14), a policyholder may approach the "
+            "Ombudsman if the insurer rejects the representation, does not reply within one "
+            "month, or the reply is unsatisfactory."
         ),
-        "regulation": "IRDAI Master Circular 2024",
+        "regulation": "IRDAI Master Circulars, 2024: Protection of Policyholders' Interests; Operations and Allied Matters of Insurers (clause 24)",
         "category": "grievance_redressal",
     },
     {
-        "title": "Cashless Denial - Written Reason Required",
+        "title": "Cashless Authorisation Rules",
         "text": (
-            "IRDAI Master Circular 2024, Section B: Insurers and TPAs cannot verbally deny "
-            "cashless treatment. All cashless pre-authorisation decisions must be communicated "
-            "in writing specifying the exact policy clause or exclusion being invoked. "
-            "Verbal denial of cashless treatment is invalid and constitutes deficiency in service. "
-            "The insurer cannot cite 'insufficient documents' without specifying exactly which "
-            "documents are missing and why they are required."
+            "IRDAI Master Circular on Health Insurance Business, 2024, Paras 15 to 17: An "
+            "insurer must decide on a cashless authorisation request immediately, and within "
+            "one hour of receiving it. Final authorisation for discharge must be given within "
+            "three hours of the hospital's request; if it is delayed beyond three hours, any "
+            "additional amount charged by the hospital is borne by the insurer from the "
+            "shareholders' fund. No claim may be repudiated without the approval of the "
+            "insurer's Product Management Committee or its three-member Claims Review "
+            "Committee, and when a claim is repudiated or partly disallowed, the claimant must "
+            "be told in full, with reference to the specific terms and conditions of the "
+            "policy."
         ),
-        "regulation": "IRDAI Master Circular 2024, Section B",
+        "regulation": "IRDAI Master Circular on Health Insurance Business, 2024, Paras 15-17",
         "category": "cashless_rights",
     },
     {
         "title": "Document Demand Restrictions",
         "text": (
-            "IRDAI Master Circular 2024, Para 8.3: Insurers cannot repeatedly demand documents "
-            "already submitted. Each document request must specify the document name, reason "
-            "it is required, and deadline for submission. Insurers cannot demand documents from "
-            "the policyholder that the hospital or treating doctor is required to provide. "
-            "If an insurer cites document deficiency after documents were already submitted, "
-            "this constitutes a violation of Para 8.3."
+            "IRDAI Master Circular on Protection of Policyholders' Interests, 2024: No claim "
+            "shall be rejected or closed for want of documents or for delayed intimation of "
+            "claim. In health insurance, insurers and TPAs collect the required documents from "
+            "the hospital after the claim is intimated, and the policyholder is not required to "
+            "submit them. In motor and other retail general insurance, the customer submits "
+            "only the documents directly related to the claim, such as the claim form, driving "
+            "licence, FIR, and repair bills where cashless is not available."
         ),
-        "regulation": "IRDAI Master Circular 2024, Para 8.3",
+        "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024 (claims sections of Parts A, B and C); IRDAI Master Circular on Health Insurance Business, 2024, Para 17",
         "category": "document_rights",
     },
     {
         "title": "Customer Information Sheet (CIS) - Mandatory Disclosure",
         "text": (
-            "IRDAI Master Circular 2024, Para 4.2: Every insurer must provide a Customer "
-            "Information Sheet (CIS) at policy issuance. The CIS must clearly state in simple "
-            "language: all inclusions, all exclusions, waiting periods, sub-limits, co-payments, "
-            "and key conditions for claim settlement. If the insurer failed to provide a CIS, "
-            "this is a regulatory violation. The insurer cannot enforce exclusions that are "
-            "not mentioned in the CIS provided to the policyholder."
+            "IRDAI Master Circular on Health Insurance Business, 2024, Para 4 (and IRDAI Master "
+            "Circular on Operations and Allied Matters of Insurers, 2024, clause 40): Insurers "
+            "must give every policyholder a Customer Information Sheet (CIS) with the policy "
+            "and obtain acknowledgement. It must explain in simple words the type of insurance, "
+            "sum insured, coverage, a summary of exclusions, sub-limits, deductibles, waiting "
+            "periods, free look period, renewal, migration, portability and moratorium, along "
+            "with the claims procedure, policy servicing and grievance redressal, including the "
+            "contact details of the Insurance Ombudsman. If no CIS was provided, this appears "
+            "non-compliant. The CIS is a summary and does not replace the policy document, but "
+            "a rejection that relies on an exclusion or waiting period the CIS did not disclose "
+            "may be worth raising in a complaint."
         ),
-        "regulation": "IRDAI Master Circular 2024, Para 4.2",
+        "regulation": "IRDAI Master Circular on Health Insurance Business, 2024, Para 4",
         "category": "cis_disclosure",
     },
     {
         "title": "Moratorium Period - Pre-Existing Disease",
         "text": (
-            "IRDAI (Health Insurance) Regulations 2024, Regulation 8(6): After 5 continuous "
-            "years of health insurance coverage, the insurer CANNOT reject a claim on grounds "
-            "of non-disclosure of a Pre-Existing Disease (PED). The only exception is if the "
-            "insurer can PROVE intentional fraudulent misrepresentation at the time of policy "
-            "purchase. The burden of proof lies entirely on the insurer, not the policyholder. "
-            "Forgetting to disclose a condition does NOT constitute fraud. The moratorium period "
-            "was reduced from 8 years to 5 years in the 2024 regulations. For ported policies, "
-            "years of coverage with the previous insurer count toward the moratorium."
+            "IRDAI Master Circular on Health Insurance Business, 2024, Para 13: No health "
+            "insurance policy or claim can be contested on any ground of non-disclosure or "
+            "misrepresentation, except established fraud, after the completion of the "
+            "moratorium period of 60 months (5 years) of continuous coverage. Credits gained "
+            "under ported and migrated policies count towards the moratorium period. The "
+            "moratorium period was reduced from 8 years to 5 years in 2024."
         ),
-        "regulation": "IRDAI Health Regulations 2024, Regulation 8(6)",
+        "regulation": "IRDAI Master Circular on Health Insurance Business, 2024, Para 13",
         "category": "moratorium_ped",
     },
     {
         "title": "PED Waiting Period Maximum",
         "text": (
-            "IRDAI (Health Insurance) Regulations 2024: The maximum waiting period for "
-            "Pre-Existing Diseases (PED) is 3 years (36 months) of continuous coverage. "
-            "Any insurer imposing a longer PED waiting period violates IRDAI regulations. "
-            "The initial waiting period for any claim (except accidents) is maximum 30 days. "
-            "The maximum waiting period for specific named diseases is 2 years (24 months). "
-            "Accidents are covered from Day 1 of the policy with no waiting period applicable."
+            "IRDAI (Insurance Products) Regulations, 2024 (effective 1 April 2024): The waiting "
+            "period for pre-existing diseases that the insured person disclosed can be at most "
+            "36 months (3 years) of continuous coverage; it was 4 years earlier. A longer "
+            "pre-existing disease waiting period appears inconsistent with the regulations. "
+            "Insurers commonly apply an initial waiting period of about 30 days, except for "
+            "accidents. Reports on the 2024 reforms indicate that waiting periods for specific "
+            "named diseases are also capped at 3 years, although many insurers use 2 years, so "
+            "check the waiting period stated in the policy document. Credits for waiting "
+            "periods already served carry forward on migration or portability, to the extent of "
+            "the sum insured."
         ),
-        "regulation": "IRDAI Health Regulations 2024",
+        "regulation": "IRDAI (Insurance Products) Regulations, 2024",
         "category": "waiting_periods",
     },
     {
         "title": "Portability Rights",
         "text": (
-            "IRDAI (Health Insurance) Regulations 2024, Regulation 17: A policyholder has the "
-            "right to port their health insurance policy to any other IRDAI-registered insurer. "
-            "The new insurer must accept the portability application and cannot arbitrarily refuse. "
-            "All waiting periods already served with the previous insurer carry forward to the "
-            "new insurer — no fresh initial waiting period applies. The portability request must "
-            "be submitted 45 days before the policy renewal date. The new insurer cannot increase "
-            "premium solely due to portability. Moratorium credits also transfer with the policy."
+            "IRDAI Master Circular on Health Insurance Business, 2024, Para 12, and IRDAI "
+            "Master Circular on Protection of Policyholders' Interests, 2024 (Part B, Chapter "
+            "VI): A policyholder can port a health indemnity policy, with all family members, "
+            "to another insurer and transfer the credits gained, to the extent of the sum "
+            "insured: no-claim bonus, specific waiting periods, waiting period for pre-existing "
+            "diseases and moratorium period. The policyholder must apply to the new insurer at "
+            "least 30 days before, and not earlier than 60 days from, the renewal due date; "
+            "insurers may also consider a request made within 15 days of the renewal date, "
+            "provided there is no break in the policy. The existing insurer must provide the "
+            "information sought within 72 hours through the Insurance Information Bureau of "
+            "India, and the new insurer must decide and communicate on the proposal within 5 "
+            "days of receiving it. No charges are levied for porting in or porting out."
         ),
-        "regulation": "IRDAI Health Regulations 2024, Regulation 17",
+        "regulation": "IRDAI Master Circular on Health Insurance Business, 2024, Para 12; IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part B, Chapter VI",
         "category": "portability",
     },
     {
         "title": "Deficiency in Service - Consumer Protection Act, 2019",
         "text": (
-            "Consumer Protection Act, 2019, Section 2(11): Insurance claim rejection constitutes "
-            "'Deficiency in Service' when the claim is rejected unreasonably or arbitrarily "
-            "without valid policy grounds, when settlement is delayed beyond IRDAI-mandated "
-            "30-day period, when the insurer provides false or misleading information to reject "
-            "a claim, when the insurer fails to process documents within TAT, or when the policy "
-            "was mis-sold with misrepresented features. The Consumer Court can award the full "
-            "claim amount, interest at 9-12% per annum, compensation for mental agony, and "
-            "litigation costs. The e-Jagriti portal (e-jagriti.gov.in) enables online filing."
+            "Consumer Protection Act, 2019, Section 2(11): Insurance claim rejection can "
+            "constitute 'Deficiency in Service' when a claim is rejected unreasonably or "
+            "arbitrarily without valid policy grounds, when settlement is delayed beyond the "
+            "applicable IRDAI timeline, when the insurer gives false or misleading information "
+            "to reject a claim, when it fails to process documents within the applicable "
+            "timelines, or when the policy was mis-sold with misrepresented features. A "
+            "Consumer Commission can award the claim amount, interest, compensation and "
+            "litigation costs depending on the facts of the case. The e-Jagriti portal "
+            "(e-jagriti.gov.in) enables online filing."
         ),
         "regulation": "Consumer Protection Act, 2019, Section 2(11)",
         "category": "consumer_protection",
@@ -206,30 +238,38 @@ IRDAI_CHUNKS = [
     {
         "title": "Insurance Ombudsman - Eligibility and Process",
         "text": (
-            "Insurance Ombudsman Rules 2017: The Insurance Ombudsman handles complaints for "
-            "claim values up to Rs. 50,00,000 (Fifty Lakhs). Filing is completely FREE for "
-            "policyholders. The Ombudsman can award the full claim amount plus up to Rs. 5,000 "
-            "as costs. The policyholder can approach the Ombudsman if: the insurer rejects the "
-            "grievance, or the GRO does not resolve within 30 days, or the policyholder is "
-            "unsatisfied with GRO resolution. File online at bimabharosa.irdai.gov.in. "
-            "The award is binding on the insurer if the policyholder accepts it. "
-            "Eligibility and time limits depend on the Ombudsman rules; generally within 1 year of the relevant rejection/decision or expiry of the insurer-response period, subject to eligibility requirements."
+            "Insurance Ombudsman Rules, 2017 and IRDAI Master Circular on Protection of "
+            "Policyholders' Interests, 2024 (Part B): A policyholder who is not satisfied with "
+            "the insurer's resolution of a grievance can escalate an unresolved or partly "
+            "resolved complaint to the Insurance Ombudsman of competent jurisdiction where the "
+            "claim amount is up to Rs. 50 lakh. Filing is free: in person, online at "
+            "cioins.co.in/Complaint/Online (Council for Insurance Ombudsmen), or in writing by "
+            "post or email with complete details. Under Rule 14 the complaint must generally be "
+            "made within one year of the insurer's rejection or unsatisfactory reply, or after "
+            "one month has passed without a reply to the written representation. A complaint is "
+            "not maintainable on a matter that is pending before, or was decided by, a court, "
+            "consumer forum or arbitrator. The insurer must comply with an Ombudsman award "
+            "within 30 days of receiving it; if it does not, a penalty of Rs. 5,000 per day is "
+            "payable to the complainant, unless the insurer appeals within 30 days. The insurer "
+            "must give the Ombudsman's contact details in its grievance resolution letter."
         ),
-        "regulation": "Insurance Ombudsman Rules 2017",
+        "regulation": "Insurance Ombudsman Rules, 2017; IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part B",
         "category": "ombudsman",
     },
     {
         "title": "Non-Medically Necessary Hospitalisation Disputes",
         "text": (
-            "IRDAI Master Circular 2024: When an insurer rejects a claim citing 'non-medically "
-            "necessary hospitalisation', the insurer must provide medical justification from "
-            "a qualified doctor explaining why the treating doctor's recommendation was wrong. "
-            "The insurer cannot simply assert non-necessity without medical evidence. "
-            "The policyholder should obtain a letter from the treating doctor confirming medical "
-            "necessity. A second opinion from another qualified doctor strengthens the appeal. "
-            "This type of rejection is commonly disputed at the Ombudsman level."
+            "IRDAI Master Circular on Health Insurance Business, 2024, Para 17: When an insurer "
+            "rejects a claim citing 'non-medically necessary hospitalisation', the repudiation "
+            "must have the approval of the insurer's Product Management Committee or Claims "
+            "Review Committee and must be explained with reference to the specific terms and "
+            "conditions of the policy. A bare assertion of non-necessity without supporting "
+            "medical evidence is open to challenge. The policyholder should obtain a letter "
+            "from the treating doctor confirming medical necessity, and a second opinion from "
+            "another qualified doctor can strengthen the appeal. This type of rejection is "
+            "commonly disputed before the Ombudsman."
         ),
-        "regulation": "IRDAI Master Circular 2024",
+        "regulation": "IRDAI Master Circular on Health Insurance Business, 2024, Para 17",
         "category": "medical_necessity",
     },
     {
@@ -261,32 +301,58 @@ IRDAI_CHUNKS = [
         "category": "life_incontestability",
     },
     {
-        "title": "Motor Insurance - Surveyor TAT Requirements",
+        "title": "Motor and Retail General Insurance - Surveyor and Claim Decision Timelines",
         "text": (
-            "IRDAI Motor Insurance Guidelines 2017 and IRDAI (Surveyors and Loss Assessors) "
-            "Regulations 2015: For motor insurance claims above Rs. 50,000, a licensed surveyor "
-            "must be appointed within 3 working days of claim intimation. The surveyor must "
-            "submit the survey report to the insurer within 15 days of completing the survey. "
-            "The policyholder has the right to receive a copy of the Survey Report. "
-            "If the insurer rejects based on the survey without sharing the report, this "
-            "constitutes a violation. Demand the full Survey Report under Regulation 19."
+            "IRDAI Master Circular on Protection of Policyholders' Interests, 2024 (Part C, "
+            "retail general insurance): A loss of Rs. 50,000 or more under a motor policy (Rs. "
+            "1 lakh or more for other retail general policies) must be surveyed by a registered "
+            "surveyor and loss assessor. The surveyor must be allocated within 24 hours of the "
+            "claim report and must submit the survey report within 15 days of allocation; if "
+            "the surveyor is late, Rs. 500 per day is payable to the claimant. The insurer must "
+            "decide on the claim within 7 days of receiving the survey report, or after expiry "
+            "of 15 days from allocation of the surveyor, whichever is earlier (this timeline "
+            "does not apply to property policies on a reinstatement value basis). The insurer "
+            "cannot repudiate a claim in full or in part where the breach of a warranty or "
+            "condition is not relevant to the nature or circumstances of the loss, or on "
+            "account of a delay by the policyholder that has not increased the assessed loss. "
+            "No claim may be rejected or closed for want of documents or for delayed "
+            "intimation."
         ),
-        "regulation": "IRDAI Motor Guidelines 2017; IRDAI Surveyors Regs 2015, Reg 19",
+        "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part C",
         "category": "motor_surveyor",
     },
     {
         "title": "Claim Rejection Must Cite Specific Clause",
         "text": (
-            "IRDAI Master Circular on Protection of Policyholders Interests 2024: When an "
-            "insurer rejects or repudiates a claim, the rejection letter MUST cite the specific "
-            "policy clause and/or specific IRDAI regulation that justifies the rejection. "
-            "A vague rejection citing general policy terms without specific clause numbers "
-            "is insufficient and can be challenged. The rejection letter must also clearly "
-            "inform the policyholder of their right to approach the GRO, Ombudsman, and "
-            "Consumer Court. Failure to cite specific grounds is itself a regulatory violation."
+            "IRDAI Master Circular on Health Insurance Business, 2024, Para 17, and IRDAI "
+            "Master Circular on Protection of Policyholders' Interests, 2024 (Part B): If a "
+            "claim is repudiated, rejected or partly disallowed, the details must be "
+            "communicated to the claimant in full, with reference to the specific terms and "
+            "conditions of the policy document. A vague rejection that does not point to a "
+            "specific policy term can be challenged. A health claim cannot be repudiated "
+            "without the approval of the insurer's Product Management Committee or Claims "
+            "Review Committee. The insurer's reply to a grievance must also include the contact "
+            "details of the Insurance Ombudsman where the complaint can be escalated."
         ),
-        "regulation": "IRDAI Master Circular 2024",
+        "regulation": "IRDAI Master Circular on Health Insurance Business, 2024, Para 17; IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part B",
         "category": "rejection_grounds",
+    },
+    {
+        "title": "Life Insurance - Claim Settlement Timelines",
+        "text": (
+            "IRDAI Master Circular on Protection of Policyholders' Interests, 2024 (Part A, "
+            "life insurance): A death claim must be settled within 15 days of the date of "
+            "intimation, except where an investigation is warranted, in which case within 45 "
+            "days. A surrender or partial withdrawal request must be processed within 7 days of "
+            "receipt, and maturity benefits, survival benefits, annuity payouts and income "
+            "benefits are due on the due date. If a claim is not settled within the specified "
+            "timelines, interest at Bank Rate plus 2% per annum is payable from the date of "
+            "receipt of intimation until payment, on the insurer's own initiative. No claim "
+            "shall be rejected or closed for want of documents or for delayed intimation of "
+            "claim."
+        ),
+        "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part A",
+        "category": "tat_sla_life",
     },
 ]
 

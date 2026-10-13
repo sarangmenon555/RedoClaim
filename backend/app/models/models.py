@@ -104,7 +104,7 @@ class Claim(Base):
     # Timelines (IRDAI mandated)
     claim_date = Column(DateTime(timezone=True), nullable=True)
     rejection_date = Column(DateTime(timezone=True), nullable=True)
-    gro_deadline = Column(DateTime(timezone=True), nullable=True)   # +15 days from rejection
+    gro_deadline = Column(DateTime(timezone=True), nullable=True)   # insurer grievance response due date (14 days from receipt)
     irdai_deadline = Column(DateTime(timezone=True), nullable=True) # +30 days from GRO
 
     # Family/dependent linking — lets one account manage claims filed on

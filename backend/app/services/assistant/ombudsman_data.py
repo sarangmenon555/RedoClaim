@@ -6,8 +6,8 @@ OFFICES = [
             "Dadra and Nagar Haveli and Daman and Diu"
         ],
         "address": "Jeevan Prakash Building, 6th Floor, Tilak Marg, Relief Road, Ahmedabad – 380001",
-        "email": "bimalokpal.ahmedabad@cioins.co.in",
-        "phone": "079 - 25501201 / 02 / 05 / 06"
+        "email": "oio.ahmedabad@cioins.co.in",
+        "phone": "079 - 25501201 / 02"
     },
     {
         "center": "Bengaluru",
@@ -15,7 +15,8 @@ OFFICES = [
             "Karnataka"
         ],
         "address": "Jeevan Soudha Building, PID No. 57-27-N-19, Ground Floor, 19/19, 24th Main Road, JP Nagar, 1st Phase, Bengaluru – 560078",
-        "email": "bimalokpal.bengaluru@cioins.co.in"
+        "email": "oio.bengaluru@cioins.co.in",
+        "phone": "080 - 26652048 / 26652049"
     },
     {
         "center": "Bhopal",
@@ -23,8 +24,9 @@ OFFICES = [
             "Madhya Pradesh",
             "Chhattisgarh"
         ],
-        "address": "Janak Vihar Complex, 2nd Floor, 6, Malviya Nagar, Opp. Airtel Office, Near New Market, Bhopal – 462003",
-        "email": "bimalokpal.bhopal@cioins.co.in"
+        "address": "1st Floor, Jeevan Shikha, 60-B, Hoshangabad Road, Opp. Gayatri Mandir, Arera Hills, Bhopal – 462011",
+        "email": "oio.bhopal@cioins.co.in",
+        "phone": "0755 - 2769201 / 2769202 / 2769203"
     },
     {
         "center": "Bhubaneswar",
@@ -32,38 +34,42 @@ OFFICES = [
             "Odisha"
         ],
         "address": "62, Forest Park, Bhubaneswar – 751009",
-        "email": "bimalokpal.bhubaneswar@cioins.co.in"
+        "email": "oio.bhubaneswar@cioins.co.in",
+        "phone": "0674 - 2596461 / 2596455 / 2596429 / 2596003"
     },
     {
         "center": "Chandigarh",
         "statesCovered": [
             "Punjab",
-            "Haryana",
+            "Haryana (excluding Gurugram, Faridabad, Sonepat and Bahadurgarh)",
             "Himachal Pradesh",
-            "Jammu & Kashmir",
+            "Jammu and Kashmir",
             "Ladakh",
-            "Union Territory of Chandigarh"
+            "Chandigarh"
         ],
-        "address": "S.C.O. No. 101-103, 2nd Floor, Batra Building, Sector 17-D, Chandigarh – 160017",
-        "email": "bimalokpal.chandigarh@cioins.co.in"
+        "address": "Jeevan Deep Building, SCO 20-27, Ground Floor, Sector 17-A, Chandigarh – 160017",
+        "email": "oio.chandigarh@cioins.co.in",
+        "phone": "0172 - 2706468"
     },
     {
         "center": "Chennai",
         "statesCovered": [
             "Tamil Nadu",
-            "Puducherry (Union Territory)"
+            "Puducherry town and Karaikal"
         ],
         "address": "Fatima Akhtar Court, 4th Floor, 453, Anna Salai, Teynampet, Chennai – 600018",
-        "email": "bimalokpal.chennai@cioins.co.in"
+        "email": "oio.chennai@cioins.co.in",
+        "phone": "044 - 24333668 / 24333678"
     },
     {
         "center": "Delhi",
         "statesCovered": [
             "Delhi",
-            "parts of Rajasthan"
+            "Haryana districts of Gurugram, Faridabad, Sonepat and Bahadurgarh"
         ],
         "address": "2/2 A, Universal Insurance Building, Asaf Ali Road, New Delhi – 110002",
-        "email": "bimalokpal.delhi@cioins.co.in"
+        "email": "oio.delhi@cioins.co.in",
+        "phone": "011 - 46013992 / 23213504 / 23232481"
     },
     {
         "center": "Guwahati",
@@ -76,18 +82,20 @@ OFFICES = [
             "Nagaland",
             "Tripura"
         ],
-        "address": "Jeevan Nivesh, 5th Floor, Nr. Panbazar Overbridge, S.S. Road, Guwahati – 781001",
-        "email": "bimalokpal.guwahati@cioins.co.in"
+        "address": "Jeevan Nivesh, 5th Floor, Near Pan Bazar, S.S. Road, Guwahati – 781001",
+        "email": "oio.guwahati@cioins.co.in",
+        "phone": "0361 - 2632204 / 2602205 / 2631307"
     },
     {
         "center": "Hyderabad",
         "statesCovered": [
             "Andhra Pradesh",
             "Telangana",
-            "Yanam (Puducherry UT)"
+            "Yanam (part of Puducherry)"
         ],
-        "address": "6-2-46, 1st Floor, Moin Court, Lane Opp. Saleem Function Palace, A.C. Guards, Lakdi-Ka-Pool, Hyderabad – 500004",
-        "email": "bimalokpal.hyderabad@cioins.co.in"
+        "address": "6-2-46, 1st Floor, Moin Court, Lane Opp. Hyundai Showroom, A.C. Guards, Lakdi-Ka-Pool, Hyderabad – 500004",
+        "email": "oio.hyderabad@cioins.co.in",
+        "phone": "040 - 23312122 / 23376991 / 23376599 / 23328709 / 23325325"
     },
     {
         "center": "Jaipur",
@@ -95,53 +103,135 @@ OFFICES = [
             "Rajasthan"
         ],
         "address": "Jeevan Nidhi – II Bldg., Ground Floor, Bhawani Singh Marg, Jaipur – 302005",
-        "email": "bimalokpal.jaipur@cioins.co.in"
+        "email": "oio.jaipur@cioins.co.in",
+        "phone": "0141 - 2740363"
     },
     {
-        "center": "Ernakulam",
+        "center": "Kochi",
         "statesCovered": [
             "Keralam",
             "Lakshadweep",
-            "Mahe (part of Puducherry UT)"
+            "Mahe (part of Puducherry)"
         ],
-        "address": "2nd Floor, Pulinat Building, Opp. Cochin Shipyard, M.G. Road, Ernakulam – 682015",
-        "email": "bimalokpal.ernakulam@cioins.co.in"
+        "address": "10th Floor, Jeevan Prakash, LIC Building, Opp. Maharaja's College Ground, M.G. Road, Kochi – 682011",
+        "email": "oio.ernakulam@cioins.co.in",
+        "phone": "0484 - 2358759"
     },
     {
         "center": "Kolkata",
         "statesCovered": [
             "West Bengal",
             "Sikkim",
-            "Andaman & Nicobar Islands"
+            "Andaman and Nicobar Islands"
         ],
-        "address": "Hindustan Building, Annexe, 4th Floor, 4, C.R. Avenue, Kolkata – 700072",
-        "email": "bimalokpal.kolkata@cioins.co.in"
+        "address": "Hindustan Building Annexe, 7th Floor, 4, C.R. Avenue, Kolkata – 700072",
+        "email": "oio.kolkata@cioins.co.in",
+        "phone": "033 - 22124339 / 22124341"
     },
     {
         "center": "Lucknow",
         "statesCovered": [
-            "Uttar Pradesh (districts near Lucknow)",
-            "Uttarakhand"
+            "Uttar Pradesh (listed districts, including Lucknow, Kanpur, Prayagraj, Varanasi, Ayodhya and Gorakhpur)"
         ],
         "address": "6th Floor, Jeevan Bhawan, Phase-II, Nawal Kishore Road, Hazratganj, Lucknow – 226001",
-        "email": "bimalokpal.lucknow@cioins.co.in"
+        "email": "oio.lucknow@cioins.co.in",
+        "phone": "0522 - 4002082 / 3500613",
+        "districts": [
+            "Lalitpur",
+            "Jhansi",
+            "Mahoba",
+            "Hamirpur",
+            "Banda",
+            "Chitrakoot",
+            "Prayagraj",
+            "Mirzapur",
+            "Sonbhadra",
+            "Fatehpur",
+            "Pratapgarh",
+            "Jaunpur",
+            "Varanasi",
+            "Ghazipur",
+            "Jalaun",
+            "Kanpur",
+            "Lucknow",
+            "Unnao",
+            "Sitapur",
+            "Lakhimpur Kheri",
+            "Bahraich",
+            "Barabanki",
+            "Raebareli",
+            "Shravasti",
+            "Gonda",
+            "Ayodhya",
+            "Amethi",
+            "Kaushambi",
+            "Balrampur",
+            "Basti",
+            "Ambedkar Nagar",
+            "Sultanpur",
+            "Maharajganj",
+            "Sant Kabir Nagar",
+            "Azamgarh",
+            "Kushinagar",
+            "Gorakhpur",
+            "Deoria",
+            "Mau",
+            "Chandauli",
+            "Ballia",
+            "Siddharthnagar"
+        ]
     },
     {
         "center": "Mumbai",
         "statesCovered": [
-            "Maharashtra (excluding Nagpur region)",
-            "Goa"
+            "Mumbai Metropolitan Region, excluding the Mumbai wards M/East, M/West, N, S and T and the Navi Mumbai area, which the Thane office covers"
         ],
         "address": "3rd Floor, Jeevan Seva Annexe, S.V. Road, Santacruz (West), Mumbai – 400054",
-        "email": "bimalokpal.mumbai@cioins.co.in"
+        "email": "oio.mumbai@cioins.co.in",
+        "phone": "022 - 69038800 / 27 / 29 / 31 / 32 / 33"
     },
     {
         "center": "Noida",
         "statesCovered": [
-            "Uttar Pradesh (remaining districts)"
+            "Uttarakhand",
+            "Uttar Pradesh (listed districts, including Noida, Ghaziabad, Meerut, Agra, Bareilly and Moradabad)"
         ],
         "address": "Bhagwan Sahai Palace, 4th Floor, Main Road, Naya Bans, Sector 15, Distt: Gautam Buddh Nagar, U.P. – Noida – 201301",
-        "email": "bimalokpal.noida@cioins.co.in"
+        "email": "oio.noida@cioins.co.in",
+        "phone": "0120 - 2514252 / 2514253",
+        "districts": [
+            "Agra",
+            "Aligarh",
+            "Baghpat",
+            "Bareilly",
+            "Bijnor",
+            "Badaun",
+            "Bulandshahr",
+            "Etah",
+            "Kannauj",
+            "Mainpuri",
+            "Mathura",
+            "Meerut",
+            "Moradabad",
+            "Muzaffarnagar",
+            "Auraiya",
+            "Pilibhit",
+            "Etawah",
+            "Farrukhabad",
+            "Firozabad",
+            "Gautam Buddh Nagar",
+            "Ghaziabad",
+            "Hardoi",
+            "Shahjahanpur",
+            "Hapur",
+            "Shamli",
+            "Rampur",
+            "Kasganj",
+            "Sambhal",
+            "Amroha",
+            "Hathras",
+            "Saharanpur"
+        ]
     },
     {
         "center": "Patna",
@@ -149,16 +239,32 @@ OFFICES = [
             "Bihar",
             "Jharkhand"
         ],
-        "address": "1st Floor, Kalpana Arcade Building, Bazar Samiti Road, Bahadurpur, Patna – 800006",
-        "email": "bimalokpal.patna@cioins.co.in"
+        "address": "2nd Floor, Lalit Bhawan, Bailey Road, Patna – 800001",
+        "email": "oio.patna@cioins.co.in",
+        "phone": "0612 - 2547068"
     },
     {
         "center": "Pune",
         "statesCovered": [
-            "Maharashtra (Nagpur region)"
+            "Goa",
+            "Maharashtra (excluding Navi Mumbai, Thane, Palghar and Raigad districts and the Mumbai Metropolitan Region)"
         ],
         "address": "Jeevan Darshan Bldg., 3rd Floor, C.T.S. No.s. 195 to 198, N.C. Kelkar Road, Narayan Peth, Pune – 411030",
-        "email": "bimalokpal.pune@cioins.co.in"
+        "email": "oio.pune@cioins.co.in",
+        "phone": "020 - 24471175"
+    },
+    {
+        "center": "Thane",
+        "statesCovered": [
+            "Navi Mumbai",
+            "Thane district",
+            "Raigad district",
+            "Palghar district",
+            "Mumbai wards M/East, M/West, N, S and T"
+        ],
+        "address": "Jeevan Chintamani Building, 2nd Floor, Near New RTO Office, Louis Wadi, Vasantrao Naik Mahamarg, Thane (West) – 400604",
+        "email": "oio.thane@cioins.co.in",
+        "phone": "022 - 20812868 / 69"
     }
 ]
 
@@ -202,7 +308,7 @@ STATES = [
         "name": "Goa",
         "type": "State",
         "centers": [
-            "Mumbai"
+            "Pune"
         ]
     },
     {
@@ -216,8 +322,10 @@ STATES = [
         "name": "Haryana",
         "type": "State",
         "centers": [
-            "Chandigarh"
-        ]
+            "Chandigarh",
+            "Delhi"
+        ],
+        "note": "The districts of Gurugram, Faridabad, Sonepat and Bahadurgarh are served by the Delhi office. The rest of Haryana is served by the Chandigarh office."
     },
     {
         "name": "Himachal Pradesh",
@@ -244,7 +352,7 @@ STATES = [
         "name": "Keralam",
         "type": "State",
         "centers": [
-            "Ernakulam"
+            "Kochi"
         ]
     },
     {
@@ -259,9 +367,10 @@ STATES = [
         "type": "State",
         "centers": [
             "Mumbai",
-            "Pune"
+            "Pune",
+            "Thane"
         ],
-        "note": "Maharashtra is divided between two Ombudsman offices. The office depends on your district."
+        "note": "Maharashtra is divided between three offices. Thane covers Thane, Palghar and Raigad districts, Navi Mumbai and the Mumbai wards M/East, M/West, N, S and T. Mumbai covers the rest of the Mumbai Metropolitan Region. Pune covers the rest of the state. Your district or city decides the office."
     },
     {
         "name": "Manipur",
@@ -309,10 +418,8 @@ STATES = [
         "name": "Rajasthan",
         "type": "State",
         "centers": [
-            "Jaipur",
-            "Delhi"
-        ],
-        "note": "Rajasthan is divided between two Ombudsman offices. The office depends on your district."
+            "Jaipur"
+        ]
     },
     {
         "name": "Sikkim",
@@ -349,13 +456,13 @@ STATES = [
             "Lucknow",
             "Noida"
         ],
-        "note": "Uttar Pradesh is divided between two Ombudsman offices. The office depends on your district."
+        "note": "Uttar Pradesh is divided between the Lucknow and Noida offices. Your district decides the office, so please check your district against the list on cioins.co.in."
     },
     {
         "name": "Uttarakhand",
         "type": "State",
         "centers": [
-            "Lucknow"
+            "Noida"
         ]
     },
     {
@@ -411,7 +518,7 @@ STATES = [
         "name": "Lakshadweep",
         "type": "Union Territory",
         "centers": [
-            "Ernakulam"
+            "Kochi"
         ]
     },
     {
@@ -419,10 +526,10 @@ STATES = [
         "type": "Union Territory",
         "centers": [
             "Chennai",
-            "Ernakulam",
+            "Kochi",
             "Hyderabad"
         ],
-        "note": "Puducherry and Karaikal fall under Chennai, Mahe under Ernakulam, and Yanam under Hyderabad."
+        "note": "Puducherry town and Karaikal fall under Chennai, Mahe under Kochi, and Yanam under Hyderabad."
     }
 ]
 
@@ -456,6 +563,9 @@ CITIES = {
     "gurugram": "Delhi",
     "gurgaon": "Delhi",
     "faridabad": "Delhi",
+    "sonipat": "Delhi",
+    "sonepat": "Delhi",
+    "bahadurgarh": "Delhi",
     "guwahati": "Guwahati",
     "shillong": "Guwahati",
     "imphal": "Guwahati",
@@ -469,36 +579,55 @@ CITIES = {
     "jodhpur": "Jaipur",
     "udaipur": "Jaipur",
     "kota": "Jaipur",
-    "kochi": "Ernakulam",
-    "ernakulam": "Ernakulam",
-    "thiruvananthapuram": "Ernakulam",
-    "kozhikode": "Ernakulam",
-    "kollam": "Ernakulam",
+    "kochi": "Kochi",
+    "ernakulam": "Kochi",
+    "thiruvananthapuram": "Kochi",
+    "kozhikode": "Kochi",
+    "kollam": "Kochi",
     "kolkata": "Kolkata",
     "siliguri": "Kolkata",
     "gangtok": "Kolkata",
     "port blair": "Kolkata",
+    "sri vijaya puram": "Kolkata",
     "lucknow": "Lucknow",
     "kanpur": "Lucknow",
-    "dehradun": "Lucknow",
-    "haridwar": "Lucknow",
+    "varanasi": "Lucknow",
+    "prayagraj": "Lucknow",
+    "allahabad": "Lucknow",
+    "ayodhya": "Lucknow",
+    "faizabad": "Lucknow",
+    "gorakhpur": "Lucknow",
     "mumbai": "Mumbai",
-    "thane": "Mumbai",
-    "nashik": "Mumbai",
-    "goa": "Mumbai",
-    "panaji": "Mumbai",
+    "thane": "Thane",
+    "navi mumbai": "Thane",
+    "kalyan": "Thane",
+    "dombivli": "Thane",
+    "bhiwandi": "Thane",
+    "vasai": "Thane",
+    "virar": "Thane",
+    "palghar": "Thane",
+    "panvel": "Thane",
+    "raigad": "Thane",
     "noida": "Noida",
     "ghaziabad": "Noida",
     "agra": "Noida",
-    "varanasi": "Noida",
-    "prayagraj": "Noida",
-    "allahabad": "Noida",
     "meerut": "Noida",
+    "dehradun": "Noida",
+    "haridwar": "Noida",
     "patna": "Patna",
     "ranchi": "Patna",
     "jamshedpur": "Patna",
     "gaya": "Patna",
     "pune": "Pune",
     "nagpur": "Pune",
-    "aurangabad": "Pune"
+    "nashik": "Pune",
+    "aurangabad": "Pune",
+    "chhatrapati sambhajinagar": "Pune",
+    "sambhajinagar": "Pune",
+    "ahilyanagar": "Pune",
+    "ahmednagar": "Pune",
+    "kolhapur": "Pune",
+    "solapur": "Pune",
+    "goa": "Pune",
+    "panaji": "Pune"
 }

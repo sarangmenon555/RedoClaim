@@ -1,6 +1,6 @@
 export interface Citation {
   law: string; // "IRDAI Master Circular 2024" | "Consumer Protection Act, 2019" | etc.
-  section: string; // "Chapter II, Para 8.3" | "Section 2(11)" etc.
+  section: string; // "Para 17(b)" | "Section 2(11)" etc.
   title: string;
   summary: string;
   fullTextNote?: string; // where to verify the exact wording
@@ -11,34 +11,36 @@ export interface Citation {
 // just trusting the AI's citation. Written once, zero LLM cost per view.
 export const CITATIONS: Citation[] = [
   {
-    law: "IRDAI Master Circular on Health Insurance, 2024",
-    section: "Turnaround Time (TAT) for Claim Settlement",
+    law: "IRDAI Master Circular on Protection of Policyholders' Interests, 2024",
+    section: "Parts A, B and C - Settlement of Claims and Interest",
     title: "Insurer must decide a claim within a fixed time",
     summary:
-      "Requires insurers to settle or reject a claim within a specified turnaround time after receiving all " +
-      "necessary documents. Missing this deadline can itself be grounds for escalation, and may attract " +
-      "interest on the delayed amount under IRDAI's protection-of-policyholders regulations.",
+      "Sets turnaround times for claim settlement: health reimbursement claims within 15 days of submission, death claims " +
+      "within 15 days of intimation (45 days where an investigation is warranted), and, for motor and other retail general " +
+      "claims, a decision within 7 days of the survey report. If a claim is not settled in time, interest at Bank Rate plus " +
+      "2% per annum is payable from the date of receipt of the claim intimation until payment, on the insurer's own initiative.",
   },
   {
     law: "IRDAI Master Circular on Health Insurance, 2024",
-    section: "Cashless Facility — Pre-Authorization TAT",
+    section: "Paras 15 and 16 - Cashless Authorisation and Discharge",
     title: "1-hour and 3-hour cashless response windows",
     summary:
-      "Insurers/TPAs must respond to an initial cashless pre-authorization request within 1 hour, and to a " +
-      "final discharge authorization request within 3 hours of receiving complete information from the hospital.",
+      "The insurer must decide a cashless authorisation request immediately and within 1 hour, and grant final discharge " +
+      "authorisation within 3 hours of the hospital's request. If discharge is delayed beyond 3 hours, the extra amount " +
+      "charged by the hospital is borne by the insurer.",
   },
   {
-    law: "IRDAI (Protection of Policyholders' Interests) Regulations",
-    section: "Document Requisition",
-    title: "Insurer cannot repeatedly demand new documents to delay a decision",
+    law: "IRDAI Master Circular on Protection of Policyholders' Interests, 2024",
+    section: "No Rejection for Want of Documents",
+    title: "A claim cannot be rejected or closed for want of documents",
     summary:
-      "Insurers are required to call for all necessary claim documents at one go (or within a limited number " +
-      "of rounds), rather than serially demanding more documents over an extended period, which is a documented " +
-      "delay tactic.",
+      "No claim shall be rejected or closed for want of documents or for delayed intimation of claim. In health insurance, " +
+      "insurers and TPAs collect the required documents from the hospital and the policyholder is not required to submit them. " +
+      "In motor and other retail general insurance, the customer submits only documents directly related to the claim.",
   },
   {
-    law: "IRDAI Master Circular, 2024",
-    section: "Moratorium Period (Health Insurance)",
+    law: "IRDAI Master Circular on Health Insurance Business, 2024",
+    section: "Para 13 - Moratorium Period",
     title: "60-month moratorium on non-disclosure challenges",
     summary:
       "After a health policy has been continuously in force for 60 continuous months, a claim generally cannot be contested on grounds " +
@@ -87,7 +89,7 @@ export const CITATIONS: Citation[] = [
     summary:
       "A complaint to the Ombudsman is maintainable only if the complainant has first approached the insurer's " +
       "Grievance Redressal Officer (GRO) and either received an unsatisfactory response or received no response " +
-      "within the stipulated period (commonly 30 days), and files with the Ombudsman within 1 year of that.",
+      "within one month, and files with the Ombudsman within 1 year of that.",
   },
   {
     law: "Motor Vehicles Act / Supreme Court precedent",
@@ -99,7 +101,7 @@ export const CITATIONS: Citation[] = [
       "grounds — a minor technical/procedural lapse is often not sufficient by itself.",
   },
   {
-    law: "IRDAI Master Circular on Health Insurance, 2024",
+    law: "Policy terms (room-rent sub-limit clauses)",
     section: "Proportionate Deduction — Room Rent",
     title: "How room-rent-cap deductions are supposed to be calculated",
     summary:

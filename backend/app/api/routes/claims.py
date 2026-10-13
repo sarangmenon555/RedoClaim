@@ -251,7 +251,7 @@ async def get_claim_timeline(
             "date": gro_due.isoformat(),
             "type": "gro_deadline",
             "kind": "tat",
-            "title": "Insurer's grievance-response TAT (approx. 15 days from receipt)",
+            "title": "Insurer's grievance-response TAT (14 days from receipt)",
             "note": "A turnaround the insurer must meet - not a deadline for you.",
             "is_overdue": gro_due < now,
             "days_remaining": (gro_due - now).days,

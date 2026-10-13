@@ -82,8 +82,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     category: "Escalation & timelines",
     question: "How long does the insurer have to respond after I file a grievance?",
     answer:
-      "Under the IRDAI Master Circular on grievance redressal, the insurer's Grievance Redressal Officer (GRO) " +
-      "must respond within 15 days. If unresolved or unsatisfactory, you can escalate to the Insurance Ombudsman " +
+      "Under the IRDAI Master Circular on Protection of Policyholders' Interests (2024), the insurer must acknowledge your " +
+      "complaint immediately and resolve it within 14 days. If unresolved or unsatisfactory, you can escalate to the Insurance Ombudsman " +
       "or file on the IRDAI Bima Bharosa portal. Missing your own escalation windows can forfeit some remedies — " +
       "track your deadlines from the day of rejection, not the day you get around to filing.",
     relatedTool: { label: "See your claim's deadlines", href: "/dashboard/timeline" },

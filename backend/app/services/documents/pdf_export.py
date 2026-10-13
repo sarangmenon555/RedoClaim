@@ -77,7 +77,7 @@ def build_audit_trail_pdf(
         ["Current Status", _safe(claim.get("status"), "Unknown").replace("_", " ").title()],
         ["Claim Filed", _safe(claim.get("claim_date"))],
         ["Rejected On", _safe(claim.get("rejection_date"))],
-        ["GRO response TAT (insurer, ~15 days)", _safe(claim.get("gro_deadline"), "No grievance recorded")],
+        ["GRO response TAT (insurer, 14 days)", _safe(claim.get("gro_deadline"), "No grievance recorded")],
         ["Ombudsman window (indicative)", _safe(claim.get("irdai_deadline"), "Not calculated")],
         ["Consumer-law limitation", "Depends on cause of action; take legal advice"],
     ]

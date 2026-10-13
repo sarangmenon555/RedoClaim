@@ -26,15 +26,15 @@ class IRDAIRulesEngine:
 
     # ── TATs from IRDAI Master Circular 2024 ──────────────────────
     TAT_CASHLESS_HOURS          = 1     # cashless pre-auth within 1 hour
-    TAT_CLAIM_DAYS              = 30    # reference timeline used only with its stated basis; not a universal deadline
-    TAT_GRO_DAYS                = 15    # GRO must resolve within 15 days
-    TAT_GRO_ACK_DAYS            = 3     # GRO acknowledgement within 3 working days
-    TAT_SURVEY_DAYS             = 3     # survey for claims >50k within 3 days
+    TAT_CLAIM_DAYS              = 15    # health reimbursement claims: settle within 15 days of submission of the claim
+    TAT_GRO_DAYS                = 14    # insurer must resolve a grievance within 14 days
+    TAT_GRO_ACK_DAYS            = 0     # grievance must be acknowledged immediately
+    TAT_SURVEY_DAYS             = 15    # surveyor report within 15 days of allocation
     MORATORIUM_YEARS            = 5     # 5 continuous years (2024 reform)
     MORATORIUM_MONTHS           = 60    # the same period, as IRDAI material states it: 60 continuous months
     OMBUDSMAN_MAX_RUPEES        = 5_000_000   # ₹50 Lakhs
     INTEREST_RATE_BUFFER        = 2     # Bank Rate + 2% for delayed claims
-    EJAGRITI_TRIGGER_DAYS       = 15    # if insurer silent for 15 days → e-Jagriti
+    EJAGRITI_TRIGGER_DAYS       = 14    # insurer grievance turnaround elapsed without a resolution
 
     # ── Step 1: Timeline & TAT Analysis ───────────────────────────
     def check_sla_violations(
@@ -60,9 +60,9 @@ class IRDAIRulesEngine:
                 excess = days_to_settle - self.TAT_CLAIM_DAYS
                 violations.append({
                     "type": "settlement_timeline_inconsistency",
-                    "regulation": "IRDAI Master Circular on Health Insurance, 2024 (settlement timeline)",
+                    "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part B (health: settlement of claims)",
                     "applicable_timeline": f"{self.TAT_CLAIM_DAYS} days",
-                    "basis": "Claim settlement timeline referenced in the IRDAI Master Circular on Health Insurance, 2024; the period runs from the applicable event, such as receipt of the last necessary document. Verify against the primary source.",
+                    "basis": "Reimbursement (non-cashless) health claims are to be settled within 15 days of submission of the claim - IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part B. Verify against the primary source.",
                     "detail": (
                         f"The documented dates show {days_to_settle} days between the claim date and the decision. "
                         f"Applicable timeline: {self.TAT_CLAIM_DAYS} days, subject to the start event stated in the basis. "
@@ -72,9 +72,9 @@ class IRDAIRulesEngine:
                     "interest_applicable": True,
                     "interest_note": (
                         f"If the delay is confirmed against the applicable provision, interest may be claimable at Bank Rate + {self.INTEREST_RATE_BUFFER}% "
-                        f"per annum for the excess period. Verify the current provision before relying on this."
+                        f"per annum from the date the insurer received the claim intimation until payment, to be paid by the insurer on its own. Verify the current provision before relying on this."
                     ),
-                    "legal_citation": "IRDAI Master Circular on Health Insurance, 2024 — provisions on interest for delayed claim settlement (verify paragraph in primary source)",
+                    "legal_citation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part B - interest at Bank Rate + 2% on delayed claim settlement",
                 })
 
         # Insurer grievance-resolution TAT (a turnaround the INSURER must meet).
@@ -85,12 +85,12 @@ class IRDAIRulesEngine:
             if days_since_grievance > self.TAT_GRO_DAYS:
                 violations.append({
                     "type": "gro_timeline_inconsistency",
-                    "regulation": "IRDAI grievance redressal provisions (verify paragraph in primary source)",
-                    "applicable_timeline": f"approximately {self.TAT_GRO_DAYS} days from receipt",
-                    "basis": "Grievance resolution timeline referenced in IRDAI / Bima Bharosa grievance material (some IRDAI text states 14 days for the decision); verify the current period for your insurer and complaint channel.",
+                    "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024; IRDAI Master Circular on Operations and Allied Matters of Insurers, 2024 (grievance turnaround)",
+                    "applicable_timeline": f"{self.TAT_GRO_DAYS} days from receipt",
+                    "basis": "Insurers must acknowledge a complaint immediately and resolve it within 14 days, giving reasons and the relevant policy terms if the complaint is not accepted - IRDAI Master Circular on Protection of Policyholders' Interests, 2024; IRDAI Master Circular on Operations and Allied Matters of Insurers, 2024, clause 24.",
                     "detail": (
                         f"The grievance was filed {days_since_grievance} days ago. "
-                        f"Applicable insurer turnaround: approximately {self.TAT_GRO_DAYS} days from receipt. "
+                        f"Applicable insurer turnaround: {self.TAT_GRO_DAYS} days from receipt. "
                         f"No resolution is documented within that timeline."
                     ),
                     "severity": "medium",
@@ -231,8 +231,8 @@ class IRDAIRulesEngine:
         cis_exclusions: list[str],
     ) -> dict:
         """
-        IRDAI Master Circular 2024, Para 4.2.
-        Insurer cannot enforce an exclusion not stated in the CIS.
+        IRDAI Master Circular on Health Insurance Business, 2024, Para 4.
+        Flags a rejection ground that does not appear in the uploaded CIS.
         """
         if not cis_exclusions:
             return {
@@ -247,7 +247,7 @@ class IRDAIRulesEngine:
         if not matched:
             return {
                 "cis_violation": True,
-                "regulation": "IRDAI Master Circular 2024, Para 4.2",
+                "regulation": "IRDAI Master Circular on Health Insurance Business, 2024, Para 4 (Customer Information Sheet)",
                 "argument": (
                     "The rejection cites an exclusion that does not appear to be "
                     "disclosed in the Customer Information Sheet (CIS) that was uploaded. "
@@ -331,8 +331,8 @@ class IRDAIRulesEngine:
         paths.append({
             "step": 1,
             "route": "GRO — Grievance Redressal Officer",
-            "regulation": "IRDAI Master Circular 2024, Para 10",
-            "deadline": "No specific filing deadline established from the information provided; the insurer's response turnaround is approximately 15 days from receipt (verify with your insurer's grievance policy)",
+            "regulation": "IRDAI Master Circular on Operations and Allied Matters of Insurers, 2024, Chapter IV (Grievance Redressal System)",
+            "deadline": "No specific filing deadline established from the information provided; the insurer's response turnaround is 14 days from receipt",
             "how": (
                 "Write to the insurer's GRO. The GRO name and address is on your policy document "
                 "and the insurer's website. Send by registered post AND email."
@@ -498,16 +498,16 @@ class IRDAIRulesEngine:
             "regulation": "IRDAI (Health Insurance) Regulations 2024, Regulation 17",
             "key_rights": [
                 "You can port your policy to any IRDAI-registered insurer",
-                "All waiting periods already served carry forward to new insurer",
+                "Waiting period credits already earned carry forward to the new insurer, to the extent of the sum insured",
                 f"Moratorium credit: about {min(years_covered, 5) * 12:.0f} of {self.MORATORIUM_MONTHS} continuous months served",
                 f"PED waiting period remaining at new insurer: {ped_waiting_remaining:.1f} years",
-                "New insurer CANNOT impose fresh initial waiting period",
-                "Premium cannot be increased solely due to portability",
+                "No charges are levied for porting in or porting out",
+                "The existing and new insurers must jointly ensure your underwriting details and claim history are transferred",
             ],
             "how_to_port": [
-                "Apply 45 days before your policy renewal date",
+                "Apply at least 30 days before your renewal due date, and not earlier than 60 days before it",
                 "Fill insurer's portability form with previous policy details",
-                "New insurer must respond within 15 days",
+                "Your existing insurer must share your details within 72 hours, and the new insurer must decide within 5 days of receiving them",
                 "If new insurer refuses without reason, file IRDAI complaint",
             ],
             "when_to_consider_porting": (
