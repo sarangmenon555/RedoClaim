@@ -307,7 +307,7 @@ def _find_redressal_route(args: dict) -> dict:
         }
     return {
         "recommended_action": "consumer_court",
-        "reasoning": f"Claim amount (₹{amount:,.0f}) exceeds the Ombudsman's ₹50,00,000 limit, so this must go to the Consumer Court (District/State/National Commission by value) via e-Jagriti.",
+        "reasoning": f"Claim amount (₹{amount:,.0f}) exceeds the Ombudsman's ₹50,00,000 limit, so this must go to the Consumer Court via e-Jagriti. The forum is decided by the premium paid, not the claim amount, so it is usually the District Commission.",
         "ombudsman_eligible": False,
     }
 

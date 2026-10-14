@@ -354,6 +354,29 @@ IRDAI_CHUNKS = [
         "regulation": "IRDAI Master Circular on Protection of Policyholders' Interests, 2024, Part A",
         "category": "tat_sla_life",
     },
+    {
+        "title": "Consumer Commission - Forum and Filing Fee",
+        "text": (
+            "Consumer Protection Act, 2019 and the Consumer Protection (Jurisdiction of the "
+            "District Commission, the State Commission and the National Commission) Rules, "
+            "2021: The forum is decided by the value of the goods or services paid as "
+            "consideration, not by the claim amount. The District Commission hears complaints "
+            "up to Rs. 50 lakh, the State Commission above Rs. 50 lakh up to Rs. 2 crore, and "
+            "the National Commission above Rs. 2 crore. For an insurance policy the "
+            "consideration is the premium paid, so most insurance complaints are filed before "
+            "the District Commission; the Supreme Court confirmed the consideration-based test "
+            "in 2025. The filing fee also depends on the value paid as consideration: nil up to "
+            "Rs. 5 lakh; Rs. 200 above Rs. 5 lakh up to Rs. 10 lakh; Rs. 400 above Rs. 10 lakh "
+            "up to Rs. 20 lakh; Rs. 1,000 above Rs. 20 lakh up to Rs. 50 lakh; Rs. 2,000 above "
+            "Rs. 50 lakh up to Rs. 1 crore; Rs. 2,500 above Rs. 1 crore up to Rs. 2 crore; Rs. "
+            "3,000 above Rs. 2 crore up to Rs. 4 crore; Rs. 4,000 above Rs. 4 crore up to Rs. 6 "
+            "crore; Rs. 5,000 above Rs. 6 crore up to Rs. 8 crore; Rs. 6,000 above Rs. 8 crore "
+            "up to Rs. 10 crore; Rs. 7,500 above Rs. 10 crore. Fees are paid online on "
+            "e-Jagriti."
+        ),
+        "regulation": "Consumer Protection Act, 2019; Consumer Protection (Jurisdiction) Rules, 2021",
+        "category": "consumer_forum_fee",
+    },
 ]
 
 

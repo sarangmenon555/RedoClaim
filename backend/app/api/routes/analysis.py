@@ -29,6 +29,7 @@ from app.services.rag.rag_pipeline import (
     search_irdai_regulations, search_rejection_patterns, search_policy_chunks
 )
 from app.services.irdai.rules_engine import irdai_engine
+from app.services.irdai.consumer_fees import FORUM_BASIS_NOTE, fee_table, forums as consumer_forums
 from app.services.irdai.evidence_assessment import assess_evidence, apply_insufficient_evidence
 from app.services.irdai.language_guard import soften_legal_language
 from app.services.irdai.citation_guard import build_clause_index, format_reference_block, verify_citations
@@ -564,6 +565,9 @@ async def ejagriti_guide():
             "eligibility first."
         ),
         "legal_basis": "Consumer Protection Act, 2019, Section 2(11) — Deficiency in Service",
+        "forum_basis": FORUM_BASIS_NOTE,
+        "forums": consumer_forums(),
+        "fee_slabs": fee_table(),
         "steps": [
             {
                 "step": 1,
@@ -599,9 +603,10 @@ async def ejagriti_guide():
                 "step": 5,
                 "action": "Pay court fee",
                 "detail": (
-                    "Rs.200 for claims up to Rs.5 Lakhs | Rs.400 for Rs.5L-Rs.10L | "
-                    "Rs.1,000 for Rs.10L-Rs.20L | Rs.2,000 for Rs.20L-Rs.50L "
-                    "(exact fees vary — check portal)"
+                    "The fee depends on the value paid as consideration, which for an insurance policy is generally the premium paid, "
+                    "not the claim amount. Nil up to Rs. 5 lakh; Rs. 200 above Rs. 5 lakh up to Rs. 10 lakh; Rs. 400 up to Rs. 20 lakh; "
+                    "Rs. 1,000 up to Rs. 50 lakh; Rs. 2,000 up to Rs. 1 crore (higher slabs apply above that). "
+                    "Pay online and check the portal for the current schedule."
                 ),
             },
             {
@@ -614,7 +619,7 @@ async def ejagriti_guide():
             },
         ],
         "relief_you_can_claim": [
-            "Full claim amount with interest (typically 9-12% per annum)",
+            "Claim amount with interest, as the commission decides",
             "Compensation for mental agony and harassment",
             "Cost of litigation",
             "Punitive damages in cases of gross insurer misconduct",
@@ -622,6 +627,7 @@ async def ejagriti_guide():
         ],
         "important_notes": [
             CONSUMER_LAW_NOTE,
+            FORUM_BASIS_NOTE,
             "No lawyer required — you can represent yourself",
             "Insurer must appear and respond within 30 days of notice",
             "If insurer fails to appear: ex-parte order can be passed",

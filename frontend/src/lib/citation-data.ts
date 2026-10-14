@@ -65,13 +65,14 @@ export const CITATIONS: Citation[] = [
       "can be framed as a deficiency in service under this Act.",
   },
   {
-    law: "Consumer Protection Act, 2019",
-    section: "Jurisdiction — District/State/National Commissions",
-    title: "Where to file a consumer complaint, by claim value",
+    law: "Consumer Protection Act, 2019; Consumer Protection (Jurisdiction) Rules, 2021",
+    section: "Jurisdiction - District, State and National Commissions",
+    title: "Where to file a consumer complaint: decided by the value paid as consideration",
     summary:
-      "Consumer disputes are filed at the District Commission, State Commission, or National Commission " +
-      "depending on the value of goods/services and compensation claimed. An insurance claim dispute qualifies " +
-      "as a 'deficiency in service' complaint under this Act.",
+      "The forum depends on the value of the goods or services paid as consideration, not on the claim amount: the District " +
+      "Commission up to ₹50 lakh, the State Commission above ₹50 lakh up to ₹2 crore, and the National Commission above " +
+      "₹2 crore. For an insurance policy the consideration is the premium paid, so most insurance complaints go to the District " +
+      "Commission. The Supreme Court confirmed the consideration-based test in 2025. The filing fee follows the same value.",
   },
   {
     law: "Insurance Ombudsman Rules, 2017",

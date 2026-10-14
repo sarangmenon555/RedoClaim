@@ -107,7 +107,7 @@ def advise_cost_benefit(
         "disclaimer": (
             f"{STANDARD_NOTICE} It is not a prediction of outcome. Case strength comes from the AI-assisted audit "
             "and may be wrong. Effort figures are rough, static assumptions. Official routes such as the GRO and "
-            "Ombudsman are free to file yourself; a Consumer Forum complaint may involve nominal fees. Check each "
+            "Ombudsman are free to file yourself; a Consumer Forum complaint has a court fee that depends on the premium paid (nil up to Rs. 5 lakh). Check each "
             "channel's current official eligibility rules before filing."
         ),
     }

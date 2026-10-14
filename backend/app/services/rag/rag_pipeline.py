@@ -399,21 +399,21 @@ Procedure:
 1. Register on e-Jagriti portal
 2. Fill online complaint form with policy + rejection details
 3. Upload all documents digitally (rejection letter, policy, hospital records)
-4. Pay the court fee online (it depends on the claim amount; check the current fee slab on the portal)
+4. Pay the court fee online. The fee depends on the value paid as consideration (for an insurance policy, generally the premium paid): nil up to Rs. 5 lakh; Rs. 200 above Rs. 5 lakh up to Rs. 10 lakh; Rs. 400 above Rs. 10 lakh up to Rs. 20 lakh; Rs. 1,000 above Rs. 20 lakh up to Rs. 50 lakh; Rs. 2,000 above Rs. 50 lakh up to Rs. 1 crore; Rs. 2,500 above Rs. 1 crore up to Rs. 2 crore; Rs. 3,000 above Rs. 2 crore up to Rs. 4 crore; Rs. 4,000 above Rs. 4 crore up to Rs. 6 crore; Rs. 5,000 above Rs. 6 crore up to Rs. 8 crore; Rs. 6,000 above Rs. 8 crore up to Rs. 10 crore; Rs. 7,500 above Rs. 10 crore
 5. Receive case number and hearing schedule via email/SMS
 
 Trigger for e-Jagriti: If insurer does NOT respond to complaint within 14 DAYS
 
-Consumer Forums by claim amount:
-• District Consumer Disputes Redressal Commission: Up to ₹50,00,000 (50 Lakhs)
-• State Consumer Disputes Redressal Commission: ₹50L to ₹2,00,00,000 (2 Crores)
-• National Consumer Disputes Redressal Commission: Above ₹2 Crores
+Consumer Forums by value of goods or services paid as consideration (Consumer Protection (Jurisdiction) Rules, 2021). For an insurance policy the consideration is generally the premium paid, not the claim amount, so most insurance complaints go to the District Commission:
+• District Consumer Disputes Redressal Commission: up to Rs. 50 lakh
+• State Consumer Disputes Redressal Commission: above Rs. 50 lakh up to Rs. 2 crore
+• National Consumer Disputes Redressal Commission: above Rs. 2 crore
 
 Limitation: consumer-law limitation may apply and depends on the cause of action and legal context - do not state a fixed period; obtain appropriate legal guidance
 
 Relief available from Consumer Courts:
 • Full claim amount
-• Interest on delayed payment (typically 9–12% per annum)
+• Interest on delayed payment (rate decided by the Commission)
 • Compensation for mental agony and harassment
 • Cost of litigation
 • Punitive/exemplary damages in cases of gross misconduct

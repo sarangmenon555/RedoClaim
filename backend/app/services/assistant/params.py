@@ -5,7 +5,7 @@ from typing import Any, Optional
 FLOAT_KEYS = {
     "claim_amount", "settled_amount", "treatment_amount", "total_bill_amount",
     "room_rent_per_day", "years_covered", "od_premium_before_ncb",
-    "ncb_applied_by_insurer", "sum_insured",
+    "ncb_applied_by_insurer", "sum_insured", "premium_paid",
 }
 INT_KEYS = {"days_admitted", "patient_age", "claim_free_years"}
 BOOL_KEYS = {"gro_filed", "accident_related", "had_claim_this_year"}

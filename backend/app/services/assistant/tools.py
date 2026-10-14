@@ -13,6 +13,7 @@ from app.services.assistant.context import (
 from app.services.assistant.doc_classifier import (
     KIND_LABELS, extract_basic_facts, extract_bill_total, guess_insurance_type,
 )
+from app.services.irdai.consumer_fees import describe as describe_consumer_fee
 from app.services.assistant.ombudsman_lookup import find_offices
 from app.services.assistant.params import as_lines, inr, to_float, to_text
 
@@ -804,8 +805,20 @@ async def run_ejagriti_guide(ctx: Ctx) -> dict:
     lines = [str(result["when_to_use"])] if result.get("when_to_use") else []
     if result.get("legal_basis"):
         lines.append(f"Legal basis: {result['legal_basis']}")
+    premium = ctx.num("premium_paid")
+    if premium is not None:
+        info = describe_consumer_fee(premium)
+        fee_text = inr(info["fee"]) if info["fee"] else "nil"
+        lines.append(f"With a premium of {inr(premium)}, the complaint belongs before the {info['forum']} and the court fee is {fee_text}.")
+    else:
+        lines.append(
+            "The forum and the court fee depend on the value paid as consideration, which for an insurance policy is generally the premium paid, "
+            "not the claim amount. For a premium up to Rs. 5 lakh the District Commission hears the complaint and there is no court fee. "
+            "Tell me the premium you paid and I can work out the exact fee."
+        )
     return ok(label, lines, {
         "portal": result.get("portal"),
+        "fee_slabs": result.get("fee_slabs"),
         "steps": [{"step": s.get("step"), "action": s.get("action"), "detail": s.get("detail")} for s in steps[:10]],
     })
 

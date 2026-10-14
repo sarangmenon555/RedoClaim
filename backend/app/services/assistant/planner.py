@@ -31,7 +31,7 @@ INTENT_CATALOG = {
     "followup_letter": "Reminder letter when the insurer has missed its grievance response timeline. Needs an audited claim.",
     "precedents": "Find similar past Ombudsman or consumer-forum case patterns.",
     "ombudsman_contact": "Address, phone and email of the Insurance Ombudsman office for a state, union territory or city. Put the place in params.state.",
-    "ejagriti_guide": "Step-by-step guide to filing a consumer commission complaint on e-Jagriti.",
+    "ejagriti_guide": "Step-by-step guide to filing a consumer commission complaint on e-Jagriti, including the forum and court fee. Put the premium paid in params.premium_paid if stated.",
     "general_question": "Any other question about Indian insurance rights, claims, grievance process or Ombudsman, and the fallback when no other tool fits.",
 }
 
@@ -56,7 +56,7 @@ PARAM_GUIDE = (
     "claim_date, rejection_date, gro_filed_date, policy_inception_date, as_of_date, accident_date (all YYYY-MM-DD), "
     "gro_filed (true|false: user already complained to the insurer), accident_related (true|false), years_covered (number), "
     "reason_for_porting (text), term (the insurance term to explain), claim_free_years (integer), od_premium_before_ncb (rupees), "
-    "ncb_applied_by_insurer (percent), had_claim_this_year (true|false), sum_insured (rupees), city_tier (metro|tier1|tier2), "
+    "ncb_applied_by_insurer (percent), had_claim_this_year (true|false), sum_insured (rupees), premium_paid (rupees: premium paid for the policy, which decides the consumer commission forum and fee), city_tier (metro|tier1|tier2), "
     "family_ages (list of integers), state (state, union territory or city for Ombudsman lookups), appeal_type (gro|insurer_escalation|ombudsman|bima_bharosa|consumer_court)"
 )
 
@@ -89,6 +89,8 @@ def _keyword_intents(message: str, has_docs: bool) -> list:
     for pattern, intent in _KEYWORDS:
         if re.search(pattern, lowered):
             found.append(intent)
+    if "ejagriti_guide" in found and "draft_appeal" in found and not re.search(r"draft|write|letter", lowered):
+        found.remove("draft_appeal")
     if not found and not has_docs and re.search(r"\bwhat (is|does)|\bmeaning of|\bexplain\b|\bmean\b", lowered):
         found.append("explain_term")
     return found

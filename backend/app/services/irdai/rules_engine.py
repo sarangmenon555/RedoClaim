@@ -385,8 +385,8 @@ class IRDAIRulesEngine:
                 "upload all documents, pay minimal court fee online. "
                 "Receive case number and hearing schedule by email/SMS."
             ),
-            "cost": "Nominal court fee (₹200 for claims up to ₹5L; varies for higher amounts)",
-            "expected_resolution": "3–6 months",
+            "cost": "Court fee depends on the premium paid: nil up to ₹5 lakh, ₹200 above ₹5 lakh up to ₹10 lakh, ₹400 up to ₹20 lakh, ₹1,000 up to ₹50 lakh (higher slabs above that)",
+            "expected_resolution": "Varies by commission; often several months or longer",
             "ejagriti_now_applicable": ejagriti_applicable,
             "trigger_note": (
                 "e-Jagriti may be considered if the insurer has not responded within the applicable grievance timeline"
@@ -409,13 +409,7 @@ class IRDAIRulesEngine:
         }
 
     def _get_consumer_forum(self, amount: Optional[float]) -> str:
-        if not amount:
-            return "District Consumer Disputes Redressal Commission"
-        if amount <= 5_000_000:
-            return "District Consumer Disputes Redressal Commission (claims up to ₹50 Lakhs)"
-        elif amount <= 20_000_000:
-            return "State Consumer Disputes Redressal Commission (₹50L – ₹2 Crores)"
-        return "National Consumer Disputes Redressal Commission (above ₹2 Crores)"
+        return "District Consumer Disputes Redressal Commission (the usual forum; the forum is decided by the premium paid, not the claim amount)"
 
     def _get_immediate_action(
         self,
