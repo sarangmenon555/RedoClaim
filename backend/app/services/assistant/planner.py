@@ -6,6 +6,7 @@ from app.services.assistant.context import Ctx
 from app.services.assistant.doc_classifier import KIND_LABELS
 from app.services.assistant.params import clean_params
 from app.services.assistant.tools import EXECUTORS
+from app.services.assistant.verified_facts import strong_match
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ INTENT_CATALOG = {
     "precedents": "Find similar past Ombudsman or consumer-forum case patterns.",
     "ombudsman_contact": "Address, phone and email of the Insurance Ombudsman office for a state, union territory or city. Put the place in params.state.",
     "ejagriti_guide": "Step-by-step guide to filing a consumer commission complaint on e-Jagriti, including the forum and court fee. Put the premium paid in params.premium_paid if stated.",
+    "verify_response": "How to check whether the insurer has missed its grievance response deadline, or how to verify that the insurer has not responded.",
     "general_question": "Any other question about Indian insurance rights, claims, grievance process or Ombudsman, and the fallback when no other tool fits.",
 }
 
@@ -39,7 +41,7 @@ PRIORITY = [
     "audit_rejection", "preauth_check", "audit_settlement", "scan_cis", "analyze_policy",
     "waiting_period", "estimate_payout", "copay_breakdown", "compare_policies", "renewal_check",
     "portability", "ncb_check", "sum_insured_check", "precedents", "cost_benefit",
-    "draft_appeal", "followup_letter", "ombudsman_contact", "explain_term", "ejagriti_guide", "general_question",
+    "draft_appeal", "followup_letter", "ombudsman_contact", "verify_response", "explain_term", "ejagriti_guide", "general_question",
 ]
 
 KIND_DEFAULT_INTENT = {
@@ -62,7 +64,7 @@ PARAM_GUIDE = (
 
 _KEYWORDS = [
     (r"ombudsman.*(address|contact|phone|email|office|where|number)|(address|contact|phone|email|office|number).*ombudsman", "ombudsman_contact"),
-    (r"appeal|complaint|draft|letter|grievance|write to", "draft_appeal"),
+    (r"\b(draft|write|prepare|generate|make)\b.{0,30}\b(appeal|complaint|letter)\b|\b(appeal|complaint) letter\b|\bwrite to (the )?(insurer|ombudsman|gro)\b", "draft_appeal"),
     (r"worth|should i (fight|pursue|go ahead)|is it worth", "cost_benefit"),
     (r"similar case|precedent|past case|judg(e)?ment|won (a )?case", "precedents"),
     (r"waiting period", "waiting_period"),
@@ -72,6 +74,7 @@ _KEYWORDS = [
     (r"\bport(ing|ability)?\b|switch (my )?(insurer|policy)", "portability"),
     (r"\bncb\b|no[\s-]?claim bonus", "ncb_check"),
     (r"sum insured.*(enough|adequate|sufficient)|(enough|adequate|sufficient).*sum insured", "sum_insured_check"),
+    (r"(verify|check|confirm).{0,40}(respon|repl|answer|deadline)|(respon|repl).{0,30}(verify|check|confirm)", "verify_response"),
     (r"e-?jagriti|consumer (court|commission|forum)", "ejagriti_guide"),
     (r"room rent|co-?pay", "copay_breakdown"),
 ]
@@ -83,6 +86,14 @@ OMBUDSMAN_CONTACT_PATTERN = re.compile(
 )
 
 
+def _is_short_term_question(lowered: str) -> bool:
+    match = re.search(r"(?:what (?:is|does)|meaning of|explain)\s+(?:an?\s+|the\s+)?(.+?)\??$", lowered.strip())
+    if not match:
+        return False
+    phrase = match.group(1)
+    return len(phrase.split()) <= 4 and not re.search(r"\d", phrase)
+
+
 def _keyword_intents(message: str, has_docs: bool) -> list:
     lowered = (message or "").lower()
     found = []
@@ -92,7 +103,7 @@ def _keyword_intents(message: str, has_docs: bool) -> list:
     if "ejagriti_guide" in found and "draft_appeal" in found and not re.search(r"draft|write|letter", lowered):
         found.remove("draft_appeal")
     if not found and not has_docs and re.search(r"\bwhat (is|does)|\bmeaning of|\bexplain\b|\bmean\b", lowered):
-        found.append("explain_term")
+        found.append("explain_term" if _is_short_term_question(lowered) and not strong_match(lowered) else "general_question")
     return found
 
 
@@ -215,6 +226,19 @@ async def build_plan(ctx: Ctx, pending: list) -> list:
 
     if "draft_appeal" in intents and not ctx.claim_id and "audit_rejection" not in intents and ctx.first("rejection_letter"):
         intents.append("audit_rejection")
+
+    if "general_question" in intents and re.search(r"\bverify\b|\bconfirm (it|that|this)\b|\bhow (do|can) i (check|know)\b", ctx.message or "", re.I):
+        recent = " ".join(str(m.get("content", "")) for m in ctx.history[-4:] if isinstance(m, dict)).lower()
+        if re.search(r"grievance|respon|reply|14 days|insurer", recent):
+            intents = [i for i in intents if i != "general_question"] + ["verify_response"]
+
+    if "portability" in intents and not ctx.docs and re.search(r"\b(when|how long|how many|how early|window|deadline|apply)\b", (ctx.message or "").lower()):
+        intents = [("general_question" if i == "portability" else i) for i in intents]
+        intents = list(dict.fromkeys(intents))
+
+    if "explain_term" in intents and (strong_match((ctx.message or "").lower()) or not _is_short_term_question((ctx.message or "").lower())):
+        intents = [("general_question" if i == "explain_term" else i) for i in intents]
+        intents = list(dict.fromkeys(intents))
 
     if len(intents) > 1 and "general_question" in intents:
         intents.remove("general_question")

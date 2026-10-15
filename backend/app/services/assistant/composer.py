@@ -2,6 +2,8 @@ import json
 import logging
 
 from app.services.assistant.context import Ctx
+from app.services.assistant.guard import check_answer
+from app.services.assistant.verified_facts import facts_text, retrieve_facts
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +72,10 @@ async def compose_answer(ctx: Ctx, results: dict, order: list) -> str:
         text = await gemini.generate(model="gpt-5-nano", prompt=prompt, system=system, temperature=0.2, max_tokens=900)
         text = (text or "").strip()
         if text:
-            return text
+            digest_text = json.dumps(_digest(results, order), ensure_ascii=False)
+            allowed = "\n".join([digest_text, ctx.message, facts_text(retrieve_facts(ctx.message + " " + digest_text, "", limit=6))])
+            checked = check_answer(text, allowed, _fallback(results, order), ctx.message)
+            return checked["answer"]
     except Exception as exc:
         logger.warning(f"Answer composition failed, using template: {exc}")
     return _fallback(results, order)

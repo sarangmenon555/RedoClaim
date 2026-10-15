@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import re
 from typing import Optional
 
 from app.models.models import AppealType, Claim, InsuranceType
@@ -6,6 +8,7 @@ from app.api.routes import analysis as analysis_routes
 from app.api.routes import appeals as appeals_routes
 from app.services.irdai.rules_engine import irdai_engine
 from app.services.llm.functions import run_agent
+from app.services.rag.rag_pipeline import search_irdai_regulations
 from app.services.llm.gemini_service import generate_portability_guide
 from app.services.assistant.context import (
     Ctx, doc_field, failed, guarded, need, ok, unavailable, value_field,
@@ -14,7 +17,9 @@ from app.services.assistant.doc_classifier import (
     KIND_LABELS, extract_basic_facts, extract_bill_total, guess_insurance_type,
 )
 from app.services.irdai.consumer_fees import describe as describe_consumer_fee
+from app.services.assistant.guard import check_answer
 from app.services.assistant.ombudsman_lookup import find_offices
+from app.services.assistant.verified_facts import APP_PAGES, facts_text, retrieve_facts
 from app.services.assistant.params import as_lines, inr, to_float, to_text
 
 logger = logging.getLogger(__name__)
@@ -40,6 +45,7 @@ INTENT_LABELS = {
     "precedents": "Similar past cases",
     "ejagriti_guide": "Consumer commission guide",
     "ombudsman_contact": "Insurance Ombudsman office",
+    "verify_response": "How to check the insurer's response",
     "general_question": "Answer",
 }
 
@@ -613,6 +619,9 @@ async def run_explain_term(ctx: Ctx) -> dict:
     if error:
         return error
     lines = [str(result[k]) for k in ("plain_explanation", "example", "why_it_matters") if result.get(k)]
+    allowed = facts_text(retrieve_facts(f"{term} {ctx.message}", "", limit=6))
+    checked = check_answer("\n".join(lines), allowed, "", f"{term} {ctx.message}")
+    lines = [line for line in checked["answer"].split("\n") if line.strip()]
     return ok(label, lines, {"term": result.get("term") or term})
 
 
@@ -856,36 +865,112 @@ async def run_ombudsman_contact(ctx: Ctx) -> dict:
     return ok(label, [], {"answer": "\n".join(lines), "offices": cards}, [{"label": "Open Ombudsman finder", "href": "/dashboard/ombudsman-finder"}])
 
 
+GROUNDED_SYSTEM = (
+    "You are RedoClaim's assistant for Indian insurance policyholders. Answer ONLY from the SOURCES provided. "
+    "Do not use outside knowledge for facts. Never state a number (days, hours, weeks, months, years, percentages, rupee amounts), "
+    "a fee, a regulation, section, rule, clause or paragraph number, a web address, a portal name, or a feature or page of this app "
+    "unless it appears in the SOURCES. If the question needs something the SOURCES do not contain, say plainly that you do not have a "
+    "verified answer for that part and point to the official sources: irdai.gov.in, bimabharosa.irdai.gov.in, cioins.co.in, or a licensed advocate. "
+    "You may explain general ideas in plain words without numbers. This is not legal advice. "
+    "Format: plain text, short paragraphs, '- ' for list items, no tables, no emojis, under about 200 words. "
+    "The user may write in any language; answer in English."
+)
+
+
+async def _claim_context(ctx: Ctx) -> str:
+    if not ctx.claim_id:
+        return ""
+    try:
+        claim = await ctx.db.get(Claim, ctx.claim_id)
+    except Exception:
+        return ""
+    if claim is None:
+        return ""
+    parts = []
+    for label, attr in (
+        ("Insurer", "insurer_name"), ("Policy number", "policy_number"), ("Claim amount", "claim_amount"),
+        ("Status", "status"), ("Claim date", "claim_date"), ("Rejection date", "rejection_date"),
+        ("Insurer response deadline", "gro_deadline"),
+    ):
+        value = getattr(claim, attr, None)
+        if value not in (None, ""):
+            parts.append(f"{label}: {getattr(value, 'value', value)}")
+    return "; ".join(parts)
+
+
+def _facts_fallback(facts: list, question: str = "") -> str:
+    wants_pages = bool(re.search(r"\bpages?\b|\bfeatures?\b|redoclaim have|which tools|what tools", question or "", re.I))
+    chosen = [f for f in facts if wants_pages or f["id"] != "app_pages"]
+    if wants_pages:
+        chosen.sort(key=lambda f: f["id"] != "app_pages")
+    chosen = chosen[:2]
+    return "\n\n".join(f"- {f['title']}: {f['text']}" for f in chosen)
+
+
 async def run_general_question(ctx: Ctx) -> dict:
     label = INTENT_LABELS["general_question"]
-    system = (
-        "You are RedoClaim's assistant, helping an Indian insurance policyholder understand and act on "
-        "insurance claims, rejections and grievances. You are NOT a lawyer; nothing you say is legal advice. "
-        "Use the available tools to look up real data (claim status, policy clauses, IRDAI regulations, deadlines) "
-        "instead of guessing. Cite specific regulations and dates when you use them. Keep answers concise and "
-        "actionable, in plain text with short paragraphs. "
-        "Never write phone numbers, email addresses, street addresses or website addresses from memory: "
-        "contact details change and a wrong one can send the user to the wrong place. Only give web addresses that "
-        "a tool returned, or these verified ones: bimabharosa.irdai.gov.in (IRDAI grievance portal), irdai.gov.in, and "
-        "cioins.co.in (Council for Insurance Ombudsmen). Do not describe how any page in this app works or where its "
-        "data comes from. If you are not sure of a fact, say so instead of guessing."
+    history = [m for m in ctx.history[-6:] if isinstance(m, dict)]
+    history_all = " ".join(str(m.get("content", "")) for m in history)
+    history_user = " ".join(str(m.get("content", "")) for m in history if m.get("role") == "user")
+    facts = retrieve_facts(ctx.message, history_all)
+    facts_block = facts_text(facts)
+    rag_block = ""
+    try:
+        rag_block = (await asyncio.wait_for(search_irdai_regulations(ctx.message), timeout=10)) or ""
+    except Exception as exc:
+        logger.info(f"Knowledge-base search skipped: {exc}")
+    rag_block = rag_block[:3500]
+    claim_block = await _claim_context(ctx)
+    recent = "\n".join(f"{m.get('role')}: {str(m.get('content', ''))[:300]}" for m in history[-4:])
+    prompt = (
+        f"SOURCES\nVERIFIED FACTS:\n{facts_block}\n\nKNOWLEDGE BASE EXTRACTS:\n{rag_block or 'none'}\n\n"
+        f"CLAIM DETAILS: {claim_block or 'none'}\n\nRECENT CONVERSATION:\n{recent or 'none'}\n\nQUESTION: {ctx.message}"
     )
-    parts = []
-    if ctx.claim_id:
-        parts.append(f"(This conversation relates to claim_id={ctx.claim_id})")
-    attached = [f"document_id={d.id} ({KIND_LABELS.get(ctx.kinds.get(str(d.id), 'other'), 'Document')})" for d in ctx.docs]
-    if attached:
-        parts.append("(Attached documents: " + "; ".join(attached[:6]) + ")")
-    recent = [f"{m.get('role')}: {str(m.get('content', ''))[:300]}" for m in ctx.history[-4:] if isinstance(m, dict)]
-    if recent:
-        parts.append("Recent conversation:\n" + "\n".join(recent))
-    parts.append(ctx.message)
-    prompt = "\n\n".join(parts)
+    fallback = _facts_fallback(facts, ctx.message)
+    try:
+        from app.services.llm.gemini_service import gemini
+        raw = await gemini.generate(model="gpt-5-nano", prompt=prompt, system=GROUNDED_SYSTEM, temperature=0.1, max_tokens=700)
+    except Exception as exc:
+        logger.warning(f"General answer model call failed: {exc}")
+        if fallback:
+            text = "I could not reach the AI service just now, but here is verified information that may help.\n\n" + fallback
+        else:
+            text = (
+                "I could not reach the AI service just now, and I do not have a verified answer ready for that question. "
+                "Please try again in a moment, or check irdai.gov.in."
+            )
+        return ok(label, [], {"answer": text})
+    allowed = "\n".join([facts_block, rag_block, claim_block, ctx.message, history_user])
+    checked = check_answer(raw or "", allowed, fallback, ctx.message + " " + history_user)
+    return ok(label, [], {"answer": checked["answer"], "guard": {"dropped": checked["dropped"], "fallback": checked["fallback"]}})
 
-    answer, error = await guarded(ctx, label, lambda: run_agent(prompt=prompt, system=system, db=ctx.db))
-    if error:
-        return error
-    return ok(label, [], {"answer": answer})
+
+async def run_verify_response(ctx: Ctx) -> dict:
+    label = INTENT_LABELS["verify_response"]
+    lines = [
+        "Here is how to check whether your insurer has missed its grievance deadline:",
+        "- Find the date your grievance was registered. The insurer's acknowledgement (an email, SMS, portal ticket number or letter) should show it; the insurer must acknowledge a grievance immediately.",
+        "- Count 14 days from that date. Within that time the insurer must resolve the grievance and send a final letter of resolution. It may ask you for further details only once, within the first week.",
+        "- Look for that final letter. If it does not accept your complaint it must give reasons with reference to the specific policy terms, and it must include the contact details of the Insurance Ombudsman.",
+        "- Check the status on Bima Bharosa (bimabharosa.irdai.gov.in). Insurers must keep their grievance systems synchronised with it and record grievances received by phone, email, post or in person.",
+        "- In RedoClaim, the [Timeline](/dashboard/timeline) page shows the insurer's response deadline for your claims.",
+    ]
+    claim_line = ""
+    if ctx.claim_id:
+        try:
+            claim = await ctx.db.get(Claim, ctx.claim_id)
+            deadline = getattr(claim, "gro_deadline", None) if claim is not None else None
+            if deadline:
+                claim_line = f"For your claim, the recorded insurer response deadline is {str(deadline)[:10]}."
+        except Exception:
+            claim_line = ""
+    if claim_line:
+        lines.append(claim_line)
+    lines.append(
+        "If 14 days have passed with no final resolution letter, you can escalate: the Insurance Ombudsman (for claims up to Rs. 50 lakh; see the "
+        "[Ombudsman finder](/dashboard/ombudsman-finder)) or a consumer commission complaint (see the [e-Jagriti guide](/dashboard/e-jagriti))."
+    )
+    return ok(label, [], {"answer": "\n".join(lines)}, [{"label": "Open Timeline", "href": "/dashboard/timeline"}])
 
 
 EXECUTORS = {
@@ -909,5 +994,6 @@ EXECUTORS = {
     "precedents": run_precedents,
     "ejagriti_guide": run_ejagriti_guide,
     "ombudsman_contact": run_ombudsman_contact,
+    "verify_response": run_verify_response,
     "general_question": run_general_question,
 }
